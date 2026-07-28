@@ -1,0 +1,89 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Imports\PurchaseImport;
+use App\Models\Member;
+use App\Models\PurchaseOrder;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+
+class PurchasesController extends Controller
+{
+    public function index(Request $request): \Illuminate\View\View
+    {
+        $query = PurchaseOrder::with(['member', 'product'])
+            ->selectRaw('order_group, member_id, payment_type, status, MIN(created_at) as created_at, SUM(total_amount) as total_amount, COUNT(*) as item_count')
+            ->groupBy('order_group', 'member_id', 'payment_type', 'status');
+
+        if ($search = $request->input('search')) {
+            $query->whereHas('member', function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('staff_id', 'like', "%{$search}%");
+            })->orWhere('order_group', 'like', "%{$search}%");
+        }
+
+        if ($memberId = $request->input('member_id')) {
+            $query->where('member_id', $memberId);
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        $perPage = $request->input('per_page');
+        $orders = $query->latest('created_at')->paginate($perPage === 'all' ? 1000 : 15)->withQueryString();
+
+        $members = Member::where('status', 'active')->orderBy('first_name')->get();
+
+        return view('purchases.index', compact('orders', 'members'));
+    }
+
+    public function create(Request $request): \Illuminate\View\View
+    {
+        $memberId = $request->input('member_id');
+        $member = $memberId ? Member::find($memberId) : null;
+
+        return view('purchases.create', ['member' => $member, 'memberId' => $memberId]);
+    }
+
+    public function import(): \Illuminate\View\View
+    {
+        return view('purchases.import');
+    }
+
+    public function importStore(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $request->validate([
+            'import_file' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            Excel::import(new PurchaseImport, $request->file('import_file'));
+
+            return redirect()->route('purchases.index')
+                ->with('success', 'Purchase orders imported successfully.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="purchase_import_template.csv"',
+        ];
+
+        $callback = function () {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['staff_id', 'product_name', 'quantity', 'unit_price', 'payment_date', 'notes']);
+            fputcsv($file, ['STF001', 'Product A', '2', '5000', '2026-01-15', 'January salary deduction - purchase']);
+            fputcsv($file, ['STF002', 'Product B', '1', '15000', '2026-01-15', 'January salary deduction - purchase']);
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+}

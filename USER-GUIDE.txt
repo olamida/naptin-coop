@@ -1,0 +1,1703 @@
+===========================================================================
+  NAPTIN STAFF THRIFT COOPERATIVE SOCIETY
+  APPLICATION USER & USAGE GUIDE
+  Version 3.0
+===========================================================================
+
+TABLE OF CONTENTS
+-----------------
+  1.  Introduction & Overview
+  2.  Getting Started (Login & Navigation)
+      2.1  Logging In
+      2.2  Forgotten Password
+      2.3  Main Layout (Admin Sidebar)
+      2.4  Navigation Patterns
+      2.5  Default Login Credentials        <-- NEW
+  3.  System Roles & Permission Matrix
+  4.  Module Guide: Members
+  5.  Module Guide: Savings
+  6.  Module Guide: Loans
+  7.  Module Guide: Shares
+  8.  Module Guide: Products & Purchases
+  9.  Module Guide: Dividends
+  10. Module Guide: Payroll
+  11. Module Guide: Reports
+  12. Module Guide: Receipts & Printing
+  13. Member Self-Service Portal
+  14. Administration & Settings
+  15. Data Import & Export
+  16. Notifications & Alerts
+  17. Glossary of Terms
+  18. Quick Reference: Role Capabilities
+
+
+===========================================================================
+1. INTRODUCTION & OVERVIEW
+===========================================================================
+
+The NAPTIN Staff Thrift Cooperative Society Application is a centralized
+digital platform for managing all cooperative operations. It replaces
+manual record-keeping with a secure, role-based web application.
+
+WHAT THE SYSTEM DOES:
+  - Registers and manages cooperative members
+  - Tracks member savings (deposits, withdrawals, balances)
+  - Manages loan applications, approvals, disbursements, and repayments
+  - Tracks share purchases and holdings
+  - Manages cooperative product catalog and purchase orders (cash & hire purchase)
+  - Declares and distributes annual dividends
+  - Compiles monthly payroll deductions
+  - Generates printable receipts, statements, and reports
+  - Provides a member self-service portal
+
+WHO USES THE SYSTEM:
+  - Super Administrator (full system access)
+  - Administrators (cooperative management)
+  - Secretary (member registration, record keeping)
+  - Treasurer / Financial Secretary (savings, payroll, dividends)
+  - Loan Officer (loan lifecycle management)
+  - Teller (savings transactions, share purchases)
+  - Members (self-service portal)
+
+ACCESS URL: http://localhost/dev-angle/Starter-folder/naptin-coop/public
+
+
+===========================================================================
+2. GETTING STARTED (LOGIN & NAVIGATION)
+===========================================================================
+
+2.1 LOGGING IN
+--------------
+  Step 1: Open your web browser
+  Step 2: Navigate to the application URL
+  Step 3: Click "Login"
+  Step 4: Enter your email address and password
+  Step 5: Click "Sign In"
+
+  Note: Members with linked accounts use the same login page.
+        Your role determines what you see after login.
+
+2.2 FORGOTTEN PASSWORD
+----------------------
+  Step 1: On the login page, click "Forgot Password?"
+  Step 2: Enter your registered email address
+  Step 3: Check your email for a password reset link
+  Step 4: Click the link and set a new password
+  Step 5: Log in with your new password
+
+2.3 MAIN LAYOUT (ADMIN SIDEBAR)
+--------------------------------
+  After login, you see:
+
+  TOP BAR:
+    - Page title
+    - Current date
+    - User dropdown (your name, profile photo, role)
+      - "My Profile" — edit name, email, password, photo
+      - "Logout" — sign out
+
+  LEFT SIDEBAR (permission-gated):
+    ┌──────────────────────────┐
+    │  [Cooperative Logo]      │
+    │  NAPTIN Staff Thrift     │
+    │  Cooperative Society     │
+    ├──────────────────────────┤
+    │  Dashboard               │
+    │  Members                 │
+    │  Savings                 │
+    │  Loans                   │
+    │  Shares                  │
+    │  Purchases               │
+    │  Dividends               │
+    │  Payroll                 │
+    │  Reports                 │
+    ├──────────────────────────┤
+    │  My Account  (portal)    │
+    ├──────────────────────────┤
+    │  ADMINISTRATION          │
+    │  Management              │
+    └──────────────────────────┘
+
+  IMPORTANT: Sidebar items appear/disappear based on your role.
+             You will only see modules you have permission to access.
+
+2.4 NAVIGATION PATTERNS
+------------------------
+  - Breadcrumbs show your current location (e.g., Savings > Accounts)
+  - Sub-navigation tabs switch between related views (e.g., Transactions | Accounts | Pending)
+  - Status filter links on index pages let you filter lists by status
+  - Search boxes allow searching by name, staff ID, or reference number
+  - "Create / Add" buttons open forms for new records
+  - "Export" buttons download data as Excel files
+  - "Import" buttons upload bulk data from Excel/CSV files
+
+2.5 DEFAULT LOGIN CREDENTIALS
+------------------------------
+  The following accounts are pre-seeded for demonstration and initial use.
+  All accounts use the same default password: password
+
+  IMPORTANT: Change your password immediately after first login.
+             Go to My Profile → update password → save.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  ADMINISTRATIVE ACCOUNTS                                                │
+  ├──────────────────────┬──────────────────┬────────────┬─────────────────┤
+  │ Name                 │ Email            │ Role       │ Password        │
+  ├──────────────────────┼──────────────────┼────────────┼─────────────────┤
+  │ Super Admin          │ admin@naptin.coop│ super-admin│ password        │
+  └──────────────────────┴──────────────────┴────────────┴─────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  MEMBER ACCOUNTS (linked to member profiles with portal access)         │
+  ├──────────────────────┬──────────────────────┬──────────┬───────────────┤
+  │ Name                 │ Email                │ Role     │ Password      │
+  ├──────────────────────┼──────────────────────┼──────────┼───────────────┤
+  │ John Adebayo         │ john.adebayo@        │ member   │ password      │
+  │                      │ naptin.coop          │          │               │
+  ├──────────────────────┼──────────────────────┼──────────┼───────────────┤
+  │ Fatima Ibrahim       │ fatima.ibrahim@      │ member   │ password      │
+  │                      │ naptin.coop          │          │               │
+  ├──────────────────────┼──────────────────────┼──────────┼───────────────┤
+  │ Emeka Okonkwo        │ emeka.okonkwo@       │ member   │ password      │
+  │                      │ naptin.coop          │          │               │
+  ├──────────────────────┼──────────────────────┼──────────┼───────────────┤
+  │ Amina Bello          │ amina.bello@         │ member   │ password      │
+  │                      │ naptin.coop          │          │               │
+  ├──────────────────────┼──────────────────────┼──────────┼───────────────┤
+  │ Olusegun Adesanya    │ olusegun.adesanya@   │ member   │ password      │
+  │ (demo portal member) │ naptin.coop          │ member   │               │
+  └──────────────────────┴──────────────────────┴──────────┴───────────────┘
+
+  NOTE ON MEMBER LOGINS:
+    - Members log in through the same /login page
+    - After login, members see the admin sidebar (if they have staff roles)
+      OR are redirected to their portal
+    - The member portal is accessed via "My Account" in the sidebar
+    - Members can ONLY access the portal (not admin functions) unless
+      they also have a staff role assigned
+
+  MEMBER STAFF IDs (for reference):
+    John Adebayo ........... NAPTIN/0001
+    Fatima Ibrahim ......... NAPTIN/0002
+    Emeka Okonkwo .......... NAPTIN/0003
+    Amina Bello ............ NAPTIN/0004
+    Olusegun Adesanya ...... NAPTIN/0005
+
+  HOW TO CREATE ADDITIONAL USERS:
+    1. Log in as admin (admin@naptin.coop / password)
+    2. Navigate to Management → User Management
+    3. Click "+ Add User"
+    4. Enter name, email, password, and assign role
+    5. The new user can now log in with those credentials
+
+  HOW TO CREATE MEMBER ACCOUNTS WITH PORTAL ACCESS:
+    1. Log in as admin
+    2. Navigate to Members → "+ Add Member"
+    3. Fill in member details INCLUDING email address
+    4. Submit the form
+    5. System automatically:
+       a. Creates a User account with "member" role
+       b. Sends a Welcome Email with login credentials
+    6. The member can then log in and access the portal
+
+  PASSWORD SECURITY NOTES:
+    - All default passwords are: password
+    - Users should change passwords on first login (My Profile)
+    - Admins can reset any user's password (User Management → Reset)
+    - Members can use "Forgot Password" on the login page
+    - Passwords must be minimum 8 characters
+
+
+===========================================================================
+3. SYSTEM ROLES & PERMISSION MATRIX
+===========================================================================
+
+The system uses 7 predefined roles with 35 granular permissions.
+
+3.1 ROLES OVERVIEW
+------------------
+  ┌─────────────────┬──────────────────────────────────────────────────┐
+  │ Role            │ Description                                      │
+  ├─────────────────┼──────────────────────────────────────────────────┤
+  │ super-admin     │ Full system access to all 35 permissions         │
+  │ admin           │ Full cooperative access (34 perms, no delete)    │
+  │ secretary       │ View-only + member registration & editing        │
+  │ treasurer       │ Savings, shares, loan disburse/repay, payroll,   │
+  │                 │ dividends (declare/calculate), purchase orders   │
+  │ loan-officer    │ Loan lifecycle: create, approve, disburse, repay │
+  │ teller          │ Savings transactions, share purchases            │
+  │ member          │ Self-service portal only                         │
+  └─────────────────┴──────────────────────────────────────────────────┘
+
+3.2 COMPLETE PERMISSION MATRIX
+-------------------------------
+  ┌────────────────────┬──────┬───────┬───────┬──────────┬───────┬──────┬──────┐
+  │ Permission         │super │ admin │ secrt │ treasurer│ loan  │ tellr│ member│
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ DASHBOARD          │      │       │       │          │       │      │      │
+  │  view-dashboard    │  Y   │   Y   │   Y   │    Y     │   Y   │  Y   │  Y   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ MEMBERS            │      │       │       │          │       │      │      │
+  │  view-members      │  Y   │   Y   │   Y   │    Y     │   Y   │  Y   │  -   │
+  │  create-members    │  Y   │   Y   │   Y   │    -     │   -   │  -   │  -   │
+  │  edit-members      │  Y   │   Y   │   Y   │    -     │   -   │  -   │  -   │
+  │  delete-members    │  Y   │   -   │   -   │    -     │   -   │  -   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ NEXT OF KIN        │      │       │       │          │       │      │      │
+  │  manage-next-of-kin│  Y   │   Y   │   Y   │    -     │   -   │  -   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ SAVINGS            │      │       │       │          │       │      │      │
+  │  view-savings      │  Y   │   Y   │   Y   │    Y     │   -   │  Y   │  Y   │
+  │  deposit-savings   │  Y   │   Y   │   -   │    Y     │   -   │  Y   │  -   │
+  │  withdraw-savings  │  Y   │   Y   │   -   │    Y     │   -   │  Y   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ LOANS              │      │       │       │          │       │      │      │
+  │  view-loans        │  Y   │   Y   │   Y   │    Y     │   Y   │  -   │  Y   │
+  │  create-loans      │  Y   │   Y   │   -   │    -     │   Y   │  -   │  -   │
+  │  approve-loans     │  Y   │   Y   │   -   │    -     │   Y   │  -   │  -   │
+  │  disburse-loans    │  Y   │   Y   │   -   │    Y     │   Y   │  -   │  -   │
+  │  repay-loans       │  Y   │   Y   │   -   │    Y     │   Y   │  -   │  -   │
+  │  delete-loans      │  Y   │   -   │   -   │    -     │   -   │  -   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ LOAN PRODUCTS      │      │       │       │          │       │      │      │
+  │  view-loan-products│  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  │  manage-loan-prod  │  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ SHARES             │      │       │       │          │       │      │      │
+  │  view-shares       │  Y   │   Y   │   Y   │    Y     │   -   │  Y   │  Y   │
+  │  purchase-shares   │  Y   │   Y   │   -   │    Y     │   -   │  Y   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ PRODUCTS           │      │       │       │          │       │      │      │
+  │  view-products     │  Y   │   Y   │   Y   │    Y     │   -   │  -   │  -   │
+  │  manage-products   │  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  │  view-purchase-ord │  Y   │   Y   │   Y   │    Y     │   -   │  -   │  -   │
+  │  create-purchase-od│  Y   │   Y   │   -   │    Y     │   -   │  -   │  -   │
+  │  approve-purchase-o│  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  │  collect-purchase-o│  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ DIVIDENDS          │      │       │       │          │       │      │      │
+  │  view-dividends    │  Y   │   Y   │   Y   │    Y     │   -   │  -   │  -   │
+  │  declare-dividends │  Y   │   Y   │   -   │    Y     │   -   │  -   │  -   │
+  │  calculate-dividnd │  Y   │   Y   │   -   │    Y     │   -   │  -   │  -   │
+  │  approve-dividends │  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  │  distribute-dividnd│  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ PAYROLL            │      │       │       │          │       │      │      │
+  │  view-payroll      │  Y   │   Y   │   Y   │    Y     │   -   │  -   │  -   │
+  │  compile-payroll   │  Y   │   Y   │   -   │    Y     │   -   │  -   │  -   │
+  │  upload-payroll    │  Y   │   Y   │   -   │    Y     │   -   │  -   │  -   │
+  │  export-payroll    │  Y   │   Y   │   -   │    Y     │   -   │  -   │  -   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ REPORTS            │      │       │       │          │       │      │      │
+  │  view-reports      │  Y   │   Y   │   Y   │    Y     │   Y   │  Y   │  Y   │
+  ├────────────────────┼──────┼───────┼───────┼──────────┼───────┼──────┼──────┤
+  │ ADMIN              │      │       │       │          │       │      │      │
+  │  manage-users      │  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  │  manage-roles      │  Y   │   Y   │   -   │    -     │   -   │  -   │  -   │
+  └────────────────────┴──────┴───────┴───────┴──────────┴───────┴──────┴──────┘
+
+  Y  = Has permission
+  -  = Does NOT have permission
+
+
+===========================================================================
+4. MODULE GUIDE: MEMBERS
+===========================================================================
+
+4.1 PURPOSE
+-----------
+  Register, track, and manage all cooperative members.
+
+4.2 WHO CAN ACCESS
+------------------
+  - View members:    super-admin, admin, secretary, treasurer, loan-officer, teller
+  - Create members:  super-admin, admin, secretary
+  - Edit members:    super-admin, admin, secretary
+  - Delete members:  super-admin only
+
+4.3 MEMBER LIST PAGE (/members)
+--------------------------------
+  STATISTICS SHOWN:
+    - Total members count
+    - Active, Inactive, Retired, Suspended breakdowns
+
+  FEATURES:
+    - Search by first name, last name, or staff ID
+    - Filter by region (dropdown)
+    - Filter by status (active, inactive, retired, suspended)
+    - Pagination (15 per page)
+
+  ACTIONS AVAILABLE (permission-gated):
+    - "+ Add Member"      → opens registration form          [create-members]
+    - "Import"            → bulk import from Excel/CSV        [create-members]
+    - "Export"            → download all members as Excel     [view-members]
+    - "Bulk Status"       → select multiple, change status    [edit-members]
+    - Click member row    → view member profile               [view-members]
+
+  NOTE: Buttons/links are hidden if your role lacks the required permission.
+        If you can see a page but not an action button, you lack permission.
+
+4.4 MEMBER REGISTRATION (/members/create)
+-----------------------------------------
+  REQUIRED FIELDS:
+    - Staff ID          (unique, e.g., "NAPTIN/0001")
+    - First Name
+    - Last Name
+    - Region            (select from 8 regional centers)
+    - Status            (active, inactive, retired, suspended)
+
+  OPTIONAL FIELDS:
+    - Middle Name
+    - Email             (if provided → auto-creates user account)
+    - Phone
+    - Gender            (male, female)
+    - Date of Birth
+    - Employment Date
+    - Retirement Date
+    - Address
+    - State of Origin
+    - NIN (National Identification Number)
+    - Grade Level
+    - Monthly Salary
+    - Monthly Savings
+    - Photo             (JPEG/PNG, max 2MB)
+
+  AUTOMATIC ACTIONS ON CREATION:
+    1. Savings Account created   (balance: ₦0)
+    2. Share Account created     (shares: 0, value: ₦0)
+    3. If email provided:
+       a. User account created with "member" role
+       b. Welcome email sent with login credentials
+    4. Member record stored
+
+4.5 MEMBER PROFILE (/members/{id})
+-----------------------------------
+  TABS/VIEWS:
+    - Personal Details (name, staff ID, region, salary, status, photo)
+    - Savings (last 10 transactions + link to full history)
+    - Shares (last 10 transactions + link to full history)
+    - Loans (all loans with status badges)
+    - Next of Kin (emergency contacts)
+
+  ACTIONS:
+    - Edit member
+    - Add/remove next of kin
+    - View full savings detail
+    - View full loans detail
+    - View full purchases detail
+    - Delete member (only if no related data)
+
+4.6 MEMBER DELETION RULES
+--------------------------
+  A member CANNOT be deleted if they have:
+    - Savings account with transactions
+    - Share account with transactions
+    - Any loans (active or completed)
+    - Any purchase orders
+    - Any loan repayments
+    - Any next of kin records
+    - A linked user account
+
+4.7 MEMBER IMPORT (/members/import)
+------------------------------------
+  FILE FORMAT: CSV or Excel (.xlsx, .xls)
+  MAX SIZE: 10MB
+
+  TEMPLATE COLUMNS:
+    staff_id, first_name, last_name, middle_name, region,
+    email, phone, gender, date_of_birth, employment_date,
+    address, state_of_origin, nin, grade_level, monthly_salary, status
+
+  REQUIRED COLUMNS: staff_id, first_name, last_name, region
+
+  BEHAVIOR:
+    - Each imported member automatically gets savings + share accounts
+    - Members with email get user accounts created
+    - Download template available with sample data
+
+
+===========================================================================
+5. MODULE GUIDE: SAVINGS
+===========================================================================
+
+5.1 PURPOSE
+-----------
+  Track member savings deposits, withdrawals, and balances.
+
+5.2 WHO CAN ACCESS
+------------------
+  - View savings:     super-admin, admin, secretary, treasurer, teller, member
+  - Make deposits:    super-admin, admin, treasurer, teller
+  - Make withdrawals: super-admin, admin, treasurer, teller
+
+5.3 SAVINGS TRANSACTIONS PAGE (/savings)
+-----------------------------------------
+  STAT CARDS (6):
+    ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+    │  Total Balance   │ │  Total Deposits  │ │ Total Withdrawals│
+    │  (all accounts)  │ │  (completed)     │ │  (completed)     │
+    └─────────────────┘ └─────────────────┘ └─────────────────┘
+    ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+    │  Total Accounts  │ │ Pending Requests │ │  This Month      │
+    │  (count)         │ │  (count)         │ │  (all types)     │
+    └─────────────────┘ └─────────────────┘ └─────────────────┘
+
+  SUB-NAVIGATION TABS:
+    [Transactions] [Accounts] [Pending]
+
+  FEATURES:
+    - Search by member name, staff ID, or transaction reference
+    - Filter by type (deposit, withdrawal)
+    - Filter by status (completed, pending, rejected)
+    - Pagination (15 per page)
+
+  TRANSACTION REFERENCE FORMAT:
+    Deposit:     SAV/DEP/XXXXXXXX  (8 random characters)
+    Withdrawal:  SAV/WTH/XXXXXXXX
+
+  ACTIONS AVAILABLE (permission-gated):
+    - "Export"            → download savings as Excel           [view-savings]
+    - "Import"            → bulk import savings                 [deposit-savings]
+    - "+ Deposit"         → record a savings deposit            [deposit-savings]
+    - "- Withdraw"        → submit withdrawal request           [withdraw-savings]
+
+5.4 SAVINGS ACCOUNTS (/savings/accounts)
+-----------------------------------------
+  Shows all member savings accounts with current balances.
+
+  FEATURES:
+    - Search by member name, staff ID, or account number
+    - Sort by: Latest, Highest balance, Lowest balance
+    - Total balance summary shown at top
+
+5.5 RECORDING A DEPOSIT (/savings/deposit)
+-------------------------------------------
+  Step 1: Click "Deposit" in sidebar
+  Step 2: Select member from dropdown (active members only)
+  Step 3: Enter amount (minimum ₦0.01)
+  Step 4: Optional: upload payment evidence (receipt screenshot/photo)
+  Step 5: Optional: add notes
+  Step 6: Click "Record Deposit"
+
+  WHAT HAPPENS:
+    - Savings account balance is increased immediately
+    - Transaction recorded with status: "completed"
+    - If payment evidence uploaded: stored and viewable on transaction
+    - Balance before and after are stored
+    - Reference number generated
+    - Redirected to accounts page with success message
+
+5.6 RECORDING A WITHDRAWAL (/savings/withdraw)
+-----------------------------------------------
+  Step 1: Click "Withdraw" in sidebar
+  Step 2: Select member from dropdown
+  Step 3: Enter amount (must not exceed available balance)
+  Step 4: Optional: add notes
+  Step 5: Click "Submit Withdrawal Request"
+
+  WHAT HAPPENS:
+    - Transaction created with status: "PENDING"
+    - Balance is NOT deducted yet
+    - Goes to pending approval queue
+    - Treasurer must approve before funds are released
+
+  VALIDATION:
+    - Amount must not exceed member's savings balance
+    - If insufficient balance: error message shown
+
+5.7 WITHDRAWAL APPROVAL (/savings/pending-withdrawals)
+--------------------------------------------------------
+  Step 1: Navigate to Pending Withdrawals (sub-nav tab or sidebar)
+  Step 2: Review pending requests (member name, amount, date)
+  Step 3: For each request, choose:
+    - APPROVE:  Deducts balance, marks completed, sends notification
+    - REJECT:   Requires rejection reason, marks rejected, sends notification
+
+  VALIDATION ON APPROVAL:
+    - System re-checks balance is sufficient
+    - If balance changed since request: error shown
+
+5.8 SAVINGS IMPORT
+------------------
+  File: CSV or Excel
+  Required columns: staff_id, amount
+  Optional: type (deposit/withdrawal), transaction_date, notes
+
+
+===========================================================================
+6. MODULE GUIDE: LOANS
+===========================================================================
+
+6.1 PURPOSE
+-----------
+  Manage the complete loan lifecycle from application to completion.
+
+6.2 WHO CAN ACCESS
+------------------
+  - View loans:       super-admin, admin, secretary, treasurer, loan-officer, member
+  - Create loans:     super-admin, admin, loan-officer
+  - Approve loans:    super-admin, admin, loan-officer
+  - Disburse loans:   super-admin, admin, treasurer, loan-officer
+  - Record repayments:super-admin, admin, treasurer, loan-officer
+  - Delete loans:     super-admin only
+
+6.3 LOAN STAT CARDS (6)
+------------------------
+  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+  │  Total Loans   │ │  Outstanding   │ │ Repaying Now   │
+  │  (count)       │ │  Amount (₦)    │ │  (count)       │
+  └───────────────┘ └───────────────┘ └───────────────┘
+  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+  │  Pending       │ │  Defaulted     │ │ Defaulted Amt  │
+  │  (count)       │ │  (count)       │ │  (₦)           │
+  └───────────────┘ └───────────────┘ └───────────────┘
+
+6.4 SUB-NAVIGATION TABS
+------------------------
+  [All] [Pending] [Approved] [Repaying] [Completed] [Defaulted]
+
+  Each tab filters loans by that status. Clicking shows only loans
+  in that status. URL parameter: ?status=pending
+
+  ACTIONS AVAILABLE (permission-gated):
+    - "Export"            → download loans as Excel             [view-loans]
+    - "Import Repayments" → bulk import repayments              [repay-loans]
+    - "New Loan"          → create loan application             [create-loans]
+
+6.5 LOAN LIFECYCLE
+------------------
+  ┌─────────┐    ┌──────────┐    ┌───────────┐    ┌──────────┐    ┌───────────┐
+  │ PENDING  │───>│ APPROVED │───>│ DISBURSED │───>│ REPAYING │───>│ COMPLETED │
+  └─────────┘    └──────────┘    └───────────┘    └──────────┘    └───────────┘
+       │              │               │
+       v              v               v
+  ┌──────────┐  ┌──────────┐   ┌───────────┐
+  │ REJECTED │  │ REJECTED │   │ DEFAULTED │
+  └──────────┘  └──────────┘   └───────────┘
+
+  STATUS DEFINITIONS:
+    Pending    → Application submitted, awaiting approval
+    Approved   → Approved by loan officer, awaiting disbursement
+    Disbursed  → Funds released to member, repayment period started
+    Repaying   → Member is making repayments
+    Completed  → All payments received, loan fully paid
+    Rejected   → Application rejected (reason required)
+    Defaulted  → Loan past due, marked by administrator
+
+6.6 CREATING A LOAN (/loans/create)
+------------------------------------
+  Step 1: Select member (active members only)
+  Step 2: Select loan product (optional — provides defaults)
+  Step 3: Enter loan amount
+  Step 4: Enter interest rate (%)
+  Step 5: Enter tenure (months)
+  Step 6: Optional: select guarantors
+  Step 7: Optional: enter purpose
+  Step 8: Click "Submit Application"
+
+  LOAN NUMBER FORMAT: REG/YYYY/XXXXXX
+    Example: REG/2026/000015
+
+  AUTOMATIC CALCULATIONS:
+    Monthly Repayment = (Amount × (1 + Rate%)) ÷ Tenure (rounded to 2 decimals)
+
+    Example: ₦100,000 loan at 5% interest, 12 months:
+      Total with interest = ₦100,000 × 1.05 = ₦105,000
+      Monthly repayment  = ₦105,000 ÷ 12   = ₦8,750.00
+
+  VALIDATION (if loan product selected):
+    - Amount within product's min/max range
+    - Tenure within product's max term
+    - Member hasn't exceeded max loans per member limit
+    - Member's total outstanding hasn't exceeded max total amount
+
+6.7 GUARANTOR SYSTEM
+---------------------
+  When a loan product requires guarantors:
+    1. System creates LoanGuarantor records for each selected guarantor
+    2. Notification sent to each guarantor member
+    3. Guarantors must ACCEPT before loan can be approved
+    4. Admin can accept/decline on behalf from loan detail page
+
+  GUARANTOR STATUS OPTIONS:
+    - Pending:  awaiting response
+    - Accepted: guarantor agreed
+    - Declined: guarantor declined
+
+  RULE: ALL guarantors must accept before loan can be approved.
+
+6.8 LOAN APPROVAL (/loans/{id}/approve)
+----------------------------------------
+  Step 1: Open loan detail page
+  Step 2: Review loan details, guarantor status
+  Step 3: Click "Approve"
+
+  SYSTEM CHECKS:
+    - Loan must be in "pending" status
+    - If guarantors exist: all must be "accepted"
+    - If any check fails: error message shown
+
+  WHAT HAPPENS:
+    - Status changes to "approved"
+    - Approval date recorded
+    - Approved by (user) recorded
+    - Audit log entry created
+    - Notification sent to member
+
+6.9 LOAN REJECTION (/loans/{id}/reject)
+----------------------------------------
+  Step 1: Open loan detail page
+  Step 2: Click "Reject"
+  Step 3: Enter rejection reason (required)
+  Step 4: Confirm rejection
+
+  WHAT HAPPENS:
+    - Status changes to "rejected"
+    - Rejection reason stored
+    - Audit log entry created
+    - Notification sent to member
+
+6.10 LOAN DISBURSEMENT (/loans/{id}/disburse)
+----------------------------------------------
+  Prerequisites: Loan status must be "approved"
+
+  Step 1: Open loan detail page
+  Step 2: Click "Disburse"
+  Step 3: Confirm disbursement
+
+  WHAT HAPPENS:
+    - Status changes to "disbursed"
+    - Disbursement date recorded
+    - Maturity date calculated (today + tenure_months)
+    - Audit log entry created
+    - Notification sent to member
+
+6.11 RECORDING A REPAYMENT (/loans/{id}/repayment)
+---------------------------------------------------
+  Step 1: Open loan detail page
+  Step 2: Click "Record Repayment"
+  Step 3: Enter amount
+  Step 4: Select payment method:
+          - Cash
+          - Bank Transfer
+          - Salary Deduction
+          - Savings Deduction
+  Step 5: Enter payment date
+  Step 6: Optional: add notes
+  Step 7: Click "Record Payment"
+
+  AUTOMATIC SPLIT LOGIC:
+    The system splits each payment into principal and interest:
+      interest_portion  = amount × (rate / (1 + rate))
+      principal_portion = amount - interest_portion
+
+    Example: ₦100,000 payment at 5% interest rate:
+      interest  = ₦100,000 × (0.05 / 1.05) = ₦4,761.90
+      principal = ₦100,000 - ₦4,761.90 = ₦95,238.10
+
+  WHAT HAPPENS:
+    - Repayment record created with reference: LN/REPAY/XXXXXXXX
+    - Loan outstanding decreased by principal portion
+    - If outstanding reaches ₦0 → status changes to "completed"
+    - If completed → notification sent to member
+
+6.12 LOAN DETAIL PAGE (/loans/{id})
+------------------------------------
+  SECTIONS:
+    - Loan information (number, member, amount, status)
+    - Repayment schedule (installments with due dates)
+    - Repayment history (all payments made)
+    - Guarantor details (names, status, response date)
+    - Approval log (full audit trail with timestamps)
+
+  AUDIT TRAIL ENTRIES:
+    - submitted:  when application was created
+    - approved:   when approved
+    - rejected:   when rejected (with reason)
+    - disbursed:  when funds released
+    - note_added: when admin adds notes
+
+6.13 LOAN IMPORT
+----------------
+  Import loan repayments in bulk via CSV/Excel.
+  Required columns: staff_id, amount
+  Optional: payment_date, notes
+  System auto-splits into principal/interest.
+
+
+===========================================================================
+7. MODULE GUIDE: SHARES
+===========================================================================
+
+7.1 PURPOSE
+-----------
+  Track member share holdings and purchases.
+
+7.2 SHARE STAT CARDS (5)
+-------------------------
+  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+  │  Total Shares   │ │  Portfolio     │ │  Transactions  │
+  │  (count)        │ │  Value (₦)     │ │  (count)       │
+  └───────────────┘ └───────────────┘ └───────────────┘
+  ┌───────────────┐ ┌───────────────┐
+  │  This Month    │ │  Shareholders  │
+  │  (₦)           │ │  (count)       │
+  └───────────────┘ └───────────────┘
+
+  7.3 SUB-NAVIGATION TABS
+------------------------
+  [Transactions] [Accounts]
+
+  ACTIONS AVAILABLE (permission-gated):
+    - "Export"            → download shares as Excel            [view-shares]
+    - "+ Purchase"        → record share purchase               [purchase-shares]
+
+7.4 PURCHASING SHARES (/shares/purchase)
+-----------------------------------------
+  Step 1: Select member (active members only)
+  Step 2: Enter number of shares to purchase
+  Step 3: Optional: add notes
+  Step 4: Click "Record Purchase"
+
+  CALCULATIONS:
+    Share price: ₦100 per share (configurable per account)
+    Total cost = shares × share_price
+
+  WHAT HAPPENS:
+    - Account total_shares and total_value updated
+    - Transaction recorded: SHR/PUR/XXXXXXXX
+    - Balance_after shows new total shares
+
+7.5 SHARE ACCOUNTS (/shares/accounts)
+--------------------------------------
+  Shows all member share accounts with:
+    - Member name and staff ID
+    - Total shares held
+    - Total value
+    - Share price
+
+  SORTING: Latest, Highest value, Lowest value
+
+
+===========================================================================
+8. MODULE GUIDE: PRODUCTS & PURCHASES
+===========================================================================
+
+8.1 PURPOSE
+-----------
+  Manage cooperative product catalog and member purchase orders.
+
+8.2 PRODUCT TYPES
+-----------------
+  Cash Purchase:
+    - Member pays full amount immediately
+    - Order auto-approved
+    - Product collected on the spot
+
+  Hire Purchase:
+    - Member pays in installments over time
+    - Order starts as "pending"
+    - Requires admin approval
+    - Monthly repayment tracked
+
+8.3 PRODUCT LIST (/products)
+-----------------------------
+  SUB-NAVIGATION TABS: [Products] [Orders]
+
+  PRODUCTS TAB:
+    - List all products with name, price, stock, status
+    - Search by product name
+    - Grid view (default for members) and list view (default for admin)
+    - Actions (permission-gated): Add Product, Import         [manage-products]
+    - "New" badge on Shop link if products added in last 7 days
+    - "Edit Product" links hidden if lacking manage-products permission
+
+  ORDERS TAB:
+    - List all purchase orders grouped by order_group
+    - Search by member name or order group
+    - Filter by status (pending, approved, active, completed)
+    - Actions (permission-gated): Create Order                [create-purchase-orders]
+
+8.4 ADDING A PRODUCT (/products/create)
+----------------------------------------
+  Fields:
+    - Name (required)
+    - Description
+    - Unit Price (required, ₦)
+    - Stock Quantity (required, integer)
+    - Enabled (toggle)
+    - Image (optional)
+
+8.5 SHOPPING CART (Admin)
+--------------------------
+  The admin side has a session-based shopping cart for processing
+  member purchases.
+
+  CART ROUTES:
+    /cart             → View cart contents
+    /cart/add         → Add product (with product_id + quantity)
+    /cart/update      → Change quantity
+    /cart/remove      → Remove item
+    /cart/clear       → Clear entire cart
+    /cart/checkout    → Select member + payment type
+    POST /cart/checkout → Process order
+
+  CHECKOUT PROCESS:
+    Step 1: Add products to cart
+    Step 2: Go to checkout
+    Step 3: Select member
+    Step 4: Select payment type (Cash or Hire Purchase)
+    Step 5: If hire purchase: enter monthly repayment amount
+    Step 6: Confirm checkout
+
+  WHAT HAPPENS ON CHECKOUT:
+    1. Order group number generated: GRP-YYYY-XXXXXXXX
+    2. For each cart item:
+       a. Order number generated: PO/YYYY/XXXXXX
+       b. PurchaseOrder record created
+       c. Stock decremented
+    3. Cash orders → status: "approved"
+    4. Hire purchase orders → status: "pending"
+    5. Cart cleared
+
+8.6 STANDALONE PURCHASE ORDERS (/purchases)
+--------------------------------------------
+  For creating orders without the cart workflow.
+
+  CREATE ORDER (/purchases/create):
+    - Select member (optional — can pre-select from member profile)
+    - Select product
+    - Enter quantity
+    - Select payment type
+    - Enter monthly repayment (if hire purchase)
+    - Submit
+
+  ORDER NUMBER FORMAT: PO/YYYY/XXXXXX
+
+8.7 PRINTING INVOICES (/invoices/purchase/{id})
+-------------------------------------------------
+  Opens a printable invoice in a new browser tab.
+  Includes:
+    - Company logo and name
+    - Order details (number, date, member, product)
+    - Quantity, unit price, total
+    - Payment type and status
+    - Print button
+
+
+===========================================================================
+9. MODULE GUIDE: DIVIDENDS
+===========================================================================
+
+9.1 PURPOSE
+-----------
+  Declare, calculate, and distribute annual dividends to members.
+
+9.2 DIVIDEND STAT CARDS (4)
+----------------------------
+  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+  │  Declared       │ │  Distributed   │ │  Total Profit  │
+  │  (count)        │ │  (count)       │ │  (₦)           │
+  └───────────────┘ └───────────────┘ └───────────────┘
+  ┌───────────────┐
+  │  Pending Payouts│
+  │  (count)       │
+  └───────────────┘
+
+9.3 DIVIDEND WORKFLOW
+---------------------
+  ┌─────────┐    ┌─────────────┐    ┌──────────┐    ┌───────────┐
+  │  DRAFT   │───>│ CALCULATED  │───>│ APPROVED │───>│ COMPLETED │
+  └─────────┘    └─────────────┘    └──────────┘    └───────────┘
+
+9.4 DECLARING A DIVIDEND (/dividends/create)
+---------------------------------------------
+  Step 1: Enter year (e.g., 2025)
+  Step 2: Enter total profit amount
+  Step 3: Click "Create Dividend Record"
+
+  WHAT HAPPENS:
+    - Dividend record created with status: "draft"
+    - No distributions calculated yet
+
+9.5 CALCULATING DISTRIBUTIONS (/dividends/{id}/calculate)
+----------------------------------------------------------
+  Step 1: Open dividend detail page
+  Step 2: Click "Calculate Distributions"
+
+  CALCULATION LOGIC:
+    For each member with shares:
+      member_amount = (member_shares / total_shares) × total_profit
+
+  WHAT HAPPENS:
+    - DividendDistribution records created for each shareholder
+    - Each record shows: member, shares, calculated amount
+    - Status changes to "calculated"
+
+9.6 APPROVING (/dividends/{id}/approve)
+-----------------------------------------
+  Step 1: Review calculated distributions
+  Step 2: Click "Approve"
+
+  WHAT HAPPENS:
+    - Status changes to "approved"
+    - Distributions ready for payment
+
+9.7 DISTRIBUTING (/dividends/{id}/distribute)
+----------------------------------------------
+  Step 1: After all payments made
+  Step 2: Click "Mark as Distributed"
+
+  WHAT HAPPENS:
+    - Status changes to "completed"
+    - All distributions marked as paid
+
+
+===========================================================================
+10. MODULE GUIDE: PAYROLL
+===========================================================================
+
+10.1 PURPOSE
+------------
+  Compile and manage monthly salary deductions for cooperative contributions.
+
+10.2 PAYROLL STAT CARDS (4)
+----------------------------
+  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+  │  Total Payrolls │ │  Total Members │ │  Latest Status  │
+  │  (count)        │ │  (count)       │ │  (text)         │
+  └───────────────┘ └───────────────┘ └───────────────┘
+  ┌───────────────┐
+  │  Total Deductions│
+  │  (₦)           │
+  └───────────────┘
+
+10.3 COMPILING PAYROLL (/payroll/compile)
+------------------------------------------
+  Step 1: Select year
+  Step 2: Select month
+  Step 3: Click "Compile Payroll"
+
+  SYSTEM CALCULATES (per active member):
+    ┌────────────────────────┬────────────────────────────────┐
+    │ Deduction Type         │ Calculation                     │
+    ├────────────────────────┼────────────────────────────────┤
+    │ Savings                │ 10% × monthly_salary            │
+    │ Share Contribution     │ 5% × monthly_salary             │
+    │ Loan Repayment         │ Active loan's monthly_repayment │
+    │ Purchase Repayment     │ Active hire purchase repayment  │
+    └────────────────────────┴────────────────────────────────┘
+
+  WHAT HAPPENS:
+    - PayrollDeduction records created for each active member
+    - Expected amounts pre-filled
+    - Payroll number generated
+    - Status: "compiled"
+
+10.4 PAYROLL WORKFLOW
+---------------------
+  ┌───────────┐    ┌───────────┐    ┌───────────┐
+  │ COMPILED  │───>│ DEDUCTED  │───>│ COMPLETED │
+  └───────────┘    └───────────┘    └───────────┘
+
+10.5 UPLOADING ACTUALS (/payroll/{id}/upload)
+----------------------------------------------
+  Step 1: Download template (Excel with expected amounts)
+  Step 2: Fill in actual deducted amounts in the Excel
+  Step 3: Upload the completed Excel
+  Step 4: System matches by Staff ID
+  Step 5: Actual amounts recorded
+
+  BEHAVIOR:
+    - Only "compiled" payrolls can have uploads
+    - System matches records by staff_id
+    - Status changes to "deducted" or "completed"
+
+10.6 SUB-REPORTS
+----------------
+  Each compiled payroll has 5 printable sub-reports:
+
+  /payroll/{id}/report/savings    → Savings deduction report
+  /payroll/{id}/report/loans      → Loan repayment report
+  /payroll/{id}/report/purchases  → Purchase repayment report
+  /payroll/{id}/report/shares     → Share contribution report
+  /payroll/{id}/report/summary    → Full summary with all deductions
+
+10.7 EXPORTING PAYROLL
+-----------------------
+  - "Export Excel" → full deduction data as .xlsx
+  - "Download Template" → empty template with expected amounts
+
+
+===========================================================================
+11. MODULE GUIDE: REPORTS
+===========================================================================
+
+11.1 PURPOSE
+------------
+  Generate printable member status reports.
+
+11.2 MEMBER STATUS REPORT (/reports/member/{id})
+-------------------------------------------------
+  This is the most comprehensive single-page report in the system.
+
+  CONTENTS:
+    SECTION 1: Member Personal Details
+      - Photo, name, staff ID, region, phone, gender
+      - Employment date, grade level, monthly salary
+      - Status badge
+
+    SECTION 2: Financial Overview
+      - Savings balance with link to statement
+      - Share count and value with link to certificate
+      - Total loan amount
+      - Total purchase amount
+      - Total purchase amount paid
+
+    SECTION 3: Full Loan History
+      - Table of ALL loans (not just active)
+      - Columns: Loan #, Product, Amount, Outstanding, Status
+      - Color-coded status badges
+
+    SECTION 4: Full Purchase History
+      - Table of ALL purchase orders
+      - Columns: Order #, Product, Amount, Status
+      - Status badges
+
+    SECTION 5: Monthly Salary Deduction Breakdown
+      ┌─────────────────────────────────────────────────┐
+      │ GROSS MONTHLY SALARY                    ₦XXX,XXX│
+      ├─────────────────────────────────────────────────┤
+      │ Individual Loan Repayments:                      │
+      │   REG/2026/000001 - Regular Loan       -₦XX,XXX│
+      │   REG/2026/000005 - Emergency Loan     -₦XX,XXX│
+      ├─────────────────────────────────────────────────┤
+      │ Individual Purchase Repayments:                  │
+      │   PO/2026/000012 - Laptop              -₦XX,XXX│
+      ├─────────────────────────────────────────────────┤
+      │ Savings Deduction (10%)                -₦XX,XXX│
+      ├─────────────────────────────────────────────────┤
+      │ Deduction as % of Salary                    XX% │
+      ├─────────────────────────────────────────────────┤
+      │ NET TAKE-HOME PAY                      ₦XXX,XXX│
+      └─────────────────────────────────────────────────┘
+
+    SECTION 6: Footer
+      - Dynamic company name and footer note
+      - Print button
+
+  FORMATTING:
+    - Opens in new browser tab
+    - Print-optimized CSS
+    - Company logo at top
+    - NAPTIN watermark
+    - Print button triggers browser print dialog
+
+
+===========================================================================
+12. MODULE GUIDE: RECEIPTS & PRINTING
+===========================================================================
+
+12.1 AVAILABLE RECEIPT TYPES
+-----------------------------
+  ┌──────────────────────────┬──────────────────────────────────────┐
+  │ Receipt Type             │ Route                                 │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ Savings Deposit Receipt  │ /receipts/savings/{transaction}       │
+  │ Loan Repayment Receipt   │ /receipts/loan-repayment/{repayment}  │
+  │ Loan Disbursement Receipt│ /receipts/loan-disbursement/{loan}    │
+  │ Loan Statement           │ /receipts/loan-statement/{loan}       │
+  │ Savings Statement        │ /receipts/savings-statement/{account} │
+  │ Share Certificate        │ /receipts/share-certificate/{account} │
+  │ Purchase Order Receipt   │ /receipts/purchase/{order}            │
+  │ Purchase Invoice         │ /invoices/purchase/{order}            │
+  └──────────────────────────┴──────────────────────────────────────┘
+
+12.2 COMMON RECEIPT FEATURES
+-----------------------------
+  All receipts include:
+    - Company logo (56px, white background)
+    - Dynamic company name from settings
+    - Member details (name, staff ID, region, phone)
+    - Transaction details with reference numbers
+    - NAPTIN watermark
+    - Dynamic footer note from company settings
+    - Print button
+    - Opens in new browser tab
+    - Print CSS hides navigation/buttons
+
+12.3 ACCESSING RECEIPTS
+------------------------
+  Receipts are accessible from:
+    - Success messages after recording transactions (links provided)
+    - Loan detail page → "Print Statement" link
+    - Member profile → savings/loans sections
+    - Direct URL navigation
+
+12.4 PRINTING
+-------------
+  Step 1: Open receipt/statement in new tab
+  Step 2: Review content
+  Step 3: Click "Print" button (or Ctrl+P)
+  Step 4: Select printer/settings
+  Step 5: Print
+
+  Print-friendly CSS automatically hides:
+    - Sidebar navigation
+    - Header bar
+    - Action buttons
+    - Non-essential UI elements
+
+
+===========================================================================
+13. MEMBER SELF-SERVICE PORTAL
+===========================================================================
+
+13.1 ACCESS
+-----------
+  URL: /my
+  Access: Only users with a linked member account
+  Middleware: portal-member (checks user has member_id)
+
+  The portal is accessible from the admin sidebar under "My Account"
+  for users who are both staff and members.
+
+  13.2 PORTAL LAYOUT
+------------------
+  - Separate blue-gradient sidebar (distinct from admin's dark theme)
+  - Simplified navigation focused on member actions
+  - Top menu bar with:
+    - "Shop" link with green "New" badge (if products added in last 7 days)
+    - Cart icon with live item count badge (updates via AJAX, no page refresh)
+    - Notification bell with unread count + dropdown (shows 5 recent, "View All" link)
+    - User dropdown (profile, logout)
+  - All buttons/links permission-gated (members see only their allowed actions)
+
+  13.3 PORTAL PAGES
+-----------------
+  ┌──────────────────────────┬──────────────────────────────────────┐
+  │ Page                     │ Purpose                               │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ Dashboard (/my)          │ Overview: savings, shares, loans,    │
+  │                          │ pending items, recent activity        │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ My Savings (/my/savings) │ Transaction history, deposit form    │
+  │                          │ (with payment evidence upload),      │
+  │                          │ withdrawal request form               │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ My Loans (/my/loans)     │ Loan list with status badges         │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ Apply for Loan           │ Select product, enter amount/tenure, │
+  │ (/my/loans/apply)        │ choose guarantors, auto-calc with    │
+  │                          │ interest included                     │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ Loan Detail (/my/loans/X)│ Repayment schedule, guarantors,      │
+  │                          │ approval log                          │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ My Shares (/my/shares)   │ Share account + transaction history  │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ My Purchases (/my/purch) │ Purchase order history               │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ Order Products (/my/prod)│ Browse product catalog (grid view,   │
+  │                          │ "New" badge on recently added items) │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ My Cart (/my/cart)       │ AJAX-powered cart (add/update/remove │
+  │                          │ without page refresh, live badge)    │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ Checkout (/my/checkout)  │ Payment type selection               │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ Guarantors (/my/guarant) │ Accept/decline guarantor requests    │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ Notifications (/my/notif)│ Full notification list with          │
+  │                          │ mark read/mark all read              │
+  ├──────────────────────────┼──────────────────────────────────────┤
+  │ My Profile               │ Edit name, email, password, photo    │
+  │ (via user dropdown)      │ (uses portal blue theme)            │
+  └──────────────────────────┴──────────────────────────────────────┘
+
+13.4 MEMBER DASHBOARD FEATURES
+-------------------------------
+  - Welcome message with member photo
+  - Stat cards: savings balance, share value, active loans, outstanding
+  - Pending guarantor alert (if any)
+  - Pending withdrawal alert (if any)
+  - Recent savings transactions (last 5)
+  - Recent purchases (last 5)
+  - Active loans with repayment progress
+
+13.5 MEMBER SAVINGS DEPOSIT REQUEST
+-------------------------------------
+  Step 1: Go to My Savings
+  Step 2: Expand the "Request a Deposit" section
+  Step 3: Enter amount (minimum ₦0.01)
+  Step 4: Upload payment evidence (receipt screenshot/photo) — recommended
+  Step 5: Submit request
+
+  WHAT HAPPENS:
+    - Transaction created with status: "pending"
+    - Balance NOT credited yet
+    - Goes to admin pending queue
+    - Treasurer approves (credits balance) or rejects (with reason)
+    - Payment evidence viewable by admin during review
+
+13.6 MEMBER WITHDRAWAL REQUEST
+------------------------------
+  Step 1: Go to My Savings
+  Step 2: Scroll to "Request a Withdrawal" section
+  Step 3: Enter withdrawal amount
+  Step 4: Optional: add notes
+  Step 5: Submit request
+
+  WHAT HAPPENS:
+    - Transaction created with status: "pending"
+    - Balance NOT deducted yet
+    - Goes to admin pending queue
+    - Treasurer approves/rejects
+
+13.7 MEMBER GUARANTOR RESPONSES
+-------------------------------
+  Step 1: Go to Guarantor Requests
+  Step 2: View pending requests
+  Step 3: For each request:
+          - Review loan details
+          - Click "Accept" or "Decline"
+          - Optional: add notes
+  Step 4: Confirm response
+
+  RULES:
+    - Only "pending" requests can be responded to
+    - Cannot respond to your own loan's guarantor request
+    - Response is final (cannot be changed)
+
+13.8 MEMBER PRODUCT ORDERING
+----------------------------
+  Step 1: Click "Shop" in top menu (green "New" badge if new products exist)
+  Step 2: Browse products (grid view with search, sort, price filter)
+  Step 3: Click "Add to Cart" (AJAX — no page refresh, live badge updates)
+  Step 4: Click cart icon in top menu to view cart
+  Step 5: Adjust quantities or remove items (all AJAX-powered)
+  Step 6: Proceed to Checkout
+  Step 7: Select payment type (Cash or Hire Purchase)
+  Step 8: Confirm order
+
+  WHAT HAPPENS:
+    - PurchaseOrder records created
+    - Stock decremented
+    - Cash orders → approved immediately
+    - Hire purchase → pending for admin approval
+
+  PORTAL CART FEATURES:
+    - Add to cart without page reload (AJAX)
+    - Update quantity with +/- buttons (instant update)
+    - Remove items (instant update)
+    - Clear cart button
+    - Live cart count badge in top menu (shared across pages via CustomEvent)
+    - Total calculated in real-time
+
+13.9 MEMBER NOTIFICATIONS
+-------------------------
+  TOP MENU DROPDOWN:
+    - Bell icon with unread count badge
+    - Click to open dropdown showing 5 most recent notifications
+    - Each shows icon, message, time ago, unread dot
+    - "Mark all read" button in dropdown header
+    - "View all notifications" link at bottom
+
+  FULL NOTIFICATIONS PAGE (/my/notifications):
+    - Complete list of all notifications
+    - Mark individual as read
+    - Mark all as read
+    - Types of notifications:
+      - Guarantor requests (group_add icon)
+      - Loan status changes (account_balance icon)
+      - Withdrawal status changes (savings icon)
+      - Savings deposit recorded (savings icon)
+      - Share purchased (trending_up icon)
+      - Dividend declared (diversity_3 icon)
+      - Payroll compiled (payments icon)
+
+
+===========================================================================
+14. ADMINISTRATION & SETTINGS
+===========================================================================
+
+  14.1 MANAGEMENT DASHBOARD (/admin/manage)
+------------------------------------------
+  A tile-based hub with 12 administrative tiles.
+  All tiles are permission-gated — hidden if your role lacks access.
+
+  ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
+  │  Company Settings  * │ │  User Management     │ │  Roles & Permissions │
+  │  Logo, info, config  │ │  CRUD user accounts  │ │  Configure access    │
+  └──────────────────────┘ └──────────────────────┘ └──────────────────────┘
+  ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
+  │  Regional Centers  * │ │  Loan Products       │ │  Stock Management  * │
+  │  Office locations    │ │  Loan type configs   │ │  Adjust quantities   │
+  └──────────────────────┘ └──────────────────────┘ └──────────────────────┘
+  ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
+  │  Products             │ │  Data Import & Up *  │ │  Reports           * │
+  │  Product catalog      │ │  Bulk data import    │ │  Member reports      │
+  └──────────────────────┘ └──────────────────────┘ └──────────────────────┘
+  ┌──────────────────────┐ ┌──────────────────────┐
+  │  Database Backup    * │ │  Statistics         * │
+  │  Download SQL dump    │ │  Login stats, errors │
+  └──────────────────────┘ └──────────────────────┘
+
+  * = requires manage-users or manage-products permission
+
+14.2 COMPANY SETTINGS (/admin/settings)
+----------------------------------------
+  EDITABLE FIELDS:
+    - Company Name
+    - Slogan
+    - Registration Number
+    - Email
+    - Phone
+    - Address
+    - Website URL
+    - Logo (image upload, max 2MB)
+    - Thrift Amount (₦)
+    - Membership Fee (₦)
+    - Savings Interest Rate (%)
+    - Loan Interest Rate (%)
+    - Max Loan Multiplier
+    - Footer Note (shown on receipts)
+
+  LOGO HANDLING:
+    - Upload: select image file
+    - Remove: check "Remove logo" checkbox
+    - Logo stored in: storage/app/public/company/
+    - Displayed in: sidebar, all receipts, reports
+
+14.3 USER MANAGEMENT (/admin/users)
+------------------------------------
+  CRUD operations for system user accounts.
+
+  CREATE USER:
+    - Name
+    - Email (unique)
+    - Password (min 8 chars, must confirm)
+    - Role (select from dropdown)
+
+  EDIT USER:
+    - Change name, email
+    - Change password (optional)
+    - Change role
+
+  SPECIAL ACTIONS:
+    - Reset Password: generates temp password, sends email notification
+    - Delete: cannot delete your own account
+
+  VALIDATION:
+    - Email must be unique
+    - Cannot delete yourself
+    - Cannot reset your own password from here
+
+14.4 ROLES & PERMISSIONS (/admin/roles)
+----------------------------------------
+  Manage roles and their associated permissions.
+
+  VIEW: List all roles with their permissions
+  CREATE: Name + select permissions from grouped checkboxes
+  EDIT: Change name, toggle permissions
+  DELETE: Cannot delete "super-admin" role
+
+  PERMISSION GROUPS:
+    Dashboard (1), Members (4), Next of Kin (1), Savings (3),
+    Loans (6), Loan Products (2), Shares (2), Products (6),
+    Dividends (5), Payroll (4), Reports (1), Admin (2)
+
+14.5 REGIONAL CENTERS (/admin/regions)
+---------------------------------------
+  Manage cooperative office locations.
+
+  FIELDS:
+    - Name (unique)
+    - Code (unique, e.g., "ABJ")
+    - Zone
+    - Headquarters
+    - Address
+    - Phone
+    - Email
+
+  DEFAULT REGIONS (8):
+    Abuja (ABJ), Lagos (LAG), Port Harcourt (PHC), Kano (KAN),
+    Enugu (ENU), Jos (JOS), Ibadan (IBD), Kaduna (KAD)
+
+14.6 LOAN PRODUCTS (/admin/loan-products)
+------------------------------------------
+  Configure loan types with validation rules.
+
+  FIELDS:
+    - Name (e.g., "Regular Loan")
+    - Slug (auto-generated)
+    - Description
+    - Min Amount (₦)
+    - Max Amount (₦)
+    - Interest Rate (%)
+    - Repayment Method (flat / reducing_balance)
+    - Max Term (months)
+    - Processing Fee (%)
+    - Requires Guarantors (toggle)
+    - Requires Collateral (toggle)
+    - Max Loans Per Member
+    - Max Total Amount Per Member
+    - Enabled (toggle)
+
+  DEFAULT PRODUCTS (4):
+    Regular Loan, Emergency Loan, Educational Loan, Special Loan
+
+  VALIDATION ON LOAN APPLICATION:
+    - Amount must be within min/max range
+    - Tenure must not exceed max term
+    - Member must not exceed max loans per member
+    - Member's total outstanding must not exceed max total amount
+
+14.7 STOCK MANAGEMENT (/admin/stock)
+-------------------------------------
+  Adjust product stock levels.
+
+  For each product:
+    - Shows current stock quantity
+    - Enter adjustment (+ or - integer)
+    - Optional: reason for adjustment
+    - Stock cannot go below zero
+
+14.8 DATABASE BACKUP (/admin/backup)
+-------------------------------------
+  Click "Download Backup" to generate and download a SQL dump file.
+
+  FILENAME: naptin_coop_backup_YYYY-MM-DD_HHMMSS.sql
+  METHOD: mysqldump with single-transaction, routines, triggers
+  SIZE: Depends on data volume
+
+14.9 STATISTICS (/admin/statistics)
+------------------------------------
+  Comprehensive system analytics:
+
+  OVERVIEW:
+    - Total users, members, products, loans, active loans
+    - Total savings, shares, loan value
+
+  LOGIN ANALYTICS:
+    - Login log (paginated, 15 per page)
+    - Failed login attempts (paginated)
+    - Logins by day (last 30 days)
+    - Top 10 users by login count
+
+  MEMBER ANALYTICS:
+    - Members by region (with bar chart)
+    - Members by status
+
+  FINANCIAL ANALYTICS:
+    - Purchase summary by status
+
+  RECENT ACTIVITY:
+    - Full activity feed (paginated, 20 per page)
+
+
+===========================================================================
+15. DATA IMPORT & EXPORT
+===========================================================================
+
+15.1 CENTRAL IMPORT HUB (/admin/data-import)
+----------------------------------------------
+  A unified page listing all available import operations:
+
+  ┌──────────────────────┬──────────────────┬──────────────────────┐
+  │ Import Type          │ Template         │ Required Columns     │
+  ├──────────────────────┼──────────────────┼──────────────────────┤
+  │ Members              │ CSV              │ staff_id, first_name,│
+  │                      │                  │ last_name, region    │
+  ├──────────────────────┼──────────────────┼──────────────────────┤
+  │ Savings              │ CSV              │ staff_id, amount     │
+  ├──────────────────────┼──────────────────┼──────────────────────┤
+  │ Loan Repayments      │ CSV              │ staff_id, amount     │
+  ├──────────────────────┼──────────────────┼──────────────────────┤
+  │ Products             │ CSV              │ name, unit_price     │
+  ├──────────────────────┼──────────────────┼──────────────────────┤
+  │ Purchase Orders      │ CSV              │ staff_id, product_   │
+  │                      │                  │ name                 │
+  ├──────────────────────┼──────────────────┼──────────────────────┤
+  │ Payroll Deductions   │ Excel            │ staff_id, actual_    │
+  │                      │                  │ amounts              │
+  └──────────────────────┴──────────────────┴──────────────────────┘
+
+  Each import type shows:
+    - Current record count
+    - Link to upload form
+    - Link to download template
+
+15.2 IMPORT PROCESS (General)
+------------------------------
+  Step 1: Download template from the import page
+  Step 2: Fill in data following the template format
+  Step 3: Upload the completed file (CSV or Excel, max 10MB)
+  Step 4: System processes the import
+  Step 5: Success/error message shown
+  Step 6: Redirected to the relevant list page
+
+15.3 AVAILABLE EXPORTS
+-----------------------
+  ┌─────────────────────┬────────────┬────────────────────────────┐
+  │ Export              │ Format     │ Access Point                │
+  ├─────────────────────┼────────────┼────────────────────────────┤
+  │ Members             │ Excel      │ Members page → "Export"     │
+  │ Savings             │ Excel      │ Savings page → "Export"     │
+  │ Loans               │ Excel      │ Loans page → "Export"       │
+  │ Shares              │ Excel      │ Shares page → "Export"      │
+  │ Payroll (full)      │ Excel      │ Payroll show → "Export"     │
+  │ Payroll (template)  │ Excel      │ Payroll show → "Download"   │
+  └─────────────────────┴────────────┴────────────────────────────┘
+
+
+===========================================================================
+16. NOTIFICATIONS & ALERTS
+===========================================================================
+
+16.1 NOTIFICATION TYPES
+------------------------
+  ┌─────────────────────────────┬──────────────────────────┬────────────┐
+  │ Notification                │ Trigger                  │ Recipient  │
+  ├─────────────────────────────┼──────────────────────────┼────────────┤
+  │ GuarantorRequestNotification│ Loan with guarantors     │ Guarantors │
+  │ LoanStatusNotification      │ Loan status change       │ Applicant  │
+  │ WithdrawalStatusNotification│ Withdrawal approve/reject│ Requester  │
+  │ AdminPasswordResetNotification│ Admin resets password  │ Target user│
+  │ PasswordResetNotification   │ Self-service reset       │ Requesting │
+  └─────────────────────────────┴──────────────────────────┴────────────┘
+
+16.2 WELCOME EMAIL
+-------------------
+  Sent when a member is created with an email address.
+
+  CONTENTS:
+    - Login credentials (email + temporary password)
+    - Instructions to log in
+    - Portal URL
+
+16.3 NOTIFICATION DELIVERY
+----------------------------
+  - Database notifications (stored in notifications table)
+  - Email notifications (via Laravel mail system)
+  - Notifications are sent within try/catch — failure doesn't block action
+  - Members can view notifications in portal (/my/notifications)
+  - Members can mark individual or all as read
+
+
+===========================================================================
+17. GLOSSARY OF TERMS
+===========================================================================
+
+  Term                    Definition
+  ─────────────────────── ─────────────────────────────────────────────
+  Balance                 The current amount in a savings account
+  Checkout                The process of finalizing a purchase order
+  Compile Payroll         Calculate expected deductions for a period
+  Disbursement            Release of approved loan funds to member
+  Dividend                Annual profit distribution to shareholders
+  Dividend Distribution   Per-member payout calculated from shares
+  Guaranteed              A member who backs a loan application
+  Hire Purchase           Buying on installment plan
+  Loan Product            A configurable loan type with rules
+  Loan Number             Unique ID: REG/YYYY/XXXXXX
+  Outstanding             Remaining loan amount to be repaid
+  Order Group             Groups items from single cart checkout
+  Payroll Deduction       One member's deductions in a payroll run
+  Payroll Number          Unique ID for monthly payroll run
+  Portion                 Part of repayment (principal or interest)
+  Principal               The original loan amount (excluding interest)
+  Reference               Unique transaction ID (e.g., SAV/DEP/XXXXXXXX)
+  Share Price             Cost per share (default ₦100)
+  Staff ID                Unique member identifier (e.g., NAPTIN/0001)
+  Status                  Current state of a record in its lifecycle
+  Tenure                  Loan repayment period in months
+
+
+===========================================================================
+18. QUICK REFERENCE: ROLE CAPABILITIES
+===========================================================================
+
+SUPER-ADMIN — Full system access
+  ✓ Everything below, plus:
+  ✓ Delete members
+  ✓ Delete loans
+  ✓ Manage all admin functions
+
+ADMIN — Full cooperative management
+  ✓ Register/edit members
+  ✓ Record savings deposits and withdrawals
+  ✓ Create/approve/disburse loans
+  ✓ Record loan repayments
+  ✓ Manage products and purchase orders
+  ✓ Declare/calculate/approve/distribute dividends
+  ✓ Compile/upload/export payroll
+  ✓ Generate reports
+  ✓ Manage users, roles, regions, loan products
+  ✓ Stock management, backup, statistics
+
+SECRETARY — Records and documentation
+  ✓ View all modules
+  ✓ Register and edit members
+  ✓ Manage next of kin
+  ✗ Cannot touch money (savings, shares)
+  ✗ Cannot manage loans
+  ✗ Cannot manage products or payroll
+
+TREASURER — Financial operations
+  ✓ Record savings deposits and withdrawals
+  ✓ Approve/reject pending withdrawals
+  ✓ Purchase shares
+  ✓ Disburse loans
+  ✓ Record loan repayments
+  ✓ Create purchase orders
+  ✓ Declare/calculate dividends
+  ✓ Compile/upload/export payroll
+  ✗ Cannot approve loans
+  ✗ Cannot manage users or roles
+
+LOAN OFFICER — Loan lifecycle
+  ✓ Create loan applications
+  ✓ Approve or reject loans
+  ✓ Disburse approved loans
+  ✓ Record loan repayments
+  ✓ Import loan repayments
+  ✗ Cannot touch savings
+  ✗ Cannot manage products or payroll
+
+TELLER — Front-desk transactions
+  ✓ Record savings deposits
+  ✓ Submit withdrawal requests
+  ✓ Purchase shares
+  ✗ Cannot approve withdrawals
+  ✗ Cannot manage loans
+  ✗ Cannot manage products or payroll
+
+MEMBER — Self-service portal only
+  ✓ View dashboard (personal stats)
+  ✓ View savings history
+  ✓ Request deposits (with payment evidence upload, pending approval)
+  ✓ Request withdrawals (pending approval)
+  ✓ View loans and repayment schedule
+  ✓ Apply for loans (select product, guarantors, auto-calc with interest)
+  ✓ View shares
+  ✓ View purchases
+  ✓ Browse products and order (AJAX cart, live updates)
+  ✓ Accept/decline guarantor requests
+  ✓ View and manage notifications (dropdown + full page)
+  ✓ Edit profile (name, email, password, photo)
+  ✗ Cannot access any admin functions
+  ✗ Cannot view other members' data
+
+
+===========================================================================
+END OF USER GUIDE
+===========================================================================
+
+Document Version: 3.0
+Last Updated: July 26, 2026
+System: NAPTIN Staff Thrift Cooperative Society Application
+Platform: Laravel 13 + Tailwind CSS + MySQL 8
+
+For technical documentation, see APP-GUIDE.md
+For issues or feedback, contact your system administrator.

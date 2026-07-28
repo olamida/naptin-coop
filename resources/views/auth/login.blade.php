@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NAPTIN Coop">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ asset('icon-192.png') }}">
+    <title>Login - NAPTIN Cooperative</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen" x-data="{ isOffline: !navigator.onLine }" x-init="window.addEventListener('online', () => isOffline = false); window.addEventListener('offline', () => isOffline = true)">
+    {{-- Offline Banner --}}
+    <div x-show="isOffline" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="-translate-y-full" x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="-translate-y-full"
+         class="fixed top-0 left-0 right-0 z-[200] bg-orange-500 text-white px-4 py-2.5 text-sm font-medium flex items-center justify-center gap-2 shadow-lg" style="display: none;">
+        <span class="material-symbols-outlined text-lg">wifi_off</span>
+        <span>You are currently offline. Login requires an internet connection.</span>
+        <button @click="window.location.reload()" class="ml-2 underline hover:no-underline font-semibold">Retry</button>
+    </div>
+    @php $company = \App\Models\Company::instance(); @endphp
+    <div class="w-full max-w-md" :class="isOffline ? 'mt-12' : ''" style="transition: margin-top 0.3s ease;">
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <div class="text-center mb-8">
+                @if ($company->logo_url)
+                    <img src="{{ $company->logo_url }}" alt="{{ $company->name }}" class="h-16 mx-auto mb-3 object-contain">
+                @else
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span class="material-symbols-outlined text-blue-600 text-3xl">shield</span>
+                    </div>
+                @endif
+                <h1 class="text-xl font-bold text-gray-800">{{ $company->name }}</h1>
+                @if ($company->slogan)
+                    <p class="text-sm text-gray-500 mt-1">{{ $company->slogan }}</p>
+                @endif
+            </div>
+
+            @if (session('success'))
+                <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 text-sm">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-3 rounded-lg mb-6 text-sm">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
+                    <ul class="list-disc list-inside">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('login') }}" x-data>
+                @csrf
+
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value="{{ old('email') }}"
+                        required
+                        autofocus
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    >
+                </div>
+
+                <div class="mb-4" x-data="{ show: false }">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="relative">
+                        <input
+                            :type="show ? 'text' : 'password'"
+                            id="password"
+                            name="password"
+                            required
+                            class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        >
+                        <button type="button" x-on:click="show = !show" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <span class="material-symbols-outlined text-lg" x-text="show ? 'visibility_off' : 'visibility'">visibility</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between mb-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="remember" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-600">Remember me</span>
+                    </label>
+                    <a href="{{ route('password.request') }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium transition">
+                        Forgot Password?
+                    </a>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition" :disabled="isOffline" :class="isOffline ? 'opacity-50 cursor-not-allowed' : ''">
+                    Sign In
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="mt-4 text-center space-y-2">
+        <a href="{{ route('register') }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">person_add</span>
+            Create an Account
+        </a>
+        <br>
+        <a href="{{ route('home') }}" class="text-sm text-gray-500 hover:text-gray-700 font-medium inline-flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">arrow_back</span>
+            Back to Homepage
+        </a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    if (!navigator.onLine) {
+                        e.preventDefault();
+                        alert('You are offline. Please check your internet connection and try again.');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

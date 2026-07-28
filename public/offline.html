@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - NAPTIN Cooperative</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse-slow { animation: pulse 2s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-md mx-4">
+        <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+            <div class="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse-slow">
+                <span class="material-symbols-outlined text-orange-500 text-4xl">wifi_off</span>
+            </div>
+
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">You're Offline</h1>
+            <p class="text-gray-500 mb-6 leading-relaxed">
+                It looks like your internet connection has been lost. Some features of the NAPTIN Cooperative system require an active connection.
+            </p>
+
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-blue-500 text-lg mt-0.5">info</span>
+                    <p class="text-sm text-blue-700 text-left">
+                        <strong>What you can do:</strong>
+                    </p>
+                </div>
+                <ul class="mt-2 ml-8 space-y-1">
+                    <li class="text-sm text-blue-600 text-left">Check your Wi-Fi or network connection</li>
+                    <li class="text-sm text-blue-600 text-left">Try refreshing the page when you're back online</li>
+                    <li class="text-sm text-blue-600 text-left">Previously cached pages may still be accessible</li>
+                </ul>
+            </div>
+
+            <button onclick="window.location.reload()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">refresh</span>
+                Try Again
+            </button>
+
+            <p class="text-xs text-gray-400 mt-4">NAPTIN Staff Thrift Cooperative Society</p>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>
