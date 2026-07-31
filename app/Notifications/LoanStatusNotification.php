@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Loan;
+use App\Notifications\Channels\TermiiSmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -20,7 +21,7 @@ class LoanStatusNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return ['mail', 'database', TermiiSmsChannel::class];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -37,9 +38,9 @@ class LoanStatusNotification extends Notification implements ShouldQueue
         $message = match ($this->newStatus) {
             'approved' => "Your loan application {$this->loan->loan_number} has been approved. Please visit the cooperative office to complete disbursement.",
             'rejected' => "We regret to inform you that your loan application {$this->loan->loan_number} has been rejected." . ($this->loan->rejection_reason ? " Reason: {$this->loan->rejection_reason}" : ''),
-            'disbursed' => "Your loan {$this->loan->loan_number} of Ã¢â€šÂ¦" . number_format($this->loan->amount, 2) . " has been disbursed. Monthly repayment: Ã¢â€šÂ¦" . number_format($this->loan->monthly_repayment, 2) . ".",
+            'disbursed' => "Your loan {$this->loan->loan_number} of ₦" . number_format($this->loan->amount, 2) . " has been disbursed. Monthly repayment: ₦" . number_format($this->loan->monthly_repayment, 2) . ".",
             'completed' => "Congratulations! Your loan {$this->loan->loan_number} has been fully repaid. Thank you for fulfilling your obligation.",
-            'defaulted' => "Your loan {$this->loan->loan_number} has exceeded its maturity date and remains unpaid. Outstanding: Ã¢â€šÂ¦" . number_format($this->loan->outstanding, 2) . ". Please contact the cooperative.",
+            'defaulted' => "Your loan {$this->loan->loan_number} has exceeded its maturity date and remains unpaid. Outstanding: ₦" . number_format($this->loan->outstanding, 2) . ". Please contact the cooperative.",
             default => "Your loan {$this->loan->loan_number} status has been updated to {$this->newStatus}.",
         };
 
@@ -47,6 +48,18 @@ class LoanStatusNotification extends Notification implements ShouldQueue
             ->subject('Loan ' . ucfirst($this->newStatus) . ' - ' . $this->loan->loan_number)
             ->greeting($greeting)
             ->line($message);
+    }
+
+    public function toTermii(object $notifiable): string
+    {
+        return match ($this->newStatus) {
+            'approved' => "NAPTIN Coop: Your loan {$this->loan->loan_number} has been APPROVED. Visit the office to complete disbursement.",
+            'rejected' => "NAPTIN Coop: Your loan {$this->loan->loan_number} was rejected." . ($this->loan->rejection_reason ? " Reason: " . $this->loan->rejection_reason : ''),
+            'disbursed' => "NAPTIN Coop: Loan {$this->loan->loan_number} of ₦" . number_format($this->loan->amount) . " disbursed. Monthly repayment ₦" . number_format($this->loan->monthly_repayment) . ".",
+            'completed' => "NAPTIN Coop: Loan {$this->loan->loan_number} fully repaid. Thank you!",
+            'defaulted' => "NAPTIN Coop: Loan {$this->loan->loan_number} is overdue. Outstanding ₦" . number_format($this->loan->outstanding) . ". Contact the office.",
+            default => "NAPTIN Coop: Loan {$this->loan->loan_number} status: {$this->newStatus}.",
+        };
     }
 
     public function toArray(object $notifiable): array

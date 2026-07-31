@@ -23,7 +23,7 @@ class LoanAppliedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = 'Ã¢â€šÂ¦' . number_format($this->loan->amount, 2);
+        $amount = '₦' . number_format($this->loan->amount, 2);
         $member = $this->loan->member;
         $memberName = "{$member->first_name} {$member->last_name}";
         $purpose = $this->loan->purpose ?: 'Not specified';
@@ -41,7 +41,7 @@ class LoanAppliedNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        $amount = 'Ã¢â€šÂ¦' . number_format($this->loan->amount, 2);
+        $amount = '₦' . number_format($this->loan->amount, 2);
         $member = $this->loan->member;
 
         return [

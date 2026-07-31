@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\SavingsTransaction;
+use App\Notifications\Channels\TermiiSmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -19,12 +20,12 @@ class WithdrawalStatusNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return ['mail', 'database', TermiiSmsChannel::class];
     }
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = 'Ã¢â€šÂ¦' . number_format($this->transaction->amount, 2);
+        $amount = '₦' . number_format($this->transaction->amount, 2);
         $ref = $this->transaction->reference;
 
         if ($this->transaction->status === 'completed') {
@@ -34,7 +35,7 @@ class WithdrawalStatusNotification extends Notification implements ShouldQueue
                 ->line("Your withdrawal request of {$amount} has been approved and processed.")
                 ->line("Reference: {$ref}")
                 ->line("The amount has been deducted from your savings account.")
-                ->line("New balance: Ã¢â€šÂ¦" . number_format($this->transaction->balance_after, 2));
+                ->line("New balance: ₦" . number_format($this->transaction->balance_after, 2));
         }
 
         if ($this->transaction->status === 'rejected') {
@@ -57,9 +58,21 @@ class WithdrawalStatusNotification extends Notification implements ShouldQueue
             ->line("Your withdrawal request of {$amount} status has been updated to {$this->transaction->status}.");
     }
 
+    public function toTermii(object $notifiable): string
+    {
+        $amount = '₦' . number_format($this->transaction->amount);
+        $ref = $this->transaction->reference;
+
+        return match ($this->transaction->status) {
+            'completed' => "NAPTIN Coop: Withdrawal {$amount} ({$ref}) approved and processed.",
+            'rejected' => "NAPTIN Coop: Withdrawal {$amount} ({$ref}) rejected." . ($this->transaction->rejection_reason ? " Reason: " . $this->transaction->rejection_reason : ''),
+            default => "NAPTIN Coop: Withdrawal {$amount} ({$ref}) status: {$this->transaction->status}.",
+        };
+    }
+
     public function toArray(object $notifiable): array
     {
-        $amount = 'Ã¢â€šÂ¦' . number_format($this->transaction->amount, 2);
+        $amount = '₦' . number_format($this->transaction->amount, 2);
 
         return [
             'type' => 'withdrawal_status',

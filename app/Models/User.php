@@ -65,6 +65,11 @@ class User extends Authenticatable
         return $this->belongsTo(Member::class);
     }
 
+    public function routeNotificationForTermii($notification = null): ?string
+    {
+        return $this->member?->phone;
+    }
+
     public function isMember(): bool
     {
         return $this->member_id !== null;

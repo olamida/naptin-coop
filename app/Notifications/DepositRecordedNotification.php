@@ -23,7 +23,7 @@ class DepositRecordedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = 'Ã¢â€šÂ¦' . number_format($this->transaction->amount, 2);
+        $amount = '₦' . number_format($this->transaction->amount, 2);
         $ref = $this->transaction->reference;
 
         return (new MailMessage)
@@ -31,13 +31,13 @@ class DepositRecordedNotification extends Notification implements ShouldQueue
             ->greeting('Hello ' . $notifiable->name . '!')
             ->line("A savings deposit of {$amount} has been recorded to your account.")
             ->line("Reference: {$ref}")
-            ->line("New balance: Ã¢â€šÂ¦" . number_format($this->transaction->balance_after, 2))
+            ->line("New balance: ₦" . number_format($this->transaction->balance_after, 2))
             ->action('View Savings', route('portal.savings'));
     }
 
     public function toArray(object $notifiable): array
     {
-        $amount = 'Ã¢â€šÂ¦' . number_format($this->transaction->amount, 2);
+        $amount = '₦' . number_format($this->transaction->amount, 2);
 
         return [
             'type' => 'deposit_recorded',

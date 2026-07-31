@@ -28,7 +28,7 @@ class BroadcastNotification extends Notification implements ShouldQueue
         return (new MailMessage)
             ->subject($this->title)
             ->line($this->message)
-            ->line('Ã¢â‚¬â€ ' . $this->senderName);
+            ->line('— ' . $this->senderName);
     }
 
     public function toArray(object $notifiable): array

@@ -24,7 +24,7 @@ class DividendDeclaredNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = 'Ã¢â€šÂ¦' . number_format($this->memberAmount, 2);
+        $amount = '₦' . number_format($this->memberAmount, 2);
 
         return (new MailMessage)
             ->subject('Dividend Declaration - ' . $this->dividend->year)
@@ -37,7 +37,7 @@ class DividendDeclaredNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        $amount = 'Ã¢â€šÂ¦' . number_format($this->memberAmount, 2);
+        $amount = '₦' . number_format($this->memberAmount, 2);
 
         return [
             'type' => 'dividend_declared',
