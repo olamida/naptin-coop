@@ -5,17 +5,16 @@ namespace App\Http\Controllers;
 use App\Exports\PayrollDeductionExport;
 use App\Exports\PayrollUploadTemplateExport;
 use App\Imports\PayrollDeductionImport;
+use App\Actions\Payroll\CompileAndLockPayroll;
+use App\Actions\Payroll\DestroyArrear;
+use App\Actions\Payroll\SettleArrear;
+use App\Actions\Payroll\StoreAllArrears;
+use App\Actions\Payroll\StoreArrear;
 use App\Models\ImportLog;
-use App\Models\Loan;
-use App\Models\Member;
 use App\Models\MonthlyPayroll;
 use App\Models\PayrollArrear;
 use App\Models\PayrollDeduction;
-use App\Models\PurchaseOrder;
-use App\Actions\Payroll\CompileAndLockPayroll;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -47,99 +46,11 @@ class PayrollController extends Controller
             'month_number' => 'required|integer|between:1,12',
         ]);
 
-        $year = $validated['year'];
-        $monthNumber = $validated['month_number'];
-        $monthName = Carbon::createFromDate($year, $monthNumber, 1)->format('F');
-
-        $existing = MonthlyPayroll::where('year', $year)->where('month_number', $monthNumber)->first();
-        if ($existing) {
-            return back()->withErrors(['error' => "Payroll for {$monthName} {$year} already exists."]);
+        try {
+            $payroll = CompileAndLockPayroll::run($validated['year'], $validated['month_number']);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        $count = MonthlyPayroll::where('year', $year)->count() + 1;
-        $payrollNumber = 'PAY/' . $year . '/' . str_pad($count, 6, '0', STR_PAD_LEFT);
-
-        $members = Member::where('status', 'active')->get();
-
-        $openArrearsByMember = PayrollArrear::open()
-            ->get()
-            ->groupBy('member_id')
-            ->map(fn ($arrears) => round($arrears->sum('shortfall'), 2));
-
-        $totalSavings = 0;
-        $totalLoanRepayments = 0;
-        $totalShareContributions = 0;
-        $totalPurchases = 0;
-        $totalArrears = 0;
-
-        $deductions = $members->map(function ($member) use (&$totalSavings, &$totalLoanRepayments, &$totalShareContributions, &$totalPurchases, &$totalArrears, $openArrearsByMember) {
-            $expectedSavings = $member->monthly_savings ?? round($member->monthly_salary * 0.10, 2);
-
-            $activeLoan = Loan::where('member_id', $member->id)
-                ->whereIn('status', ['disbursed', 'repaying'])
-                ->first();
-            $expectedLoanRepayment = $activeLoan ? $activeLoan->monthly_repayment : 0;
-
-            $expectedShareContribution = round($member->monthly_salary * 0.05, 2);
-
-            $activePurchase = PurchaseOrder::where('member_id', $member->id)
-                ->whereIn('status', ['approved', 'active'])
-                ->where('payment_type', 'hire_purchase')
-                ->first();
-            $expectedPurchase = $activePurchase ? $activePurchase->monthly_repayment : 0;
-
-            $expectedArrears = $openArrearsByMember[$member->id] ?? 0;
-
-            $totalExpected = $expectedSavings + $expectedLoanRepayment + $expectedShareContribution + $expectedPurchase + $expectedArrears;
-
-            $totalSavings += $expectedSavings;
-            $totalLoanRepayments += $expectedLoanRepayment;
-            $totalShareContributions += $expectedShareContribution;
-            $totalPurchases += $expectedPurchase;
-            $totalArrears += $expectedArrears;
-
-            return [
-                'member_id' => $member->id,
-                'expected_savings' => $expectedSavings,
-                'expected_loan_repayment' => $expectedLoanRepayment,
-                'expected_share_contribution' => $expectedShareContribution,
-                'expected_purchase' => $expectedPurchase,
-                'expected_arrears' => $expectedArrears,
-                'total_expected' => $totalExpected,
-                'actual_savings' => 0,
-                'actual_loan_repayment' => 0,
-                'actual_share_contribution' => 0,
-                'actual_purchase' => 0,
-                'actual_arrears' => 0,
-                'total_actual' => 0,
-                'status' => 'pending',
-            ];
-        });
-
-        $payroll = DB::transaction(function () use ($payrollNumber, $monthName, $year, $monthNumber, $members, $totalSavings, $totalLoanRepayments, $totalShareContributions, $totalPurchases, $totalArrears, $deductions) {
-            $payroll = MonthlyPayroll::create([
-                'payroll_number' => $payrollNumber,
-                'month' => $monthName,
-                'year' => $year,
-                'month_number' => $monthNumber,
-                'total_savings' => $totalSavings,
-                'total_loan_repayments' => $totalLoanRepayments,
-                'total_share_contributions' => $totalShareContributions,
-                'total_purchases' => $totalPurchases,
-                'total_arrears' => $totalArrears,
-                'grand_total' => $totalSavings + $totalLoanRepayments + $totalShareContributions + $totalPurchases + $totalArrears,
-                'member_count' => $members->count(),
-                'status' => 'compiled',
-            ]);
-
-            foreach ($deductions as $deduction) {
-                PayrollDeduction::create(array_merge($deduction, [
-                    'monthly_payroll_id' => $payroll->id,
-                ]));
-            }
-
-            return $payroll;
-        });
 
         // Notify admins about compiled payroll
         try {
@@ -154,7 +65,7 @@ class PayrollController extends Controller
         }
 
         return redirect()->route('payroll.show', $payroll)
-            ->with('success', "Payroll for {$monthName} {$year} compiled successfully with {$members->count()} members.");
+            ->with('success', "Payroll for {$payroll->month} {$payroll->year} compiled and locked with {$payroll->member_count} members.");
     }
 
     public function compileAndLock(Request $request): \Illuminate\Http\RedirectResponse
@@ -201,88 +112,36 @@ class PayrollController extends Controller
 
         $shortfall = round((float) $deduction->total_expected - (float) $deduction->total_actual, 2);
 
-        if ($shortfall <= 0) {
-            return back()->withErrors(['error' => 'No shortfall exists for this member to flag as arrears.']);
+        try {
+            StoreArrear::run($deduction->id, $shortfall, $validated['reason'] ?? null);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        $exists = PayrollArrear::where('monthly_payroll_id', $monthlyPayroll->id)
-            ->where('member_id', $deduction->member_id)
-            ->where('status', 'open')
-            ->exists();
-
-        if ($exists) {
-            return back()->withErrors(['error' => 'An open arrear already exists for this member on this payroll.']);
-        }
-
-        PayrollArrear::create([
-            'monthly_payroll_id' => $monthlyPayroll->id,
-            'member_id' => $deduction->member_id,
-            'component' => 'total',
-            'expected_amount' => $deduction->total_expected,
-            'actual_amount' => $deduction->total_actual,
-            'shortfall' => $shortfall,
-            'reason' => $validated['reason'] ?? null,
-            'status' => 'open',
-            'recorded_by' => auth()->id(),
-        ]);
 
         return back()->with('success', 'Arrear recorded for member and will be carried into the next payroll.');
     }
 
     public function storeAllArrears(Request $request, MonthlyPayroll $monthlyPayroll): \Illuminate\Http\RedirectResponse
     {
-        $count = 0;
-
-        $monthlyPayroll->deductions->each(function ($deduction) use ($monthlyPayroll, &$count) {
-            $shortfall = round((float) $deduction->total_expected - (float) $deduction->total_actual, 2);
-
-            if ($shortfall <= 0) {
-                return;
-            }
-
-            $exists = PayrollArrear::where('monthly_payroll_id', $monthlyPayroll->id)
-                ->where('member_id', $deduction->member_id)
-                ->where('status', 'open')
-                ->exists();
-
-            if ($exists) {
-                return;
-            }
-
-            PayrollArrear::create([
-                'monthly_payroll_id' => $monthlyPayroll->id,
-                'member_id' => $deduction->member_id,
-                'component' => 'total',
-                'expected_amount' => $deduction->total_expected,
-                'actual_amount' => $deduction->total_actual,
-                'shortfall' => $shortfall,
-                'status' => 'open',
-                'recorded_by' => auth()->id(),
-            ]);
-
-            $count++;
-        });
+        $count = StoreAllArrears::run($monthlyPayroll->id);
 
         return back()->with('success', "{$count} arrear(s) recorded from shortfalls and will be carried into the next payroll.");
     }
 
     public function settleArrear(PayrollArrear $payrollArrear): \Illuminate\Http\RedirectResponse
     {
-        if ($payrollArrear->status === 'settled') {
-            return back()->withErrors(['error' => 'This arrear is already settled.']);
+        try {
+            SettleArrear::run($payrollArrear);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        $payrollArrear->update([
-            'status' => 'settled',
-            'settled_at' => now(),
-        ]);
 
         return back()->with('success', 'Arrear marked as settled.');
     }
 
     public function destroyArrear(PayrollArrear $payrollArrear): \Illuminate\Http\RedirectResponse
     {
-        $payrollArrear->delete();
+        DestroyArrear::run($payrollArrear);
 
         return back()->with('success', 'Arrear removed.');
     }

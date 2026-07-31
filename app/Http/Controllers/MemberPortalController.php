@@ -2,17 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\GuarantorStatus;
+use App\Actions\Loans\CreateLoan;
+use App\Actions\Loans\UpdateGuarantor;
 use App\Models\Loan;
-use App\Models\LoanApprovalLog;
 use App\Models\LoanGuarantor;
 use App\Models\LoanProduct;
 use App\Models\SavingsTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Services\LoanService;
 use App\Services\CartService;
 use Illuminate\Support\Facades\Log;
 
@@ -264,66 +262,27 @@ class MemberPortalController extends Controller
             }
         }
 
-        $loanService = app(LoanService::class);
-        $monthlyRepayment = $loanService->calculateMonthlyRepayment(
-            $validated['amount'],
-            $validated['interest_rate'] ?? 0,
-            $validated['tenure_months']
-        );
-        $loanNumber = $loanService->generateLoanNumber();
-        $loan = null;
-
-        DB::transaction(function () use ($validated, $member, $loanNumber, $monthlyRepayment, &$loan) {
-            $loan = Loan::create([
-                'member_id' => $member->id,
-                'loan_product_id' => $validated['loan_product_id'],
-                'loan_number' => $loanNumber,
-                'type' => $validated['type'],
-                'amount' => $validated['amount'],
-                'interest_rate' => $validated['interest_rate'],
-                'tenure_months' => $validated['tenure_months'],
-                'monthly_repayment' => $monthlyRepayment,
-                'outstanding' => $validated['amount'],
-                'application_date' => now()->toDateString(),
-                'purpose' => $validated['purpose'] ?? null,
-                'status' => 'pending',
-            ]);
-
-            if (!empty($validated['guarantor_ids'])) {
-                foreach ($validated['guarantor_ids'] as $guarantorId) {
-                    $guarantor = LoanGuarantor::create([
-                        'loan_id' => $loan->id,
-                        'member_id' => $guarantorId,
-                        'status' => GuarantorStatus::Pending,
-                    ]);
-
-                    $guarantorMember = \App\Models\Member::find($guarantorId);
-                    if ($guarantorMember && $guarantorMember->user) {
-                        try {
-                            $guarantorMember->user->notify(new \App\Notifications\GuarantorRequestNotification($guarantor));
-                        } catch (\Exception $e) {
-                            \Log::error('Notification failed: ' . $e->getMessage());
-                        }
-                    }
-                }
-            }
-
-            \App\Models\LoanApprovalLog::record($loan->id, 'submitted', null, 'pending', 'Loan application submitted by member.');
-        });
+        $validated['member_id'] = $member->id;
 
         try {
-            $reviewerUsers = \App\Models\User::where('id', '!=', auth()->id())->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['super-admin', 'admin', 'loan-officer', 'treasurer']);
-            })->get();
-            foreach ($reviewerUsers as $user) {
-                $user->notify(new \App\Notifications\LoanAppliedNotification($loan));
-            }
-        } catch (\Exception $e) {
-            \Log::error('Notification failed: ' . $e->getMessage());
-        }
+            $loan = CreateLoan::run($validated);
 
-        return redirect()->route('portal.loan-detail', $loan)
-            ->with('success', 'Loan application submitted successfully. Number: ' . $loanNumber);
+            try {
+                $reviewerUsers = \App\Models\User::where('id', '!=', auth()->id())->whereHas('roles', function ($q) {
+                    $q->whereIn('name', ['super-admin', 'admin', 'loan-officer', 'treasurer']);
+                })->get();
+                foreach ($reviewerUsers as $user) {
+                    $user->notify(new \App\Notifications\LoanAppliedNotification($loan));
+                }
+            } catch (\Exception $e) {
+                \Log::error('Notification failed: ' . $e->getMessage());
+            }
+
+            return redirect()->route('portal.loan-detail', $loan)
+                ->with('success', 'Loan application submitted successfully. Number: ' . $loan->loan_number);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
     }
 
     public function requestDeposit(Request $request): \Illuminate\Http\RedirectResponse
@@ -490,14 +449,11 @@ class MemberPortalController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $guarantor->update([
-            'status' => $validated['status'],
-            'notes' => $validated['notes'] ?? null,
-            'responded_at' => now(),
-        ]);
+        $loan = $guarantor->loan;
+        UpdateGuarantor::run($loan, $guarantor, $validated['status'], $validated['notes'] ?? null, $request->ip(), $request->userAgent());
 
         $statusText = $validated['status'] === 'accepted' ? 'accepted' : 'declined';
-        return back()->with('success', "You have {$statusText} the guarantor request for loan {$guarantor->loan->loan_number}.");
+        return back()->with('success', "You have {$statusText} the guarantor request for loan {$loan->loan_number}.");
     }
 
     public function add_to_cart(Request $request)

@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Shares\PurchaseShares;
 use App\Exports\SharesExport;
 use App\Models\Member;
 use App\Models\ShareAccount;
 use App\Models\ShareTransaction;
-use App\Services\LedgerService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ShareController extends Controller
@@ -97,38 +95,11 @@ class ShareController extends Controller
         ]);
 
         try {
-            $shareTxn = DB::transaction(function () use ($validated) {
-                $account = ShareAccount::where('member_id', $validated['member_id'])
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                $shares = $validated['shares'];
-                $sharePrice = $account->share_price;
-                $amount = round($shares * $sharePrice, 2);
-
-                $newTotalShares = $account->total_shares + $shares;
-                $newTotalValue = $newTotalShares * $sharePrice;
-
-                $account->update([
-                    'total_shares' => $newTotalShares,
-                    'total_value' => $newTotalValue,
-                ]);
-
-                $shareTxn = ShareTransaction::create([
-                    'share_account_id' => $account->id,
-                    'reference' => 'SHR/PUR/' . strtoupper(Str::random(8)),
-                    'type' => 'purchase',
-                    'shares' => $shares,
-                    'amount' => $amount,
-                    'balance_after' => $newTotalShares,
-                    'notes' => $validated['notes'] ?? null,
-                    'transaction_date' => now(),
-                ]);
-
-                app(LedgerService::class)->postSharePurchase($shareTxn->id, $amount);
-
-                return $shareTxn;
-            });
+            $shareTxn = PurchaseShares::run(
+                $validated['member_id'],
+                $validated['shares'],
+                $validated['notes'] ?? null,
+            );
         } catch (\Throwable $e) {
             Log::error('Share purchase failed: ' . $e->getMessage());
 

@@ -252,6 +252,23 @@ class DashboardController extends Controller
 
         $groups = [];
 
+        $qUpper = strtoupper($q);
+        $referenceFor = null;
+        foreach ([
+            'REG/' => 'members',
+            'SAV/' => 'savings',
+            'LOAN/' => 'loans',
+            'PO/' => 'orders',
+            'PAY/' => 'payroll',
+            'DIV/' => 'dividends',
+        ] as $needle => $groupKey) {
+            if (str_starts_with($qUpper, $needle)) {
+                $referenceFor = $groupKey;
+                break;
+            }
+        }
+        $referenceMatched = false;
+
         $nameCond = function ($x) use ($q) {
             $x->where('first_name', 'like', "%{$q}%")
                 ->orWhere('last_name', 'like', "%{$q}%")
@@ -261,6 +278,22 @@ class DashboardController extends Controller
         };
 
         if ($user->can('view-members')) {
+            $referenceItems = [];
+            $referenceIds = [];
+            if ($referenceFor === 'members') {
+                $exactMember = Member::with('region:id,name')->where('staff_id', $q)->first();
+                if ($exactMember) {
+                    $referenceIds[] = $exactMember->id;
+                    $referenceItems[] = [
+                        'name' => $exactMember->first_name . ' ' . $exactMember->last_name,
+                        'sub' => ($exactMember->staff_id_display ?? $exactMember->staff_id) . ($exactMember->region ? ' · ' . $exactMember->region->name : ''),
+                        'url' => route('members.show', $exactMember),
+                        'icon' => 'person',
+                        'matched_reference' => true,
+                    ];
+                }
+            }
+
             $members = Member::with('region:id,name')
                 ->where(function ($x) use ($q, $nameCond) {
                     $nameCond($x);
@@ -269,22 +302,46 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            if ($members->isNotEmpty()) {
+            $memberItems = [];
+            foreach ($members as $m) {
+                if (in_array($m->id, $referenceIds, true)) continue;
+                $memberItems[] = [
+                    'name' => $m->first_name . ' ' . $m->last_name,
+                    'sub' => ($m->staff_id_display ?? $m->staff_id) . ($m->region ? ' · ' . $m->region->name : ''),
+                    'url' => route('members.show', $m),
+                    'icon' => 'person',
+                ];
+            }
+
+            if ($referenceItems !== []) $referenceMatched = true;
+            $items = array_merge($referenceItems, $memberItems);
+            if ($items !== []) {
                 $groups[] = [
                     'key' => 'members',
                     'label' => 'Members',
                     'icon' => 'group',
-                    'items' => $members->map(fn($m) => [
-                        'name' => $m->first_name . ' ' . $m->last_name,
-                        'sub' => ($m->staff_id_display ?? $m->staff_id) . ($m->region ? ' · ' . $m->region->name : ''),
-                        'url' => route('members.show', $m),
-                        'icon' => 'person',
-                    ])->values()->all(),
+                    'items' => $items,
                 ];
             }
         }
 
         if ($user->can('view-loans')) {
+            $referenceItems = [];
+            $referenceIds = [];
+            if ($referenceFor === 'loans') {
+                $exactLoan = Loan::with('member:id,first_name,last_name')->where('loan_number', $q)->first();
+                if ($exactLoan) {
+                    $referenceIds[] = $exactLoan->id;
+                    $referenceItems[] = [
+                        'name' => $exactLoan->loan_number,
+                        'sub' => ($exactLoan->member->first_name . ' ' . $exactLoan->member->last_name) . ' · ₦' . number_format($exactLoan->amount, 2),
+                        'url' => route('loans.show', $exactLoan),
+                        'icon' => 'request_quote',
+                        'matched_reference' => true,
+                    ];
+                }
+            }
+
             $loans = Loan::with('member:id,first_name,last_name')
                 ->where(function ($x) use ($q, $nameCond) {
                     $x->where('loan_number', 'like', "%{$q}%")
@@ -293,22 +350,53 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            if ($loans->isNotEmpty()) {
+            $loanItems = [];
+            foreach ($loans as $l) {
+                if (in_array($l->id, $referenceIds, true)) continue;
+                $loanItems[] = [
+                    'name' => $l->loan_number,
+                    'sub' => ($l->member->first_name . ' ' . $l->member->last_name) . ' · ₦' . number_format($l->amount, 2),
+                    'url' => route('loans.show', $l),
+                    'icon' => 'request_quote',
+                ];
+            }
+
+            if ($referenceItems !== []) $referenceMatched = true;
+            $items = array_merge($referenceItems, $loanItems);
+            if ($items !== []) {
                 $groups[] = [
                     'key' => 'loans',
                     'label' => 'Loans',
                     'icon' => 'account_balance',
-                    'items' => $loans->map(fn($l) => [
-                        'name' => $l->loan_number,
-                        'sub' => ($l->member->first_name . ' ' . $l->member->last_name) . ' · ₦' . number_format($l->amount, 2),
-                        'url' => route('loans.show', $l),
-                        'icon' => 'request_quote',
-                    ])->values()->all(),
+                    'items' => $items,
                 ];
             }
         }
 
         if ($user->can('view-savings')) {
+            $savingsItem = function ($t) {
+                $member = $t->savingsAccount?->member;
+
+                return [
+                    'name' => $t->reference,
+                    'sub' => ($member ? $member->first_name . ' ' . $member->last_name . ' · ' : '') . '₦' . number_format($t->amount, 2) . ' · ' . ucfirst($t->status),
+                    'url' => $member ? route('members.savings-detail', $member) : route('savings.index'),
+                    'icon' => 'savings',
+                ];
+            };
+
+            $referenceItems = [];
+            $referenceIds = [];
+            if ($referenceFor === 'savings') {
+                $exactTransaction = SavingsTransaction::with('savingsAccount.member:id,first_name,last_name')
+                    ->where('reference', $q)
+                    ->first();
+                if ($exactTransaction) {
+                    $referenceIds[] = $exactTransaction->id;
+                    $referenceItems[] = $savingsItem($exactTransaction) + ['matched_reference' => true];
+                }
+            }
+
             $savings = SavingsTransaction::with('savingsAccount.member:id,first_name,last_name')
                 ->where(function ($x) use ($q, $nameCond) {
                     $x->where('reference', 'like', "%{$q}%")
@@ -318,21 +406,19 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            if ($savings->isNotEmpty()) {
+            $savingsItems = $savings->filter(fn($t) => !in_array($t->id, $referenceIds, true))
+                ->map($savingsItem)
+                ->values()
+                ->all();
+
+            if ($referenceItems !== []) $referenceMatched = true;
+            $items = array_merge($referenceItems, $savingsItems);
+            if ($items !== []) {
                 $groups[] = [
                     'key' => 'savings',
                     'label' => 'Savings',
                     'icon' => 'savings',
-                    'items' => $savings->map(function ($t) {
-                        $member = $t->savingsAccount?->member;
-
-                        return [
-                            'name' => $t->reference,
-                            'sub' => ($member ? $member->first_name . ' ' . $member->last_name . ' · ' : '') . '₦' . number_format($t->amount, 2) . ' · ' . ucfirst($t->status),
-                            'url' => $member ? route('members.savings-detail', $member) : route('savings.index'),
-                            'icon' => 'savings',
-                        ];
-                    })->values()->all(),
+                    'items' => $items,
                 ];
             }
         }
@@ -367,6 +453,28 @@ class DashboardController extends Controller
         }
 
         if ($user->can('view-purchase-orders')) {
+            $orderItem = function ($o) {
+                return [
+                    'name' => $o->order_number,
+                    'sub' => ($o->member ? $o->member->first_name . ' ' . $o->member->last_name . ' · ' : '') . ($o->product?->name ?? '') . ' · ' . ucfirst($o->status),
+                    'url' => route('products.orders.show', $o->order_group),
+                    'icon' => 'receipt_long',
+                ];
+            };
+
+            $referenceItems = [];
+            $referenceIds = [];
+            if ($referenceFor === 'orders') {
+                $exactOrder = PurchaseOrder::with(['member:id,first_name,last_name', 'product:id,name'])
+                    ->where('order_number', $q)
+                    ->orWhere('order_group', $q)
+                    ->first();
+                if ($exactOrder) {
+                    $referenceIds[] = $exactOrder->id;
+                    $referenceItems[] = $orderItem($exactOrder) + ['matched_reference' => true];
+                }
+            }
+
             $orders = PurchaseOrder::with(['member:id,first_name,last_name', 'product:id,name'])
                 ->where(function ($x) use ($q, $nameCond) {
                     $x->where('order_number', 'like', "%{$q}%")
@@ -377,38 +485,78 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            if ($orders->isNotEmpty()) {
+            $ordersItems = $orders->filter(fn($o) => !in_array($o->id, $referenceIds, true))
+                ->map($orderItem)
+                ->values()
+                ->all();
+
+            if ($referenceItems !== []) $referenceMatched = true;
+            $items = array_merge($referenceItems, $ordersItems);
+            if ($items !== []) {
                 $groups[] = [
                     'key' => 'orders',
                     'label' => 'Purchase Orders',
                     'icon' => 'shopping_cart',
-                    'items' => $orders->map(fn($o) => [
-                        'name' => $o->order_number,
-                        'sub' => ($o->member ? $o->member->first_name . ' ' . $o->member->last_name . ' · ' : '') . ($o->product?->name ?? '') . ' · ' . ucfirst($o->status),
-                        'url' => route('products.orders.show', $o->order_group),
-                        'icon' => 'receipt_long',
-                    ])->values()->all(),
+                    'items' => $items,
                 ];
             }
         }
 
         if ($user->can('view-payroll')) {
+            $payrollItem = fn($p) => [
+                'name' => $p->payroll_number,
+                'sub' => $p->month . ' ' . $p->year . ' · ₦' . number_format($p->grand_total ?? 0, 2) . ' · ' . ucfirst($p->status),
+                'url' => route('payroll.show', $p),
+                'icon' => 'receipt_long',
+            ];
+
+            $referenceItems = [];
+            $referenceIds = [];
+            if ($referenceFor === 'payroll') {
+                $exactPayroll = MonthlyPayroll::where('payroll_number', $q)->first();
+                if ($exactPayroll) {
+                    $referenceIds[] = $exactPayroll->id;
+                    $referenceItems[] = $payrollItem($exactPayroll) + ['matched_reference' => true];
+                }
+            }
+
             $payrolls = MonthlyPayroll::where('payroll_number', 'like', "%{$q}%")
                 ->latest('id')
                 ->limit(5)
                 ->get();
 
-            if ($payrolls->isNotEmpty()) {
+            $payrollItems = $payrolls->filter(fn($p) => !in_array($p->id, $referenceIds, true))
+                ->map($payrollItem)
+                ->values()
+                ->all();
+
+            if ($referenceItems !== []) $referenceMatched = true;
+            $items = array_merge($referenceItems, $payrollItems);
+            if ($items !== []) {
                 $groups[] = [
                     'key' => 'payroll',
                     'label' => 'Payroll',
                     'icon' => 'payments',
-                    'items' => $payrolls->map(fn($p) => [
-                        'name' => $p->payroll_number,
-                        'sub' => $p->month . ' ' . $p->year . ' · ₦' . number_format($p->grand_total ?? 0, 2) . ' · ' . ucfirst($p->status),
-                        'url' => route('payroll.show', $p),
-                        'icon' => 'receipt_long',
-                    ])->values()->all(),
+                    'items' => $items,
+                ];
+            }
+        }
+
+        if ($user->can('view-dividends') && $referenceFor === 'dividends') {
+            $exactDividend = Dividend::where('dividend_number', $q)->first();
+            if ($exactDividend) {
+                $referenceMatched = true;
+                $groups[] = [
+                    'key' => 'dividends',
+                    'label' => 'Dividends',
+                    'icon' => 'diversity_3',
+                    'items' => [[
+                        'name' => $exactDividend->dividend_number,
+                        'sub' => $exactDividend->year . ' · ₦' . number_format($exactDividend->total_profit, 2) . ' · ' . ucfirst($exactDividend->status),
+                        'url' => route('dividends.show', $exactDividend),
+                        'icon' => 'diversity_3',
+                        'matched_reference' => true,
+                    ]],
                 ];
             }
         }
@@ -430,6 +578,18 @@ class DashboardController extends Controller
                         'icon' => 'inventory_2',
                     ])->values()->all(),
                 ];
+            }
+        }
+
+        if ($referenceMatched && $referenceFor !== null) {
+            foreach ($groups as $index => $group) {
+                if ($group['key'] === $referenceFor) {
+                    if ($index > 0) {
+                        $group = array_splice($groups, $index, 1)[0];
+                        array_unshift($groups, $group);
+                    }
+                    break;
+                }
             }
         }
 

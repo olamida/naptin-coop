@@ -2,26 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Membership\ApproveMemberApplication;
+use App\Actions\Membership\BulkUpdateStatus;
+use App\Actions\Membership\CreateMember;
+use App\Actions\Membership\RejectMemberApplication;
 use App\Enums\MemberStatus;
 use App\Exports\MembersExport;
 use App\Imports\MemberImport;
-use App\Mail\WelcomeEmail;
 use App\Models\ImportLog;
 use App\Models\LoanGuarantor;
 use App\Models\LoanRepayment;
 use App\Models\Member;
 use App\Models\PurchaseOrder;
 use App\Models\Region;
-use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
-use App\Models\ShareAccount;
 use App\Models\ShareTransaction;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -115,51 +113,9 @@ class MemberController extends Controller
             $photoPath = $request->file('photo')->store('member-photos', 'public');
         }
 
-        $member = Member::create(array_merge($validated, ['photo_path' => $photoPath]));
+        unset($validated['photo']);
 
-        SavingsAccount::create([
-            'member_id' => $member->id,
-            'account_number' => 'SAV/' . Str::upper(Str::random(2)) . '/' . str_pad($member->id, 6, '0', STR_PAD_LEFT),
-            'balance' => 0,
-        ]);
-
-        ShareAccount::create([
-            'member_id' => $member->id,
-            'total_shares' => 0,
-            'total_value' => 0,
-        ]);
-
-        if (!empty($validated['email'])) {
-            $tempPassword = Str::random(12);
-            $user = User::create([
-                'name' => $validated['first_name'] . ' ' . $validated['last_name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($tempPassword),
-            ]);
-            $user->assignRole('member');
-            $user->member_id = $member->id;
-            $user->save();
-            $member->user_id = $user->id;
-            $member->save();
-
-            try {
-                Mail::to($validated['email'])->send(new WelcomeEmail($user, $member, $tempPassword));
-            } catch (\Exception $e) {
-                \Log::error('Email/notification failed for member: ' . $e->getMessage());
-            }
-        }
-
-        // Notify admins about new member registration
-        try {
-            $adminUsers = User::where('id', '!=', auth()->id())->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['super-admin', 'admin', 'secretary']);
-            })->get();
-            foreach ($adminUsers as $admin) {
-                $admin->notify(new \App\Notifications\MemberRegisteredNotification($member));
-            }
-        } catch (\Exception $e) {
-            \Log::error('Email/notification failed for member: ' . $e->getMessage());
-        }
+        $member = CreateMember::run(array_merge($validated, ['photo_path' => $photoPath]));
 
         return redirect()->route('members.show', $member)
             ->with('success', 'Member created successfully with savings and share accounts.' . (!empty($validated['email']) ? ' Login credentials sent to their email.' : ''));
@@ -483,38 +439,17 @@ class MemberController extends Controller
             'status' => 'required|in:' . implode(',', array_column(MemberStatus::cases(), 'value')),
         ]);
 
-        $count = Member::whereIn('id', $validated['member_ids'])
-            ->update(['status' => $validated['status']]);
+        $count = BulkUpdateStatus::run($validated['member_ids'], $validated['status']);
 
         return back()->with('success', "Successfully updated {$count} member(s) to " . ucfirst($validated['status']) . " status.");
     }
 
     public function approve(Member $member): \Illuminate\Http\RedirectResponse
     {
-        if ($member->status !== 'pending') {
-            return back()->withErrors(['error' => 'Only pending members can be approved.']);
-        }
-
-        $member->update(['status' => 'active']);
-
-        if (!empty($member->email) && !$member->user_id) {
-            $tempPassword = Str::random(12);
-            $user = User::create([
-                'name' => $member->first_name . ' ' . $member->last_name,
-                'email' => $member->email,
-                'password' => Hash::make($tempPassword),
-            ]);
-            $user->assignRole('member');
-            $user->member_id = $member->id;
-            $user->save();
-            $member->user_id = $user->id;
-            $member->save();
-
-            try {
-                Mail::to($member->email)->send(new WelcomeEmail($user, $member, $tempPassword));
-            } catch (\Exception $e) {
-                \Log::error('Welcome email failed for member ' . $member->id . ': ' . $e->getMessage());
-            }
+        try {
+            ApproveMemberApplication::run($member);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
 
         return back()->with('success', 'Member approved successfully. ' . (!empty($member->email) ? 'Welcome email sent.' : ''));
@@ -522,11 +457,11 @@ class MemberController extends Controller
 
     public function reject(Member $member): \Illuminate\Http\RedirectResponse
     {
-        if ($member->status !== 'pending') {
-            return back()->withErrors(['error' => 'Only pending members can be rejected.']);
+        try {
+            RejectMemberApplication::run($member);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        $member->update(['status' => 'inactive']);
 
         return back()->with('success', 'Member registration rejected.');
     }

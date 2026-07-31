@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Loans\AddLoanNote;
 use App\Actions\Loans\ApproveLoan;
 use App\Actions\Loans\CreateLoan;
 use App\Actions\Loans\DisburseLoan;
 use App\Actions\Loans\RecordRepayment;
 use App\Actions\Loans\RejectLoan;
+use App\Actions\Loans\UpdateGuarantor;
 use App\Exports\LoansExport;
 use App\Imports\LoanRepaymentImport;
 use App\Models\ImportLog;
@@ -58,7 +60,19 @@ class LoanController extends Controller
             ->where('status', 'active')->orderBy('first_name')->get();
         $loanProducts = LoanProduct::where('enabled', true)->orderBy('name')->get();
 
-        return view('loans.create', compact('members', 'loanProducts'));
+        $guarantorLimit = 500000;
+        $guarantorExposure = \App\Models\LoanGuarantor::query()
+            ->where('status', \App\Enums\GuarantorStatus::Accepted->value)
+            ->whereHas('loan', fn($q) => $q->whereIn('status', ['approved', 'disbursed', 'repaying']))
+            ->with('loan:id,outstanding')
+            ->get()
+            ->groupBy('member_id')
+            ->map(fn($group) => [
+                'guaranteeing' => round((float) $group->sum(fn($g) => (float) $g->loan->outstanding), 2),
+                'limit' => $guarantorLimit,
+            ]);
+
+        return view('loans.create', compact('members', 'loanProducts', 'guarantorExposure', 'guarantorLimit'));
     }
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse
@@ -139,9 +153,8 @@ class LoanController extends Controller
             'admin_notes' => 'required|string|max:1000',
         ]);
 
-        $loan->update(['admin_notes' => $validated['admin_notes']]);
+        AddLoanNote::run($loan, $validated['admin_notes']);
 
-        \App\Models\LoanApprovalLog::record($loan->id, 'note_added', $loan->status, $loan->status, $validated['admin_notes']);
         return back()->with('success', 'Note added.');
     }
 
@@ -152,20 +165,14 @@ class LoanController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        if ($guarantor->loan_id !== $loan->id) {
-            return back()->withErrors(['error' => 'This guarantor does not belong to this loan.']);
+        try {
+            UpdateGuarantor::run($loan, $guarantor, $validated['status'], $validated['notes'] ?? null, $request->ip(), $request->userAgent());
+
+            $statusText = $validated['status'] === 'accepted' ? 'accepted' : 'declined';
+            return back()->with('success', "Guarantor request {$statusText} successfully.");
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        $guarantor->update([
-            'status' => $validated['status'],
-            'notes' => $validated['notes'] ?? null,
-            'responded_at' => now(),
-            'accepted_ip' => $request->ip(),
-            'accepted_user_agent' => $request->userAgent(),
-        ]);
-
-        $statusText = $validated['status'] === 'accepted' ? 'accepted' : 'declined';
-        return back()->with('success', "Guarantor request {$statusText} successfully.");
     }
 
     public function disburse(Loan $loan): \Illuminate\Http\RedirectResponse

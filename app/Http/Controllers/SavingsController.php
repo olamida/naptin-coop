@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Actions\Savings\ApproveDeposit;
 use App\Actions\Savings\ApproveWithdrawal;
 use App\Actions\Savings\PostDeposit;
+use App\Actions\Savings\RejectDeposit;
+use App\Actions\Savings\RejectWithdrawal;
 use App\Actions\Savings\RequestWithdrawal;
 use App\Exports\SavingsExport;
 use App\Imports\SavingsImport;
@@ -195,22 +197,17 @@ class SavingsController extends Controller
 
     public function rejectDeposit(Request $request, SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
     {
-        if ($transaction->type !== 'deposit' || $transaction->status !== 'pending') {
-            return back()->withErrors(['error' => 'Only pending deposits can be rejected.']);
-        }
-
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
         ]);
 
-        $transaction->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['rejection_reason'],
-            'approved_by' => auth()->id(),
-            'approved_at' => now(),
-        ]);
+        try {
+            RejectDeposit::run($transaction, $validated['rejection_reason']);
 
-        return back()->with('success', 'Deposit request rejected.');
+            return back()->with('success', 'Deposit request rejected.');
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
     }
 
     public function approveWithdrawal(SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
@@ -225,30 +222,17 @@ class SavingsController extends Controller
 
     public function rejectWithdrawal(Request $request, SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
     {
-        if ($transaction->type !== 'withdrawal' || $transaction->status !== 'pending') {
-            return back()->withErrors(['error' => 'Only pending withdrawals can be rejected.']);
-        }
-
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
         ]);
 
-        $transaction->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['rejection_reason'],
-            'approved_by' => auth()->id(),
-            'approved_at' => now(),
-        ]);
+        try {
+            RejectWithdrawal::run($transaction, $validated['rejection_reason']);
 
-        if ($transaction->savingsAccount && $transaction->savingsAccount->member && $transaction->savingsAccount->member->user) {
-            try {
-                $transaction->savingsAccount->member->user->notify(
-                    new \App\Notifications\WithdrawalStatusNotification($transaction, 'pending')
-                );
-            } catch (\Exception $e) {}
+            return back()->with('success', 'Withdrawal request rejected.');
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        return back()->with('success', 'Withdrawal request rejected.');
     }
 
     public function exportSavings()

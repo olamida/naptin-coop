@@ -49,6 +49,8 @@
                         'savings_balance' => (float) ($m->savingsAccount->balance ?? 0),
                         'active_loans' => $m->loans()->whereIn('status', ['disbursed', 'repaying'])->count(),
                         'active_outstanding' => (float) $m->loans()->whereIn('status', ['disbursed', 'repaying'])->sum('outstanding'),
+                        'guaranteeing' => round((float) ($guarantorExposure[$m->id]['guaranteeing'] ?? 0), 2),
+                        'guarantor_limit' => $guarantorLimit,
                     ])->values();
                 @endphp
                 <div>
@@ -243,6 +245,12 @@
                                         <div>
                                             <span x-text="m.first_name + ' ' + m.last_name" class="font-medium text-slate-800"></span>
                                             <span class="text-xs text-slate-400 ml-1" x-text="'(' + m.staff_id_display + ')'"></span>
+                                            <p class="text-[11px] text-slate-500">
+                                                Currently guaranteeing <span class="font-mono font-semibold text-amber-600" x-text="'₦' + Number(m.guaranteeing || 0).toLocaleString()"></span>
+                                                <span class="text-[10px]"
+                                                    :class="(m.guarantor_limit - (m.guaranteeing || 0)) > 0 ? 'text-emerald-600' : 'text-red-500'"
+                                                    x-text="(m.guarantor_limit - (m.guaranteeing || 0)) > 0 ? '· Capacity left ₦' + Number(Math.max(m.guarantor_limit - (m.guaranteeing || 0), 0)).toLocaleString() : '· Exceeds capacity limit'"></span>
+                                            </p>
                                         </div>
                                     </div>
                                 </template>
