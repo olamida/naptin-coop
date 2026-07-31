@@ -87,7 +87,7 @@ class MemberPortalController extends Controller
             'member', 'savingsAccount', 'shareAccount', 'activeLoans',
             'recentSavings', 'recentPurchases', 'totalSavings', 'totalShares', 'shareCount',
             'totalLoanBalance', 'pendingGuarantorCount', 'pendingWithdrawals', 'pendingWithdrawalAmount',
-            'nextDue', 'milestoneTarget', 'milestonePercent', 'milestoneRemaining'
+            'nextDue', 'milestoneTarget', 'milestoneSavings', 'milestonePercent', 'milestoneRemaining'
         ));
     }
 

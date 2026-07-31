@@ -14,13 +14,27 @@ window.AppTheme = {
         }
     },
     apply(dark) {
-        document.documentElement.classList.toggle('dark', dark);
+        this._set(dark);
         try {
             localStorage.setItem('app-theme', dark ? 'dark' : 'light');
         } catch (e) {}
+    },
+    _set(dark) {
+        document.documentElement.classList.toggle('dark', dark);
         if (window.Chart) {
             Chart.defaults.color = dark ? '#94a3b8' : '#666';
         }
+    },
+    setTheme(mode) {
+        const dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        try {
+            if (mode === 'system') {
+                localStorage.removeItem('app-theme');
+            } else {
+                localStorage.setItem('app-theme', mode);
+            }
+        } catch (e) {}
+        this._set(dark);
     },
     init() {
         const stored = this.get();
@@ -61,7 +75,7 @@ window.commandPalette = (options = {}) => ({
         if (this.open) return;
         if (e.key === '/') {
             e.preventDefault();
-            this.open();
+            this.openPalette();
         } else if (e.key === 'n' && !e.shiftKey && this.newMemberUrl) {
             window.location.href = this.newMemberUrl;
         } else if ((e.key === 'a' || e.key === 'A') && this.hasShortcut('approve')) {
@@ -87,7 +101,7 @@ window.commandPalette = (options = {}) => ({
         }
     },
 
-    open() {
+    openPalette() {
         this.open = true;
         this.query = '';
         this.groups = [];

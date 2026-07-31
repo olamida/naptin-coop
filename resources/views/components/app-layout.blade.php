@@ -124,6 +124,9 @@
 
 
             </nav>
+            <div class="p-4 border-t border-white/10">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wider">{{ now()->format('D, M d, Y') }}</p>
+            </div>
         </aside>
 
         {{-- Main Content --}}
@@ -137,32 +140,25 @@
                     <h2 class="text-lg font-semibold text-[#0F172A]">{{ $title ?? 'Dashboard' }}</h2>
                 </div>
                 <div class="flex items-center gap-2 lg:gap-4">
-                    <button onclick="AppTheme.toggle()" type="button" title="Toggle dark mode"
+                    <button @click="window.dispatchEvent(new CustomEvent('open-command-palette'))" type="button"
+                            title="Search (Ctrl+K)"
                             class="flex items-center justify-center p-2 rounded-[10px] text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition">
-                        <span class="material-symbols-outlined text-[20px] dark:hidden">dark_mode</span>
-                        <span class="material-symbols-outlined text-[20px] hidden dark:block">light_mode</span>
-                    </button>
-                    <button @click="window.dispatchEvent(new CustomEvent('open-command-palette'))"
-                            class="flex items-center gap-2 px-3 py-2 rounded-[10px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition">
                         <span class="material-symbols-outlined text-[20px]">search</span>
-                        <span class="hidden md:inline">Search</span>
-                        <kbd class="hidden sm:inline bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-500">⌘K</kbd>
                     </button>
-                    <a href="{{ route('home') }}" class="flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition">
+                    <a href="{{ route('home') }}" title="Home"
+                       class="flex items-center justify-center p-2 rounded-[10px] text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition">
                         <span class="material-symbols-outlined text-[20px]">home</span>
-                        <span class="hidden sm:inline">Home</span>
                     </a>
-                    <a href="{{ route('cart.index') }}" id="cart-badge-link" class="relative flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition">
+                    <a href="{{ route('cart.index') }}" id="cart-badge-link" title="Cart"
+                       class="relative flex items-center justify-center p-2 rounded-[10px] text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition">
                         <span class="material-symbols-outlined text-[20px]">shopping_cart</span>
                         <span id="cart-badge" class="{{ $cartCount > 0 ? '' : 'hidden' }} absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">{{ $cartCount > 99 ? '99+' : $cartCount }}</span>
                     </a>
-                    <div class="h-6 w-px bg-slate-200 hidden md:block"></div>
-                    <span class="text-sm text-slate-500 hidden md:inline">{{ now()->format('D, M d, Y') }}</span>
-                    <div class="h-6 w-px bg-slate-200 hidden md:block"></div>
+                    <div class="h-6 w-px bg-slate-200"></div>
 
                     {{-- Notification Bell --}}
                     <div class="relative" x-data="{ open: false }" @click.away="open = false">
-                        <button @click="open = !open" class="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-[10px] transition">
+                        <button @click="open = !open" title="Notifications" class="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-[10px] transition">
                             <span class="material-symbols-outlined text-xl">notifications</span>
                             @if ($unreadCount > 0)
                                 <span class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-1">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
@@ -173,8 +169,8 @@
                              x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                              x-transition:leave="transition ease-in duration-75"
                              x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute right-0 mt-2 w-80 bg-white rounded-[16px] shadow-lg border border-slate-100 py-2 z-50">
-                            <div class="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                             class="absolute right-0 mt-2 w-80 bg-white rounded-[16px] shadow-lg border border-slate-200 py-2 z-50">
+                            <div class="px-4 py-2 border-b border-slate-200 flex items-center justify-between">
                                 <p class="text-sm font-semibold text-[#0F172A]">Notifications</p>
                                 @if ($unreadCount > 0)
                                     <form method="POST" action="{{ route('admin.notifications.mark-all') }}">
@@ -188,6 +184,7 @@
                                     @php
                                         $data = $notification->data;
                                         $isUnread = is_null($notification->read_at);
+                                        $notifUrl = \App\Support\NotificationLinks::actionUrl($data, 'admin');
                                         $icon = match($data['type'] ?? '') {
                                             'loan_status' => 'account_balance',
                                             'guarantor_request' => 'group_add',
@@ -202,8 +199,8 @@
                                             default => 'notifications',
                                         };
                                     @endphp
-                                    <div class="px-4 py-3 border-b border-slate-50 last:border-0 {{ $isUnread ? 'bg-slate-50/80' : '' }} hover:bg-slate-50 transition cursor-pointer"
-                                         onclick="if(!this.querySelector('form')) window.location='{{ route('admin.notifications.index') }}'">
+                                    <a href="{{ $notifUrl ?? route('admin.notifications.index') }}"
+                                       class="block px-4 py-3 border-b border-slate-100 last:border-0 {{ $isUnread ? 'notif-unread' : '' }} hover:bg-slate-50 transition">
                                         <div class="flex items-start gap-3">
                                             <span class="material-symbols-outlined text-lg text-slate-400 mt-0.5">{{ $icon }}</span>
                                             <div class="flex-1 min-w-0">
@@ -214,7 +211,7 @@
                                                 <span class="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5"></span>
                                             @endif
                                         </div>
-                                    </div>
+                                    </a>
                                 @empty
                                     <div class="px-4 py-8 text-center">
                                         <span class="material-symbols-outlined text-3xl text-slate-300">notifications_off</span>
@@ -222,7 +219,7 @@
                                     </div>
                                 @endforelse
                             </div>
-                            <div class="px-4 py-2 border-t border-slate-100">
+                            <div class="px-4 py-2 border-t border-slate-200">
                                 <a href="{{ route('admin.notifications.index') }}" class="block text-center text-xs text-blue-600 hover:text-blue-800 font-medium">View all notifications</a>
                             </div>
                         </div>

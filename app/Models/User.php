@@ -20,6 +20,8 @@ class User extends Authenticatable
         'password',
         'profile_photo_path',
         'member_id',
+        'phone',
+        'whatsapp_enabled',
         'active_session_token',
         'must_change_password',
         'totp_secret',
@@ -40,6 +42,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
+            'whatsapp_enabled' => 'boolean',
             'totp_enabled' => 'boolean',
             'totp_recovery_codes' => 'array',
             'totp_confirmed_at' => 'datetime',
@@ -67,6 +70,10 @@ class User extends Authenticatable
 
     public function routeNotificationForTermii($notification = null): ?string
     {
+        if ($this->phone) {
+            return $this->phone;
+        }
+
         return $this->member?->phone;
     }
 

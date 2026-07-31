@@ -1,10 +1,10 @@
 @props(['searchUrl' => null, 'newMemberUrl' => ''])
 
 <div x-data="commandPalette({ searchUrl: '{{ $searchUrl ?? route('command.search') }}', newMemberUrl: '{{ $newMemberUrl }}' })"
-     @keydown.meta.k.window.prevent="open()"
-     @keydown.ctrl-k.window.prevent="open()"
+     @keydown.meta.k.window.prevent="openPalette()"
+     @keydown.ctrl-k.window.prevent="openPalette()"
      @keydown.window="handleGlobalKey($event)"
-     @open-command-palette.window="open()">
+     @open-command-palette.window="openPalette()">
 
     {{-- Command Palette Modal --}}
     <div x-show="open" x-cloak x-trap.noscroll="open" @keydown="handleKey($event)"

@@ -136,7 +136,7 @@ class DashboardController extends Controller
             ->orderBy('year', 'desc')
             ->orderBy('month', 'desc')
             ->first();
-        $payrollDueDays = $nextPayroll ? now()->diffInDays(Carbon::parse("{$nextPayroll->year}-{$nextPayroll->month}-01")->endOfMonth(), false) : null;
+        $payrollDueDays = $nextPayroll ? (int) round(now()->startOfDay()->diffInDays(Carbon::parse("{$nextPayroll->year}-{$nextPayroll->month}-01")->endOfMonth()->startOfDay(), false)) : null;
         $payrollDueText = $nextPayroll
             ? ($payrollDueDays > 0 ? "In {$payrollDueDays} days" : ($payrollDueDays == 0 ? 'Due today' : 'Overdue'))
             : 'No pending';

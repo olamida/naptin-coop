@@ -77,6 +77,25 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                        <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" placeholder="e.g. 0803 000 0000"
+                               class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <p class="text-xs text-slate-400 mt-1">Used for SMS and WhatsApp notifications.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">WhatsApp Notifications</label>
+                        <label class="flex items-center gap-3 mt-1 cursor-pointer">
+                            <input type="hidden" name="whatsapp_enabled" value="0">
+                            <input type="checkbox" name="whatsapp_enabled" value="1"
+                                   {{ old('whatsapp_enabled', $user->whatsapp_enabled) ? 'checked' : '' }}
+                                   class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm text-slate-600">Receive alerts on WhatsApp when enabled</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="pt-2 text-sm text-slate-500">
                     <p>Role: <span class="font-medium text-slate-700">{{ ucfirst($user->getRoleNames()->first() ?? 'None') }}</span></p>
                     <p>Member since: <span class="font-medium text-slate-700">{{ $user->created_at->format('d M Y') }}</span></p>
@@ -88,6 +107,33 @@
                     </button>
                 </div>
             </form>
+        </div>
+
+        {{-- Appearance Card --}}
+        <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6">
+            <h3 class="text-sm font-semibold text-[#0F172A] mb-1">Appearance</h3>
+            <p class="text-xs text-slate-400 mb-4">Choose how the application looks on your device. This preference is stored on this device.</p>
+            <div x-data="{ theme: AppTheme.get() || 'system' }"
+                 class="grid grid-cols-3 gap-3">
+                <button type="button" @click="AppTheme.setTheme('light'); theme = 'light'"
+                        :class="theme === 'light' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-slate-300'"
+                        class="flex flex-col items-center gap-2 px-4 py-4 rounded-[12px] border-2 transition">
+                    <span class="material-symbols-outlined text-2xl text-slate-600">light_mode</span>
+                    <span class="text-sm font-medium text-slate-700">Light</span>
+                </button>
+                <button type="button" @click="AppTheme.setTheme('dark'); theme = 'dark'"
+                        :class="theme === 'dark' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-slate-300'"
+                        class="flex flex-col items-center gap-2 px-4 py-4 rounded-[12px] border-2 transition">
+                    <span class="material-symbols-outlined text-2xl text-slate-600">dark_mode</span>
+                    <span class="text-sm font-medium text-slate-700">Dark</span>
+                </button>
+                <button type="button" @click="AppTheme.setTheme('system'); theme = 'system'"
+                        :class="theme === 'system' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-slate-300'"
+                        class="flex flex-col items-center gap-2 px-4 py-4 rounded-[12px] border-2 transition">
+                    <span class="material-symbols-outlined text-2xl text-slate-600">contrast</span>
+                    <span class="text-sm font-medium text-slate-700">System</span>
+                </button>
+            </div>
         </div>
 
         {{-- Two-Factor Authentication Card --}}

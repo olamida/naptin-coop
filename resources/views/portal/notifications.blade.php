@@ -60,8 +60,13 @@
                         },
                         default => 'bg-slate-100 text-slate-600',
                     };
+                    $actionUrl = \App\Support\NotificationLinks::actionUrl($data, 'portal');
                 @endphp
-                <div class="flex items-start gap-4 px-5 py-4 border-b border-slate-200 last:border-0 {{ $isUnread ? 'bg-slate-50/50' : '' }}">
+                @if ($actionUrl)
+                    <a href="{{ $actionUrl }}" class="flex items-start gap-4 px-5 py-4 border-b border-slate-200 last:border-0 transition {{ $isUnread ? 'notif-unread' : '' }} hover:bg-slate-50">
+                @else
+                    <div class="flex items-start gap-4 px-5 py-4 border-b border-slate-200 last:border-0 {{ $isUnread ? 'notif-unread' : '' }}">
+                @endif
                     <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 {{ $iconBg }}">
                         <span class="material-symbols-outlined text-lg">{{ $icon }}</span>
                     </div>
@@ -73,7 +78,7 @@
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
                         @if ($isUnread)
-                            <form method="POST" action="{{ route('portal.notifications.read', $notification->id) }}">
+                            <form method="POST" action="{{ route('portal.notifications.read', $notification->id) }}" @click.prevent.stop>
                                 @csrf
                                 <button type="submit" class="text-xs text-blue-600 hover:text-blue-800 font-medium transition" title="Mark as read">
                                     Mark read
@@ -83,7 +88,11 @@
                             <span class="w-2 h-2 rounded-full bg-slate-300" title="Read"></span>
                         @endif
                     </div>
-                </div>
+                @if ($actionUrl)
+                    </a>
+                @else
+                    </div>
+                @endif
             @empty
                 <div class="px-5">
                     <x-empty-state icon="notifications_off" title="All caught up"

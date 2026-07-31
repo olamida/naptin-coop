@@ -47,7 +47,7 @@
         </div>
 
         <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 overflow-x-auto">
-            <table class="w-full text-sm" style="min-width: 1000px;">
+            <table class="w-full text-sm whitespace-nowrap" style="min-width: 1000px;">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
                         <th class="text-left px-3 py-3 font-medium text-slate-600">S/N</th>

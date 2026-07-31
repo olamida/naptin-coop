@@ -24,6 +24,8 @@ class ProfileController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:30',
+            'whatsapp_enabled' => 'nullable|boolean',
             'current_password' => 'required_with:password',
             'password' => 'nullable|string|min:8|confirmed',
             'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -33,6 +35,14 @@ class ProfileController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
         ];
+
+        if ($request->has('phone')) {
+            $data['phone'] = ($validated['phone'] ?? '') ?: null;
+        }
+
+        if ($request->has('whatsapp_enabled')) {
+            $data['whatsapp_enabled'] = $request->boolean('whatsapp_enabled');
+        }
 
         if (!empty($validated['password'])) {
             if (!Hash::check($validated['current_password'], $user->password)) {

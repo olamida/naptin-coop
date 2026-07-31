@@ -93,7 +93,7 @@
             </div>
             <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition cursor-pointer" onclick="window.location='{{ route('payroll.index') }}'">
                 <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Payroll Due</p>
-                <p class="mt-2 text-2xl font-mono font-bold {{ $payrollDueDays !== null && $payrollDueDays <= 3 ? 'text-amber-600' : 'text-[#0F172A]' }}">{{ $payrollDueText }}</p>
+                <p class="mt-2 text-2xl font-mono font-bold {{ $payrollDueDays !== null && $payrollDueDays <= 3 ? 'text-amber-600' : 'text-[#0F172A]' }} truncate" title="{{ $payrollDueText }}">{{ $payrollDueText }}</p>
                 <p class="text-xs text-slate-500 mt-1">
                     @if ($nextPayroll)
                         {{ Carbon\Carbon::parse('1 ' . $nextPayroll->month . ' ' . $nextPayroll->year)->format('F Y') }} • ₦{{ number_format($nextPayroll->grand_total ?? 0) }}
