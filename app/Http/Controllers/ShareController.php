@@ -83,7 +83,16 @@ class ShareController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        return view('shares.purchase', ['members' => $members]);
+        $memberOptions = $members->map(fn ($m) => [
+            'id' => $m->id,
+            'first_name' => $m->first_name,
+            'last_name' => $m->last_name,
+            'staff_id' => $m->staff_id,
+            'staff_id_display' => $m->staff_id_display,
+            'shares' => $m->shareAccount?->total_shares ?? 0,
+        ])->values();
+
+        return view('shares.purchase', ['members' => $members, 'memberOptions' => $memberOptions]);
     }
 
     public function storePurchase(Request $request): \Illuminate\Http\RedirectResponse

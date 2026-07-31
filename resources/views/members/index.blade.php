@@ -124,13 +124,6 @@
                                             {{ $member->initials }}
                                         </div>
                                     @endif
-                                    @if ($member->photo_url)
-                                        <img src="{{ $member->photo_url }}" alt="" class="w-9 h-9 rounded-full object-cover border border-slate-200">
-                                    @else
-                                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                            {{ $member->initials }}
-                                        </div>
-                                    @endif
                                     <div>
                                         <p class="font-medium text-[#0F172A] hover:text-blue-600">{{ $member->first_name }} {{ $member->last_name }}</p>
                                         <p class="text-xs text-slate-500">{{ $member->email ?? '' }}</p>

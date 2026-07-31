@@ -93,7 +93,16 @@ class SavingsController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        return view('savings.deposit', ['members' => $members]);
+        $memberOptions = $members->map(fn ($m) => [
+            'id' => $m->id,
+            'first_name' => $m->first_name,
+            'last_name' => $m->last_name,
+            'staff_id' => $m->staff_id,
+            'staff_id_display' => $m->staff_id_display,
+            'account_number' => $m->savingsAccount?->account_number ?? '',
+        ])->values();
+
+        return view('savings.deposit', ['members' => $members, 'memberOptions' => $memberOptions]);
     }
 
     public function storeDeposit(Request $request): \Illuminate\Http\RedirectResponse
@@ -137,7 +146,16 @@ class SavingsController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        return view('savings.withdraw', ['members' => $members]);
+        $memberOptions = $members->map(fn ($m) => [
+            'id' => $m->id,
+            'first_name' => $m->first_name,
+            'last_name' => $m->last_name,
+            'staff_id' => $m->staff_id,
+            'staff_id_display' => $m->staff_id_display,
+            'balance' => $m->savingsAccount?->balance ?? 0,
+        ])->values();
+
+        return view('savings.withdraw', ['members' => $members, 'memberOptions' => $memberOptions]);
     }
 
     public function storeWithdrawal(Request $request): \Illuminate\Http\RedirectResponse

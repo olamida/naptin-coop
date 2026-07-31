@@ -73,7 +73,15 @@ class CartController extends Controller
 
         $members = Member::where('status', 'active')->orderBy('first_name')->get();
 
-        return view('cart.checkout', ['items' => $items, 'total' => $total, 'members' => $members]);
+        $memberOptions = $members->map(fn ($m) => [
+            'id' => $m->id,
+            'first_name' => $m->first_name,
+            'last_name' => $m->last_name,
+            'staff_id' => $m->staff_id,
+            'staff_id_display' => $m->staff_id_display,
+        ])->values();
+
+        return view('cart.checkout', ['items' => $items, 'total' => $total, 'members' => $members, 'memberOptions' => $memberOptions]);
     }
 
     public function processCheckout(Request $request): \Illuminate\Http\RedirectResponse

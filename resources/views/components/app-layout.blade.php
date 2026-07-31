@@ -41,7 +41,6 @@
             body { background: white !important; }
         }
     </style>
-    @livewireStyles
 </head>
 <body class="bg-slate-50 font-sans" x-data="{ sidebarOpen: false, serverDown: false }"
       x-init="setInterval(() => { fetch('/health').then(r => serverDown = false).catch(() => serverDown = true); }, 15000);
@@ -299,8 +298,6 @@
             </main>
         </div>
     </div>
-
-    @livewireScripts
 
     <script src="{{ asset('vendor/js/alpine-components.js') }}"></script>
     <script>

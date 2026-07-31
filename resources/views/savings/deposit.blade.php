@@ -21,7 +21,7 @@
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Member *</label>
-                <div x-data="memberSearch(@json($members->map(fn($m) => ['id' => $m->id, 'first_name' => $m->first_name, 'last_name' => $m->last_name, 'staff_id' => $m->staff_id, 'staff_id_display' => $m->staff_id_display, 'account_number' => $m->savingsAccount?->account_number ?? ''])))" x-init="init()">
+                <div x-data="memberSearch(@json($memberOptions))" x-init="init()">
                     <div class="relative">
                         <input type="text" x-model="search" @input="filterMembers()" @click="showDropdown = true" @click.away="showDropdown = false"
                             placeholder="Type to search members..." class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
