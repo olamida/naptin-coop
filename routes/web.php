@@ -83,6 +83,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('members/download-template', [MemberController::class, 'downloadTemplate'])->name('members.download-template');
         Route::get('members/export', [MemberController::class, 'exportMembers'])->name('members.export');
         Route::get('members/search', [MemberController::class, 'searchJson'])->name('members.search');
+        Route::get('members/search/form', [MemberController::class, 'formSearchJson'])->name('members.search.form');
         Route::post('members/bulk-status', [MemberController::class, 'bulkUpdateStatus'])->name('members.bulk-status');
         Route::resource('members', MemberController::class)->except(['show']);
         Route::get('members/{member}', [MemberController::class, 'show'])->name('members.show');

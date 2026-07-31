@@ -77,6 +77,35 @@ class MemberController extends Controller
         ]));
     }
 
+    public function formSearchJson(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        $members = Member::with(['savingsAccount', 'shareAccount'])
+            ->where('status', 'active')
+            ->when($search !== '', fn($q) => $q->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('staff_id', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            }))
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->limit(15)
+            ->get(['id', 'first_name', 'last_name', 'staff_id', 'phone', 'photo_path']);
+
+        return response()->json($members->map(fn($m) => [
+            'id' => $m->id,
+            'first_name' => $m->first_name,
+            'last_name' => $m->last_name,
+            'staff_id' => $m->staff_id,
+            'staff_id_display' => $m->staff_id_display,
+            'account_number' => $m->savingsAccount?->account_number ?? '',
+            'balance' => (float) ($m->savingsAccount?->balance ?? 0),
+            'shares' => (int) ($m->shareAccount?->total_shares ?? 0),
+        ]));
+    }
+
     public function create(): \Illuminate\View\View
     {
         $regions = Region::where('enabled', true)->orderBy('name')->get();

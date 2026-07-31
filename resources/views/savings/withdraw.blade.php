@@ -31,13 +31,15 @@
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Member *</label>
-                <div x-data="memberSearch(@json($memberOptions))" x-init="init()">
+                <div x-data="memberSearch('{{ route('members.search.form') }}')" x-init="init()">
                     <div class="relative">
                         <input type="text" x-model="search" @input="filterMembers()" @click="showDropdown = true" @click.away="showDropdown = false"
                             placeholder="Type to search members..." class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                         <input type="hidden" name="member_id" :value="selectedId">
-                        <div x-show="showDropdown && filteredMembers.length > 0" x-transition
+                        <div x-show="showDropdown" x-transition
                             class="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-[10px] shadow-lg max-h-60 overflow-y-auto">
+                            <div x-show="loading" class="px-3 py-2 text-sm text-slate-500">Searching...</div>
+                            <div x-show="!loading && search.trim().length > 0 && filteredMembers.length === 0" class="px-3 py-2 text-sm text-slate-400">No members found.</div>
                             <template x-for="m in filteredMembers" :key="m.id">
                                 <div @click="selectMember(m)" class="px-3 py-2 cursor-pointer hover:bg-slate-100 text-sm border-b border-slate-50 last:border-0"
                                     :class="selectedId == m.id ? 'bg-blue-50 font-medium' : ''">

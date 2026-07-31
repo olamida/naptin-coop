@@ -1,5 +1,5 @@
-const CACHE_NAME = 'naptin-coop-v4';
-const STATIC_CACHE = 'naptin-coop-static-v4';
+const CACHE_NAME = 'naptin-coop-v5';
+const STATIC_CACHE = 'naptin-coop-static-v5';
 
 const PRECACHE_URLS = [
     'offline.html',

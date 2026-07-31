@@ -299,7 +299,7 @@
         </div>
     </div>
 
-    <script src="{{ asset('vendor/js/alpine-components.js') }}"></script>
+    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=5"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
