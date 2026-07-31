@@ -357,6 +357,15 @@
                                 </div>
                                 <p class="text-xs text-slate-400 mt-1">Max loan amount = savings balance × this multiplier</p>
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Auto-Approve Deposit Limit (₦)</label>
+                                <div class="relative">
+                                    <input type="number" name="auto_approve_deposit_limit" value="{{ old('auto_approve_deposit_limit', $company->auto_approve_deposit_limit) }}" step="0.01" min="0"
+                                           class="w-full pr-8 pl-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₦</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">Portal deposits with evidence up to this limit are approved automatically</p>
+                            </div>
                         </div>
                     </div>
                 </div>

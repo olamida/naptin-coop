@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
+use App\Models\Company;
 use App\Models\Member;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
@@ -11,7 +13,7 @@ use Illuminate\Support\Str;
 
 class SavingsService
 {
-    private const AUTO_APPROVE_LIMIT = 200000;
+    private const DEFAULT_AUTO_APPROVE_LIMIT = 200000;
 
     /**
      * Record a deposit atomically. If auto-approve conditions are met, marks completed immediately.
@@ -47,6 +49,19 @@ class SavingsService
 
                 app(LedgerService::class)->postSavingsDeposit($txn->id, $amount);
 
+                ActivityLog::create([
+                    'user_id' => null,
+                    'event' => 'deposit_auto_approved',
+                    'description' => 'Auto-approved savings deposit #' . $txn->id . ' of ₦' . number_format($amount, 2),
+                    'ip_address' => request()?->ip(),
+                    'user_agent' => request()?->userAgent(),
+                    'properties' => [
+                        'amount' => $amount,
+                        'savings_account_id' => $account->id,
+                        'source' => $source,
+                    ],
+                ]);
+
                 return $txn;
             }
 
@@ -71,7 +86,9 @@ class SavingsService
      */
     private function shouldAutoApprove(int $memberId, float $amount, ?string $evidencePath): bool
     {
-        if ($amount > self::AUTO_APPROVE_LIMIT) {
+        $limit = (float) (Company::instance()->auto_approve_deposit_limit ?? self::DEFAULT_AUTO_APPROVE_LIMIT);
+
+        if ($amount > $limit) {
             return false;
         }
 
@@ -81,6 +98,10 @@ class SavingsService
 
         $member = Member::find($memberId);
         if (!$member) {
+            return false;
+        }
+
+        if ($member->is_fraud_flagged) {
             return false;
         }
 

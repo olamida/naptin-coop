@@ -36,6 +36,7 @@ class Member extends Model
         'monthly_savings',
         'status',
         'is_exco',
+        'is_fraud_flagged',
         'photo_path',
         'import_batch_id',
         'external_reference',
@@ -48,6 +49,7 @@ class Member extends Model
         'monthly_salary' => 'float',
         'monthly_savings' => 'float',
         'is_exco' => 'boolean',
+        'is_fraud_flagged' => 'boolean',
     ];
 
     public function region(): BelongsTo

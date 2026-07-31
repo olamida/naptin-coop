@@ -42,6 +42,13 @@ class DocumentService
         return view('receipts.purchase-order', ['order' => $order]);
     }
 
+    public function purchaseInvoice(PurchaseOrder $order): View
+    {
+        $order->load(['member.region', 'product', 'approvedBy']);
+        $this->authorizeMemberAccess($order->member_id);
+        return view('invoices.purchase', ['order' => $order]);
+    }
+
     public function sharePurchaseReceipt(ShareTransaction $transaction): View
     {
         $transaction->load(['shareAccount.member.region']);

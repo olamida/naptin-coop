@@ -136,14 +136,23 @@ class DividendController extends Controller
             return back()->withErrors(['error' => 'Only approved dividends can be distributed.']);
         }
 
-        DividendDistribution::where('dividend_id', $dividend->id)
-            ->whereIn('status', ['pending', 'approved'])
-            ->update([
-                'status' => 'paid',
-                'paid_at' => now(),
-            ]);
+        DB::transaction(function () use ($dividend) {
+            $distributions = DividendDistribution::where('dividend_id', $dividend->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->get();
 
-        $dividend->update(['status' => 'completed']);
+            foreach ($distributions as $dist) {
+                $dist->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                ]);
+
+                app(\App\Services\LedgerService::class)
+                    ->postDividendDistribution($dist->id, (float) $dist->amount);
+            }
+
+            $dividend->update(['status' => 'completed']);
+        });
 
         try {
             $distributions = DividendDistribution::where('dividend_id', $dividend->id)

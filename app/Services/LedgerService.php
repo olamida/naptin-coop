@@ -14,18 +14,24 @@ class LedgerService
 {
     public const CASH = '1001';                  // Cash & Bank (asset, debit normal)
     public const LOANS_RECEIVABLE = '1101';      // Loans Receivable (asset, debit normal)
+    public const PURCHASE_RECEIVABLES = '1201';  // Purchase Receivables (asset, debit normal)
     public const MEMBERS_SAVINGS = '2001';       // Members Savings Liability (liability, credit normal)
+    public const DIVIDENDS_PAYABLE = '2002';     // Dividends Payable (liability, credit normal)
     public const SHARE_CAPITAL = '2101';         // Share Capital (equity, credit normal)
     public const RETAINED_EARNINGS = '3001';     // Retained Earnings (equity, credit normal)
     public const INTEREST_INCOME = '4001';       // Interest Income (income, credit normal)
+    public const SALES_REVENUE = '4002';         // Sales Revenue (income, credit normal)
 
     private const DEFAULTS = [
         self::CASH => ['name' => 'Cash & Bank', 'type' => 'asset', 'normal_side' => 'debit'],
         self::LOANS_RECEIVABLE => ['name' => 'Loans Receivable', 'type' => 'asset', 'normal_side' => 'debit'],
+        self::PURCHASE_RECEIVABLES => ['name' => 'Purchase Receivables', 'type' => 'asset', 'normal_side' => 'debit'],
         self::MEMBERS_SAVINGS => ['name' => 'Members Savings Liability', 'type' => 'liability', 'normal_side' => 'credit'],
+        self::DIVIDENDS_PAYABLE => ['name' => 'Dividends Payable', 'type' => 'liability', 'normal_side' => 'credit'],
         self::SHARE_CAPITAL => ['name' => 'Share Capital', 'type' => 'equity', 'normal_side' => 'credit'],
         self::RETAINED_EARNINGS => ['name' => 'Retained Earnings', 'type' => 'equity', 'normal_side' => 'credit'],
         self::INTEREST_INCOME => ['name' => 'Interest Income', 'type' => 'income', 'normal_side' => 'credit'],
+        self::SALES_REVENUE => ['name' => 'Sales Revenue', 'type' => 'income', 'normal_side' => 'credit'],
     ];
 
     /**
@@ -194,6 +200,51 @@ class LedgerService
                 ['account_code' => self::LOANS_RECEIVABLE, 'debit' => 0, 'credit' => $principal],
                 ['account_code' => self::INTEREST_INCOME, 'debit' => 0, 'credit' => $interest],
             ]
+        );
+    }
+
+    /**
+     * Convenience: record a cash product sale (debit cash, credit sales revenue).
+     */
+    public function postCashSale(int $orderId, float $amount): JournalEntry
+    {
+        return $this->postSimple(
+            'Cash sale #' . $orderId,
+            'purchase',
+            $orderId,
+            self::CASH,
+            self::SALES_REVENUE,
+            $amount
+        );
+    }
+
+    /**
+     * Convenience: record a hire-purchase sale (debit purchase receivables, credit sales revenue).
+     */
+    public function postHirePurchaseSale(int $orderId, float $amount): JournalEntry
+    {
+        return $this->postSimple(
+            'Hire purchase sale #' . $orderId,
+            'purchase',
+            $orderId,
+            self::PURCHASE_RECEIVABLES,
+            self::SALES_REVENUE,
+            $amount
+        );
+    }
+
+    /**
+     * Convenience: record a dividend payout (debit retained earnings, credit cash).
+     */
+    public function postDividendDistribution(int $distributionId, float $amount): JournalEntry
+    {
+        return $this->postSimple(
+            'Dividend distribution #' . $distributionId,
+            'dividend',
+            $distributionId,
+            self::RETAINED_EARNINGS,
+            self::CASH,
+            $amount
         );
     }
 }

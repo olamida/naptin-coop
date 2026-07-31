@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
+use App\Services\LedgerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -195,7 +196,7 @@ class CartService
                 $totalAmount = round($quantity * $product->unit_price, 2);
                 $status = $paymentType === 'cash' ? 'approved' : 'pending';
 
-                $orders[] = PurchaseOrder::create([
+                $order = PurchaseOrder::create([
                     'order_number' => $orderNumber,
                     'order_group' => $orderGroup,
                     'member_id' => $orderMemberId,
@@ -209,6 +210,15 @@ class CartService
                 ]);
 
                 $product->decrement('stock_quantity', $quantity);
+
+                $ledger = app(LedgerService::class);
+                if ($paymentType === 'cash') {
+                    $ledger->postCashSale($order->id, $totalAmount);
+                } else {
+                    $ledger->postHirePurchaseSale($order->id, $totalAmount);
+                }
+
+                $orders[] = $order;
             }
 
             $cart->update(['items' => [], 'expires_at' => now()->addDays(self::TTL_DAYS)]);

@@ -55,6 +55,7 @@ class SettingsController extends Controller
             'savings_interest_rate' => 'required|numeric|min:0|max:100',
             'loan_interest_rate' => 'required|numeric|min:0|max:100',
             'max_loan_multiplier' => 'required|integer|min:1|max:20',
+            'auto_approve_deposit_limit' => 'nullable|numeric|min:0',
         ]);
 
         $data = collect($validated)->except(['logo', 'banner'])->toArray();

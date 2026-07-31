@@ -26,6 +26,7 @@ class Company extends Model
         'savings_interest_rate',
         'loan_interest_rate',
         'max_loan_multiplier',
+        'auto_approve_deposit_limit',
         'footer_note',
         'facebook',
         'twitter',
@@ -40,6 +41,7 @@ class Company extends Model
         'savings_interest_rate' => 'decimal:2',
         'loan_interest_rate' => 'decimal:2',
         'max_loan_multiplier' => 'integer',
+        'auto_approve_deposit_limit' => 'decimal:2',
     ];
 
     public static function instance(): static

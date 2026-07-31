@@ -196,6 +196,13 @@ class ProductController extends Controller
             ]);
 
             $product->decrement('stock_quantity', $quantity);
+
+            $ledger = app(\App\Services\LedgerService::class);
+            if ($validated['payment_type'] === 'cash') {
+                $ledger->postCashSale($order->id, $totalAmount);
+            } else {
+                $ledger->postHirePurchaseSale($order->id, $totalAmount);
+            }
         });
 
         return redirect()->route('products.orders')

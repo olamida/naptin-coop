@@ -10,10 +10,12 @@ use Illuminate\Support\Facades\DB;
 
 class ApproveLoan extends Action
 {
+    private const APPROVABLE = ['pending', 'guarantor_pending'];
+
     public function handle(Loan $loan): Loan
     {
-        if ($loan->status !== 'pending') {
-            throw new \RuntimeException('Only pending loans can be approved.');
+        if (! in_array($loan->status, self::APPROVABLE, true)) {
+            throw new \RuntimeException('Only pending or guarantor-approved loans can be approved.');
         }
 
         if ($loan->guarantors()->exists()) {
@@ -30,8 +32,8 @@ class ApproveLoan extends Action
         return DB::transaction(function () use ($loan) {
             $locked = Loan::whereKey($loan->id)->lockForUpdate()->first();
 
-            if ($locked->status !== 'pending') {
-                throw new \RuntimeException('Only pending loans can be approved.');
+            if (! in_array($locked->status, self::APPROVABLE, true)) {
+                throw new \RuntimeException('Only pending or guarantor-approved loans can be approved.');
             }
 
             if ($locked->guarantors()->exists()) {

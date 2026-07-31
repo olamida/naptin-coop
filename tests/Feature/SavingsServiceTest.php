@@ -101,6 +101,31 @@ class SavingsServiceTest extends TestCase
         $this->assertSame('pending', $txn->status);
     }
 
+    public function test_fraud_flagged_member_deposit_requires_approval(): void
+    {
+        $member = $this->makeMember();
+        $member->update(['is_fraud_flagged' => true]);
+
+        $service = app(SavingsService::class);
+        $txn = $service->recordDeposit($member->id, 10000, null, 'manual', 'evidence.jpg');
+
+        $this->assertSame('pending', $txn->status);
+        $this->assertEquals(0, $member->savingsAccount->fresh()->balance);
+    }
+
+    public function test_auto_approved_deposit_logs_system_activity(): void
+    {
+        $member = $this->makeMember();
+        $service = app(SavingsService::class);
+
+        $service->recordDeposit($member->id, 50000, 'Monthly contribution', 'manual', 'evidence.jpg');
+
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'deposit_auto_approved',
+            'user_id' => null,
+        ]);
+    }
+
     public function test_withdrawal_request_is_pending_and_does_not_change_balance(): void
     {
         $member = $this->makeMember();

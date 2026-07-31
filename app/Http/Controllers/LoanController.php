@@ -160,6 +160,8 @@ class LoanController extends Controller
             'status' => $validated['status'],
             'notes' => $validated['notes'] ?? null,
             'responded_at' => now(),
+            'accepted_ip' => $request->ip(),
+            'accepted_user_agent' => $request->userAgent(),
         ]);
 
         $statusText = $validated['status'] === 'accepted' ? 'accepted' : 'declined';
