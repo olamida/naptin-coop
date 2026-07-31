@@ -298,7 +298,7 @@
         </div>
     </nav>
 
-    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=5"></script>
+    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=6"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

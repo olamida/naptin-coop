@@ -482,7 +482,8 @@ The system uses 7 predefined roles with 35 granular permissions.
 5.5 RECORDING A DEPOSIT (/savings/deposit)
 -------------------------------------------
   Step 1: Click "Deposit" in sidebar
-  Step 2: Select member from dropdown (active members only)
+  Step 2: Start typing the member's name, staff ID or phone — matching active members
+          appear with their current savings balance. Click a result to attach the member.
   Step 3: Enter amount (minimum ₦0.01)
   Step 4: Optional: upload payment evidence (receipt screenshot/photo)
   Step 5: Optional: add notes
@@ -499,7 +500,8 @@ The system uses 7 predefined roles with 35 granular permissions.
 5.6 RECORDING A WITHDRAWAL (/savings/withdraw)
 -----------------------------------------------
   Step 1: Click "Withdraw" in sidebar
-  Step 2: Select member from dropdown
+  Step 2: Start typing the member's name, staff ID or phone — matching active members
+          appear with their current savings balance. Click a result to attach the member.
   Step 3: Enter amount (must not exceed available balance)
   Step 4: Optional: add notes
   Step 5: Click "Submit Withdrawal Request"
@@ -763,7 +765,8 @@ The system uses 7 predefined roles with 35 granular permissions.
 
 7.4 PURCHASING SHARES (/shares/purchase)
 -----------------------------------------
-  Step 1: Select member (active members only)
+  Step 1: Start typing the member's name, staff ID or phone — matching active members
+          appear with their current share count. Click a result to attach the member.
   Step 2: Enter number of shares to purchase
   Step 3: Optional: add notes
   Step 4: Click "Record Purchase"
@@ -854,7 +857,8 @@ The system uses 7 predefined roles with 35 granular permissions.
   CHECKOUT PROCESS:
     Step 1: Add products to cart
     Step 2: Go to checkout
-    Step 3: Select member
+    Step 3: Start typing the member's name, staff ID or phone — matching active members
+            appear with their current savings balance. Click a result to attach the member.
     Step 4: Select payment type (Cash or Hire Purchase)
     Step 5: If hire purchase: enter monthly repayment amount
     Step 6: Confirm checkout
@@ -1311,6 +1315,8 @@ The system uses 7 predefined roles with 35 granular permissions.
     - Each shows icon, message, time ago, unread dot
     - "Mark all read" button in dropdown header
     - "View all notifications" link at bottom
+    - Clicking a notification opens the related record (e.g. loan detail).
+      If the record no longer exists, you are taken to the nearest list page instead of an error.
 
   FULL NOTIFICATIONS PAGE (/my/notifications):
     - Complete list of all notifications

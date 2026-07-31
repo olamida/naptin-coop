@@ -350,11 +350,15 @@ A dedicated migration (`2026_07_26_000001_add_performance_indexes.php`) adds com
 | `/members/download-template` | GET | Download CSV template |
 | `/members/export` | GET | Export members to Excel |
 | `/members/bulk-status` | POST | Bulk update member statuses |
+| `/members/search` | GET | JSON search for the member list page (name/staff ID) |
+| `/members/search/form` | GET | **Dynamic member search for forms** (deposit, withdraw, shares purchase, checkout) |
 
 **On member creation, the system automatically:**
 1. Creates a Savings Account (balance = ₦0)
 2. Creates a Share Account (shares = 0, value = ₦0)
 3. If email provided: creates User account with `member` role, sends welcome email with temporary password
+
+**Member search on forms:** The deposit, withdrawal, share purchase and cart checkout forms use a **dynamic server-side member search** (`GET /members/search/form?q=…`). Typing 1+ characters queries active members by name, staff ID or phone and returns their current savings balance and share count — selecting a result attaches the correct `member_id` to the form. (Loans, product orders and purchase orders still use a static client-side member list.)
 
 ---
 
@@ -366,9 +370,9 @@ A dedicated migration (`2026_07_26_000001_add_performance_indexes.php`) adds com
 |-------|--------|--------|
 | `/savings` | GET | All savings transactions (searchable, filterable by type/status) — **6 stat cards** |
 | `/savings/accounts` | GET | All savings accounts with balances (sortable) — **sub-nav tabs** |
-| `/savings/deposit` | GET | Deposit form (admin/teller) |
+| `/savings/deposit` | GET | Deposit form (admin/teller) — **dynamic member search** |
 | `/savings/deposit` | POST | Record deposit (updates balance + creates transaction) |
-| `/savings/withdraw` | GET | Withdrawal form (admin/teller) |
+| `/savings/withdraw` | GET | Withdrawal form (admin/teller) — **dynamic member search** |
 | `/savings/withdraw` | POST | Record withdrawal (creates pending request) |
 | `/savings/pending-withdrawals` | GET | List of pending withdrawal & deposit requests — **sub-nav tabs** |
 | `/savings/withdrawals/{id}/approve` | POST | Approve pending withdrawal (deducts balance) |
@@ -448,7 +452,7 @@ The system automatically splits each repayment into principal and interest porti
 |-------|--------|--------|
 | `/shares` | GET | All share transactions (searchable, filterable by type) — **5 stat cards** |
 | `/shares/accounts` | GET | All share accounts with totals (sortable) — **sub-nav tabs** |
-| `/shares/purchase` | GET | Purchase form |
+| `/shares/purchase` | GET | Purchase form — **dynamic member search** |
 | `/shares/purchase` | POST | Record share purchase (updates account totals) |
 | `/shares/export` | GET | Export shares to Excel |
 
@@ -486,7 +490,7 @@ The system automatically splits each repayment into principal and interest porti
 | `/cart/update` | POST | Update quantity |
 | `/cart/remove` | POST | Remove item |
 | `/cart/clear` | POST | Clear cart |
-| `/cart/checkout` | GET | Checkout form (select member, payment type) |
+| `/cart/checkout` | GET | Checkout form (select member, payment type) — **dynamic member search** |
 | `/cart/checkout` | POST | Process checkout (creates orders, deducts stock) |
 
 **Standalone Purchase Orders:**
@@ -978,6 +982,9 @@ Each import type links directly to its upload form and template download.
 | `SavingsDepositRequestNotification` | Member requests deposit via portal | Treasurers, admins |
 | `AdminPasswordResetNotification` | Admin resets user password | Target user (via email) |
 | `PasswordResetNotification` | Self-service password reset | Requesting user (via email) |
+
+### Notification Links
+Every notification link is built by `App\Support\NotificationLinks::actionUrl()`. The link targets the related record (loan detail, savings page, etc.). If the referenced record no longer exists (e.g. a deleted loan), the link safely falls back to the nearest list page instead of returning a 404 — in both the header dropdown and the full notifications pages.
 
 ### Welcome Email
 When a member is created with an email address, a `WelcomeEmail` is sent containing:
