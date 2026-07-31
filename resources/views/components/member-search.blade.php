@@ -5,6 +5,7 @@
     'first_name' => $m->first_name,
     'last_name' => $m->last_name,
     'staff_id' => $m->staff_id,
+    'staff_id_display' => $m->staff_id_display,
     'balance' => $m->savingsAccount->balance ?? 0,
     'account_number' => $m->savingsAccount->account_number ?? '',
 ])) })" x-init="init()" class="relative">
@@ -19,7 +20,7 @@
                 <div class="flex items-center justify-between">
                     <span>
                         <span x-text="m.first_name + ' ' + m.last_name"></span>
-                        <span class="text-xs text-gray-400 ml-1" x-text="'(' + m.staff_id + ')'"></span>
+                        <span class="text-xs text-gray-400 ml-1" x-text="'(' + m.staff_id_display + ')'"></span>
                     </span>
                     @if ($showBalance)
                         <span class="text-xs text-gray-500" x-text="'₦' + Number(m.balance).toLocaleString(undefined, {minimumFractionDigits: 2})"></span>

@@ -148,43 +148,6 @@ class AdminController extends Controller
         return back()->with('success', "Stock for {$product->name} updated to {$newQuantity}.");
     }
 
-    public function backup(): \Symfony\Component\HttpFoundation\StreamedResponse
-    {
-        $this->authorize('manage-users');
-
-        $filename = 'naptin_coop_backup_' . date('Y-m-d_His') . '.sql';
-
-        $host = config('database.connections.mysql.host', '127.0.0.1');
-        $port = config('database.connections.mysql.port', '3306');
-        $database = config('database.connections.mysql.database');
-        $username = config('database.connections.mysql.username');
-        $password = config('database.connections.mysql.password');
-
-        $command = sprintf(
-            'mysqldump --host=%s --port=%s --user=%s --password=%s --single-transaction --routines --triggers %s',
-            escapeshellarg($host),
-            escapeshellarg($port),
-            escapeshellarg($username),
-            escapeshellarg($password),
-            escapeshellarg($database)
-        );
-
-        $process = popen($command, 'r');
-
-        return response()->stream(function () use ($process) {
-            while ($line = fgets($process)) {
-                echo $line;
-            }
-            pclose($process);
-        }, 200, [
-            'Content-Type' => 'application/sql',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ]);
-    }
-
     public function statistics(): \Illuminate\View\View
     {
         $totalUsers = User::count();

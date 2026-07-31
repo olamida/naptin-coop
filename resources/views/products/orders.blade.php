@@ -1,10 +1,13 @@
 <x-app-layout title="Purchase Orders">
-    <div class="space-y-6">
+    <div class="space-y-6 fade-in">
         <x-breadcrumb :items="[['label' => 'Products', 'url' => route('products.index')], ['label' => 'Orders']]" />
         <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-bold text-gray-800">Purchase Orders</h2>
+            <div>
+                <h2 class="text-2xl font-bold text-[#0F172A]">Purchase Orders</h2>
+                <p class="text-xs text-slate-500 mt-1">Manage and track all member purchase orders</p>
+            </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('products.orders.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <a href="{{ route('products.orders.create') }}" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-2">
                     <span class="material-symbols-outlined text-lg">add_shopping_cart</span>
                     New Order
                 </a>
@@ -12,24 +15,24 @@
         </div>
 
         {{-- Sub-Navigation Tabs --}}
-        <div class="flex items-center gap-1 border-b border-gray-200">
-            <a href="{{ route('products.index') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 -mb-px transition">
+        <div class="flex items-center gap-1 border-b border-slate-200">
+            <a href="{{ route('products.index') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 -mb-px transition">
                 Products
             </a>
-            <a href="{{ route('products.orders') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-blue-600 text-blue-600 -mb-px">
+            <a href="{{ route('products.orders') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-[#0F172A] text-[#0F172A] -mb-px">
                 Orders
             </a>
         </div>
 
         <form method="GET" class="flex flex-wrap gap-3 items-end">
             <div class="flex-1 min-w-[200px]">
-                <label class="block text-xs text-gray-500 mb-1">Search</label>
+                <label class="block text-xs font-medium text-slate-500 mb-1">Search</label>
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Member name, Staff ID, or Order #..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
             </div>
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Status</label>
-                <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <label class="block text-xs font-medium text-slate-500 mb-1">Status</label>
+                <select name="status" class="px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     <option value="">All Status</option>
                     <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
                     <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
@@ -38,67 +41,71 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Payment Type</label>
-                <select name="payment_type" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <label class="block text-xs font-medium text-slate-500 mb-1">Payment Type</label>
+                <select name="payment_type" class="px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     <option value="">All Types</option>
                     <option value="cash" {{ request('payment_type') === 'cash' ? 'selected' : '' }}>Cash</option>
                     <option value="hire_purchase" {{ request('payment_type') === 'hire_purchase' ? 'selected' : '' }}>Hire Purchase</option>
                 </select>
             </div>
-            <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition">Filter</button>
+            <button type="submit" class="bg-[#0F172A] hover:bg-slate-800 text-white px-5 py-2 rounded-[10px] text-sm font-medium transition">Filter</button>
             @if (request()->hasAny(['search', 'status', 'payment_type']))
-                <a href="{{ route('products.orders') }}" class="text-sm text-gray-500 hover:underline py-2">Clear</a>
+                <a href="{{ route('products.orders') }}" class="text-sm text-slate-500 hover:underline py-2">Clear</a>
             @endif
         </form>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                        <th class="text-left px-5 py-3 font-medium text-gray-600">Order Group</th>
-                        <th class="text-left px-5 py-3 font-medium text-gray-600">Member</th>
-                        <th class="text-center px-5 py-3 font-medium text-gray-600">Items</th>
-                        <th class="text-right px-5 py-3 font-medium text-gray-600">Total</th>
-                        <th class="text-left px-5 py-3 font-medium text-gray-600">Type</th>
-                        <th class="text-left px-5 py-3 font-medium text-gray-600">Status</th>
-                        <th class="text-left px-5 py-3 font-medium text-gray-600">Date</th>
-                        <th class="text-right px-5 py-3 font-medium text-gray-600">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse ($orders as $order)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-5 py-3 font-mono text-xs">{{ $order->order_group ?? $order->order_number }}</td>
-                            <td class="px-5 py-3 font-medium">{{ $order->member->first_name ?? '' }} {{ $order->member->last_name ?? '' }}</td>
-                            <td class="px-5 py-3 text-center">{{ $order->item_count ?? 1 }}</td>
-                            <td class="px-5 py-3 text-right font-semibold">&#8358;{{ number_format($order->total_amount, 2) }}</td>
-                            <td class="px-5 py-3 text-xs capitalize">{{ str_replace('_', ' ', $order->payment_type) }}</td>
-                            <td class="px-5 py-3">
-                                @php
-                                    $statusColors = [
-                                        'pending' => 'bg-gray-100 text-gray-600',
-                                        'approved' => 'bg-blue-100 text-blue-700',
-                                        'active' => 'bg-yellow-100 text-yellow-700',
-                                        'completed' => 'bg-green-100 text-green-700',
-                                        'rejected' => 'bg-red-100 text-red-700',
-                                    ];
-                                @endphp
-                                <span class="px-2 py-0.5 text-[10px] font-medium rounded-full {{ $statusColors[$order->status] ?? 'bg-gray-100 text-gray-600' }}">
-                                    {{ ucfirst($order->status) }}
-                                </span>
-                            </td>
-                            <td class="px-5 py-3 text-xs text-gray-500">{{ $order->created_at?->format('d M Y') }}</td>
-                            <td class="px-5 py-3 text-right">
-                                <a href="{{ route('products.orders.show', $order->order_group ?? $order->order_number) }}" class="text-blue-600 hover:underline text-xs font-medium">View</a>
-                            </td>
+        <div class="bg-white rounded-[16px] border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-100">
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Order Group</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Member</th>
+                            <th class="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Items</th>
+                            <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                            <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="px-5 py-8 text-center text-gray-500">No orders found.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @forelse ($orders as $order)
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="px-5 py-3.5 font-mono text-xs text-slate-500">{{ $order->order_group ?? $order->order_number }}</td>
+                                <td class="px-5 py-3.5">
+                                    <a href="{{ route('members.show', $order->member) }}" class="text-slate-800 font-medium hover:text-blue-600 transition">{{ $order->member->first_name ?? '' }} {{ $order->member->last_name ?? '' }}</a>
+                                </td>
+                                <td class="px-5 py-3.5 text-center text-slate-600">{{ $order->item_count ?? 1 }}</td>
+                                <td class="px-5 py-3.5 text-right font-mono font-medium text-slate-800">₦{{ number_format($order->total_amount, 2) }}</td>
+                                <td class="px-5 py-3.5">
+                                    <span class="px-2.5 py-1 text-[10px] font-medium rounded-full border {{ $order->payment_type === 'cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200' }}">
+                                        {{ $order->payment_type === 'cash' ? 'Cash' : 'Hire Purchase' }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <x-status-badge :status="$order->status" />
+                                </td>
+                                <td class="px-5 py-3.5 text-xs text-slate-500">{{ $order->created_at?->format('d M Y') }}</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <a href="{{ route('products.orders.show', $order->order_group ?? $order->order_number) }}" class="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition">
+                                        View
+                                        <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="px-5">
+                                    <x-empty-state icon="receipt_long" title="No orders found"
+                                        message="Purchase orders for cash and hire-purchase sales will appear here."
+                                        actionUrl="{{ route('products.orders.create') }}" actionLabel="Create an order" />
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         {{ $orders->links() }}

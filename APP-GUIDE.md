@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.0
+> **Version:** 3.1
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -73,7 +73,7 @@ naptin-coop/
 │   │   ├── ReportController.php        # Printable member status reports
 │   │   ├── RoleController.php          # Roles & permissions CRUD
 │   │   ├── SavingsController.php       # Deposit + withdraw + approval workflow + import/export
-│   │   ├── SettingsController.php      # Company settings + logo
+│   │   ├── SettingsController.php      # Company settings (branding, contact, content, financial)
 │   │   └── ShareController.php         # Share purchase + accounts + export
 │   │
 │   ├── Http/Requests/                  # 9 Form Request validation classes
@@ -140,7 +140,7 @@ naptin-coop/
 │       └── SavingsService.php          # Atomic deposit/withdrawal with row locking
 │
 ├── database/
-│   ├── migrations/                     # 40 migration files
+│   ├── migrations/                     # 41 migration files
 │   └── seeders/
 │       ├── DatabaseSeeder.php          # Main seeder: regions, positions, roles, admin, 5 members, loan products, products
 │       ├── PermissionsSeeder.php        # 35 permissions across 12 groups, 7 roles
@@ -153,7 +153,7 @@ naptin-coop/
 │   │   ├── manage.blade.php                  # Admin dashboard (12 tiles, permission-gated)
 │   │   ├── regions/                          # index, create, edit
 │   │   ├── roles/                            # index, create, edit
-│   │   ├── settings/edit.blade.php           # Company settings
+│   │   ├── settings/edit.blade.php           # Company settings (tabbed: Branding, Contact, Content, Financial)
 │   │   ├── statistics.blade.php              # Login stats, errors, charts
 │   │   ├── stock.blade.php                   # Stock management
 │   │   └── users/                            # index, create, edit
@@ -193,7 +193,8 @@ naptin-coop/
 | Layer | Technology | Version |
 |-------|-----------|---------|
 | Framework | Laravel | 13.x |
-| CSS | Tailwind CSS (CDN) | 3.x |
+| CSS | Tailwind CSS | 3.x |
+| UI Theme | Slate (`#0F172A` primary, slate palette, `rounded-[16px]`/`rounded-[10px]`, Material Symbols) | — |
 | Charts | Chart.js | 4.4 |
 | Fonts | Inter (Google Fonts) | — |
 | Icons | Material Symbols (Google) | — |
@@ -240,7 +241,7 @@ naptin-coop/
 └─────────────────────────┘
 ```
 
-All sidebar items are permission-gated using `@can` directives. The sidebar is dynamic — items appear/disappear based on the logged-in user's role.
+All sidebar items are permission-gated using `@can` directives. The sidebar is dynamic — items appear/disappear based on the logged-in user's role. The sidebar uses the slate dark theme (`bg-[#0F172A]`) with white text icons and `rounded-[10px]` active/hover states.
 
 ---
 
@@ -301,7 +302,7 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 | Table | Purpose |
 |-------|---------|
 | `users` | System user accounts (with profile_photo_path, member_id, last_login_at) |
-| `companies` | Singleton company settings (name, logo_path, thrift_amount, footer_note, etc.) |
+| `companies` | Singleton company settings (name, logo_path, banner_path, theme_color, secondary_color, description, short_history, social links, thrift_amount, footer_note, etc.) |
 | `activity_logs` | Login/audit trail (user_id, event, description, ip_address, user_agent) |
 | `roles` | Spatie permission roles |
 | `permissions` | Spatie permission permissions (35 permissions) |
@@ -869,7 +870,7 @@ All receipts:
 The portal provides members with a self-service interface accessible at `/my`.
 
 ### Portal Layout
-- Separate blue-gradient sidebar (distinct from admin's dark sidebar)
+- Separate blue-gradient sidebar (`from-[#0F172A] to-[#1e3a5f]`, distinct from admin's dark sidebar)
 - Permission-gated: only users with a linked `member_id` can access
 - Protected by `portal-member` middleware
 - Top menu: Shop (with "New" badge), Cart (live AJAX badge), Notification bell (dropdown with 5 recent + "View All"), User dropdown
@@ -928,7 +929,7 @@ The portal provides members with a self-service interface accessible at `/my`.
 - **Guarantor Responses:** Members accept/decline guarantor requests from the portal
 - **Product Ordering:** Browse → AJAX cart (no page refresh, live badge) → checkout
 - **Notifications:** Dropdown in top menu (5 recent, mark all read) + full notifications page
-- **Profile:** Edit name, email, password, photo (uses portal blue theme)
+- **Profile:** Edit name, email, password, photo (uses portal slate-blue theme)
 - **Shop "New" Badge:** Green badge on Shop link if products were added in last 7 days
 
 ---

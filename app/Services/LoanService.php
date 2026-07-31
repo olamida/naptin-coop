@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Loan;
 use App\Models\LoanProduct;
+use App\Models\LoanRepaymentSchedule;
 use App\Models\Member;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -29,10 +30,16 @@ class LoanService
         $year = date('Y');
         $prefix = 'REG/' . $year . '/';
 
-        return DB::transaction(function () use ($prefix, $year) {
-            $count = Loan::whereYear('created_at', $year)->lockForUpdate()->count() + 1;
+        return DB::transaction(function () use ($prefix) {
+            $last = Loan::withTrashed()
+                ->where('loan_number', 'like', $prefix . '%')
+                ->lockForUpdate()
+                ->orderByRaw('CAST(SUBSTRING(loan_number, -6) AS UNSIGNED) DESC')
+                ->value('loan_number');
 
-            return $prefix . str_pad($count, 6, '0', STR_PAD_LEFT);
+            $next = $last ? ((int) substr($last, -6)) + 1 : 1;
+
+            return $prefix . str_pad($next, 6, '0', STR_PAD_LEFT);
         });
     }
 
@@ -105,5 +112,85 @@ class LoanService
             'principal_portion' => $principalPortion,
             'interest_portion' => $interestPortion,
         ];
+    }
+
+    /**
+     * Generate the amortization schedule for a loan (flat-rate equal installments).
+     * Mirrors the wizard calculation; rounding drift is absorbed on the final installment.
+     */
+    public function generateRepaymentSchedules(Loan $loan): void
+    {
+        $amount = (float) $loan->amount;
+        $rate = (float) $loan->interest_rate;
+        $tenure = max(1, (int) $loan->tenure_months);
+
+        $monthlyPrincipal = round($amount / $tenure, 2);
+        $monthlyInterest = round(($amount * ($rate / 100)) / $tenure, 2);
+
+        $balance = $amount;
+        $rows = [];
+        for ($i = 1; $i <= $tenure; $i++) {
+            $principal = $monthlyPrincipal;
+            $interest = $monthlyInterest;
+            if ($i === $tenure) {
+                $principal = round($amount - $monthlyPrincipal * ($tenure - 1), 2);
+                $interest = round($amount * ($rate / 100) - $monthlyInterest * ($tenure - 1), 2);
+            }
+            $balance = round($balance - $principal, 2);
+
+            $rows[] = [
+                'loan_id' => $loan->id,
+                'installment_number' => $i,
+                'due_date' => now()->addMonths($i)->startOfMonth()->toDateString(),
+                'principal_amount' => $principal,
+                'interest_amount' => $interest,
+                'total_amount' => round($principal + $interest, 2),
+                'balance_after' => $balance,
+                'status' => 'pending',
+                'amount_paid' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        LoanRepaymentSchedule::where('loan_id', $loan->id)->delete();
+        LoanRepaymentSchedule::insert($rows);
+    }
+
+    /**
+     * Apply a principal payment across the loan's unpaid schedules, marking
+     * fully covered installments as paid (in installment order).
+     */
+    public function applyPrincipalToSchedules(Loan $loan, float $principalPaid, string $paymentDate): void
+    {
+        $remaining = round($principalPaid, 2);
+        $schedules = $loan->schedules()
+            ->where('status', '!=', 'paid')
+            ->orderBy('installment_number')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($schedules as $schedule) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $owed = round((float) $schedule->principal_amount - (float) $schedule->amount_paid, 2);
+            if ($owed <= 0) {
+                continue;
+            }
+
+            $apply = min($remaining, $owed);
+            $newPaid = round((float) $schedule->amount_paid + $apply, 2);
+            $fullyPaid = $newPaid >= (float) $schedule->principal_amount;
+
+            $schedule->update([
+                'amount_paid' => $newPaid,
+                'status' => $fullyPaid ? 'paid' : $schedule->status,
+                'paid_at' => $fullyPaid ? $paymentDate : $schedule->paid_at,
+            ]);
+
+            $remaining = round($remaining - $apply, 2);
+        }
     }
 }

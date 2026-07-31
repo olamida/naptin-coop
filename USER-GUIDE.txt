@@ -1,7 +1,7 @@
 ===========================================================================
   NAPTIN STAFF THRIFT COOPERATIVE SOCIETY
   APPLICATION USER & USAGE GUIDE
-  Version 3.0
+  Version 3.1
 ===========================================================================
 
 TABLE OF CONTENTS
@@ -68,11 +68,20 @@ ACCESS URL: http://localhost/dev-angle/Starter-folder/naptin-coop/public
 
 2.1 LOGGING IN
 --------------
+  The login page uses the new slate-themed design with:
+    - Clean white card on a slate-50 background
+    - Company logo centred at top
+    - Rounded-[16px] card with subtle border
+    - Primary "Sign In" button in dark slate (#0F172A)
+    - Password visibility toggle
+    - "Remember me" and "Forgot Password?" links
+    - Link to create an account or return to homepage
+
   Step 1: Open your web browser
   Step 2: Navigate to the application URL
-  Step 3: Click "Login"
+  Step 3: The login page appears with the cooperative branding
   Step 4: Enter your email address and password
-  Step 5: Click "Sign In"
+  Step 5: Click "Sign In" (dark slate button)
 
   Note: Members with linked accounts use the same login page.
         Your role determines what you see after login.
@@ -86,8 +95,8 @@ ACCESS URL: http://localhost/dev-angle/Starter-folder/naptin-coop/public
   Step 5: Log in with your new password
 
 2.3 MAIN LAYOUT (ADMIN SIDEBAR)
---------------------------------
-  After login, you see:
+-------------------------------
+  After login, you see the slate-themed interface:
 
   TOP BAR:
     - Page title
@@ -96,7 +105,7 @@ ACCESS URL: http://localhost/dev-angle/Starter-folder/naptin-coop/public
       - "My Profile" — edit name, email, password, photo
       - "Logout" — sign out
 
-  LEFT SIDEBAR (permission-gated):
+  LEFT SIDEBAR (dark slate, permission-gated):
     ┌──────────────────────────┐
     │  [Cooperative Logo]      │
     │  NAPTIN Staff Thrift     │
@@ -1164,7 +1173,7 @@ The system uses 7 predefined roles with 35 granular permissions.
 
   13.2 PORTAL LAYOUT
 ------------------
-  - Separate blue-gradient sidebar (distinct from admin's dark theme)
+   - Separate blue-gradient sidebar (`from-[#0F172A] to-[#1e3a5f]`, distinct from admin's slate theme)
   - Simplified navigation focused on member actions
   - Top menu bar with:
     - "Shop" link with green "New" badge (if products added in last 7 days)
@@ -1212,7 +1221,7 @@ The system uses 7 predefined roles with 35 granular permissions.
   │                          │ mark read/mark all read              │
   ├──────────────────────────┼──────────────────────────────────────┤
   │ My Profile               │ Edit name, email, password, photo    │
-  │ (via user dropdown)      │ (uses portal blue theme)            │
+      │  (via user dropdown)      │ (uses portal slate-blue theme)       │
   └──────────────────────────┴──────────────────────────────────────┘
 
 13.4 MEMBER DASHBOARD FEATURES
@@ -1347,27 +1356,44 @@ The system uses 7 predefined roles with 35 granular permissions.
 
 14.2 COMPANY SETTINGS (/admin/settings)
 ----------------------------------------
-  EDITABLE FIELDS:
-    - Company Name
-    - Slogan
-    - Registration Number
-    - Email
-    - Phone
-    - Address
-    - Website URL
-    - Logo (image upload, max 2MB)
-    - Thrift Amount (₦)
-    - Membership Fee (₦)
-    - Savings Interest Rate (%)
-    - Loan Interest Rate (%)
-    - Max Loan Multiplier
-    - Footer Note (shown on receipts)
+   The settings page uses a 4-tab layout (Alpine.js powered) for organisation:
 
-  LOGO HANDLING:
-    - Upload: select image file
-    - Remove: check "Remove logo" checkbox
-    - Logo stored in: storage/app/public/company/
-    - Displayed in: sidebar, all receipts, reports
+   TAB 1 — BRANDING:
+     - Company Name
+     - Slogan
+     - Registration Number
+     - Logo (image upload, max 2MB; display in sidebar, receipts, reports)
+       - Upload: select image file
+       - Remove: check "Remove logo" checkbox
+       - Stored in: storage/app/public/company/
+     - Banner Image (upload, max 2MB; displayed on welcome/landing pages)
+       - Remove: check "Remove banner" checkbox
+     - Theme Color (color picker, hex, default #2563eb)
+       - Live preview on the settings page sidebar
+     - Secondary Color (color picker, hex, default #059669)
+
+   TAB 2 — CONTACT & SOCIAL:
+     - Email
+     - Phone
+     - Address
+     - Website URL
+     - Opening Hours
+     - Facebook URL
+     - Twitter URL
+     - Instagram URL
+     - LinkedIn URL
+
+   TAB 3 — CONTENT:
+     - Description (textarea, company overview)
+     - Short History (textarea, cooperative background)
+     - Footer Note (shown on all receipts/statements)
+
+   TAB 4 — FINANCIAL:
+     - Thrift Amount (₦) — default monthly thrift contribution
+     - Membership Fee (₦)
+     - Savings Interest Rate (% per annum)
+     - Loan Interest Rate (% per annum)
+     - Max Loan Multiplier (max loan as multiple of savings, default 3x)
 
 14.3 USER MANAGEMENT (/admin/users)
 ------------------------------------
@@ -1694,8 +1720,8 @@ MEMBER — Self-service portal only
 END OF USER GUIDE
 ===========================================================================
 
-Document Version: 3.0
-Last Updated: July 26, 2026
+Document Version: 3.2
+Last Updated: July 30, 2026
 System: NAPTIN Staff Thrift Cooperative Society Application
 Platform: Laravel 13 + Tailwind CSS + MySQL 8
 

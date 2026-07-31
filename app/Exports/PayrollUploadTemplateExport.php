@@ -28,6 +28,7 @@ class PayrollUploadTemplateExport implements FromCollection, WithHeadings
                     'actual_loan_repayment' => $deduction->expected_loan_repayment,
                     'actual_share_contribution' => $deduction->expected_share_contribution,
                     'actual_purchase' => $deduction->expected_purchase ?? 0,
+                    'actual_arrears' => $deduction->expected_arrears ?? 0,
                 ];
             });
     }
@@ -41,6 +42,7 @@ class PayrollUploadTemplateExport implements FromCollection, WithHeadings
             'Actual Loan Repayment',
             'Actual Share Contribution',
             'Actual Purchase',
+            'Actual Arrears',
         ];
     }
 }

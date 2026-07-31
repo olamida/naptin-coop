@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Share Certificate — {{ $account->member->first_name ?? '' }} {{ $account->member->last_name ?? '' }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; color: #1f2937; background: #f3f4f6; padding: 2rem; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #1f2937; background: #f3f4f6; padding: 2rem; }
         .certificate-wrapper { max-width: 900px; margin: 0 auto; }
         .no-print { margin-bottom: 1.5rem; text-align: right; }
         .no-print button { background: #1e40af; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
@@ -243,7 +242,7 @@
             {{-- Title --}}
             <div class="cert-title">
                 <h1>Share Certificate</h1>
-                <div class="cert-number">CERT/SHR/{{ $account->member->staff_id ?? 'N/A' }}/{{ now()->format('Y') }}</div>
+                <div class="cert-number">CERT/SHR/{{ $account->member->staff_id_display ?? 'N/A' }}/{{ now()->format('Y') }}</div>
                 <div class="cert-line"></div>
             </div>
 
@@ -254,7 +253,7 @@
                     <br>
                     <span class="member-name">{{ $account->member->first_name ?? 'N/A' }} {{ $account->member->middle_name ?? '' }} {{ $account->member->last_name ?? '' }}</span>
                     <br>
-                    <span class="staff-id">Staff ID: {{ $account->member->staff_id ?? 'N/A' }}</span>
+                    <span class="staff-id">Staff ID: {{ $account->member->staff_id_display ?? 'N/A' }}</span>
                     <br><br>
                     is a registered member of the NAPTIN Staff Thrift Cooperative Society and holds the following shares:
                 </div>
@@ -267,7 +266,7 @@
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Staff ID</span>
-                        <span class="detail-value">{{ $account->member->staff_id ?? 'N/A' }}</span>
+                        <span class="detail-value">{{ $account->member->staff_id_display ?? 'N/A' }}</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Region</span>

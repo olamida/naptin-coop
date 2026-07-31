@@ -2,18 +2,18 @@
     <div class="space-y-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <a href="{{ route('products.orders') }}" class="text-gray-500 hover:text-gray-700">&larr;</a>
+                <a href="{{ route('products.orders') }}" class="text-slate-500 hover:text-slate-700">&larr;</a>
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Order {{ $orderGroup }}</h2>
-                    <p class="text-sm text-gray-500">{{ $orders->first()->member->full_name ?? '' }} &middot; {{ $orders->count() }} item(s)</p>
+                    <h2 class="text-2xl font-bold text-[#0F172A]">Order {{ $orderGroup }}</h2>
+                    <p class="text-sm text-slate-500">{{ $orders->first()->member->full_name ?? '' }} &middot; {{ $orders->count() }} item(s)</p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('receipts.purchase-order', $orders->first()) }}" target="_blank" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm flex items-center gap-1.5">
+                <a href="{{ route('receipts.purchase-order', $orders->first()) }}" target="_blank" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-[10px] text-sm flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-lg">print</span>
                     Print Receipt
                 </a>
-                <a href="{{ route('invoices.purchase.show', $orders->first()) }}" target="_blank" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm flex items-center gap-1.5">
+                <a href="{{ route('invoices.purchase.show', $orders->first()) }}" target="_blank" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-[10px] text-sm flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-lg">receipt</span>
                     Invoice
                 </a>
@@ -46,25 +46,25 @@
                 ];
             }
         @endphp
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 class="text-sm font-semibold text-gray-800 mb-4">Order Progress</h3>
+        <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6">
+            <h3 class="text-sm font-semibold text-[#0F172A] mb-4">Order Progress</h3>
             <x-stepper :steps="$poSteps" :current="$poStepperCurrent" />
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 overflow-hidden">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-200">
+                <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
-                        <th class="text-left px-5 py-3 font-medium text-gray-600">Product</th>
-                        <th class="text-center px-5 py-3 font-medium text-gray-600">Qty</th>
-                        <th class="text-right px-5 py-3 font-medium text-gray-600">Unit Price</th>
-                        <th class="text-right px-5 py-3 font-medium text-gray-600">Subtotal</th>
-                        <th class="text-left px-5 py-3 font-medium text-gray-600">Status</th>
+                        <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Product</th>
+                        <th class="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Qty</th>
+                        <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Unit Price</th>
+                        <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Subtotal</th>
+                        <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody class="divide-y divide-slate-50">
                     @foreach ($orders as $order)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-slate-50">
                             <td class="px-5 py-3 font-medium">{{ $order->product->name ?? 'N/A' }}</td>
                             <td class="px-5 py-3 text-center">{{ $order->quantity }}</td>
                             <td class="px-5 py-3 text-right">&#8358;{{ number_format($order->unit_price, 2) }}</td>
@@ -81,9 +81,9 @@
                         </tr>
                     @endforeach
                 </tbody>
-                <tfoot class="bg-gray-50 border-t border-gray-200">
+                <tfoot class="bg-slate-50 border-t border-slate-200">
                     <tr>
-                        <td colspan="3" class="px-5 py-3 text-right font-semibold text-gray-700">Total:</td>
+                        <td colspan="3" class="px-5 py-3 text-right font-semibold text-slate-700">Total:</td>
                         <td class="px-5 py-3 text-right font-bold text-lg">&#8358;{{ number_format($orders->sum('total_amount'), 2) }}</td>
                         <td></td>
                     </tr>
@@ -95,13 +95,13 @@
             @if ($orders->first()->status === 'pending')
                 <form method="POST" action="{{ route('products.orders.approve', $orders->first()) }}">
                     @csrf
-                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Approve Order</button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium">Approve Order</button>
                 </form>
             @endif
             @if (in_array($orders->first()->status, ['approved', 'active']))
                 <form method="POST" action="{{ route('products.orders.collect', $orders->first()) }}">
                     @csrf
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Mark as Collected</button>
+                    <button type="submit" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium">Mark as Collected</button>
                 </form>
             @endif
         </div>

@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Savings\ApproveDeposit;
+use App\Actions\Savings\ApproveWithdrawal;
+use App\Actions\Savings\PostDeposit;
+use App\Actions\Savings\RequestWithdrawal;
 use App\Exports\SavingsExport;
 use App\Imports\SavingsImport;
+use App\Models\ImportLog;
 use App\Models\Member;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
-use App\Notifications\WithdrawalStatusNotification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -46,9 +48,9 @@ class SavingsController extends Controller
         $stats = [
             'total_deposits' => SavingsTransaction::where('type', 'deposit')->where('status', 'completed')->sum('amount'),
             'total_withdrawals' => SavingsTransaction::where('type', 'withdrawal')->where('status', 'completed')->sum('amount'),
-            'total_balance' => \App\Models\SavingsAccount::sum('balance'),
+            'total_balance' => SavingsAccount::sum('balance'),
             'pending_count' => $pendingCount,
-            'total_accounts' => \App\Models\SavingsAccount::count(),
+            'total_accounts' => SavingsAccount::count(),
             'this_month' => SavingsTransaction::where('transaction_date', '>=', now()->startOfMonth())->sum('amount'),
         ];
 
@@ -77,7 +79,6 @@ class SavingsController extends Controller
         }
 
         $accounts = $query->paginate(20)->withQueryString();
-
         $totalBalance = SavingsAccount::sum('balance');
 
         return view('savings.accounts', compact('accounts', 'totalBalance'));
@@ -109,20 +110,18 @@ class SavingsController extends Controller
             $evidencePath = $request->file('payment_evidence')->store('payment-evidence', 'public');
         }
 
-        $savingsService = new \App\Services\SavingsService();
-        $txn = $savingsService->recordDeposit($validated['member_id'], $amount, $validated['notes'] ?? null, 'manual');
+        $txn = PostDeposit::run(
+            $validated['member_id'],
+            $amount,
+            $validated['notes'] ?? null,
+            'manual',
+            $evidencePath
+        );
 
-        if ($evidencePath) {
-            $txn->update(['payment_evidence_path' => $evidencePath]);
-        }
-
-        // Notify the member
         if ($txn->savingsAccount && $txn->savingsAccount->member && $txn->savingsAccount->member->user) {
             try {
                 $txn->savingsAccount->member->user->notify(new \App\Notifications\DepositRecordedNotification($txn));
-            } catch (\Exception $e) {
-                \Log::error('Deposit notification failed: ' . $e->getMessage());
-            }
+            } catch (\Exception $e) {}
         }
 
         return redirect()->route('savings.accounts')
@@ -149,26 +148,19 @@ class SavingsController extends Controller
         ]);
 
         $amount = round($validated['amount'], 2);
-
-        $savingsService = new \App\Services\SavingsService();
-        $transaction = $savingsService->recordWithdrawalRequest($validated['member_id'], $amount, $validated['notes'] ?? null, 'manual');
+        $evidencePath = null;
 
         if ($request->hasFile('payment_evidence')) {
             $evidencePath = $request->file('payment_evidence')->store('payment-evidence', 'public');
-            $transaction->update(['payment_evidence_path' => $evidencePath]);
         }
 
-        // Notify treasurers/admins about pending withdrawal
-        try {
-            $approverUsers = \App\Models\User::where('id', '!=', auth()->id())->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['super-admin', 'admin', 'treasurer']);
-            })->get();
-            foreach ($approverUsers as $user) {
-                $user->notify(new \App\Notifications\WithdrawalRequestedNotification($transaction));
-            }
-        } catch (\Exception $e) {
-            \Log::error('Withdrawal notification failed: ' . $e->getMessage());
-        }
+        $transaction = RequestWithdrawal::run(
+            $validated['member_id'],
+            $amount,
+            $validated['notes'] ?? null,
+            'manual',
+            $evidencePath
+        );
 
         return redirect()->route('savings.accounts')
             ->with('success', 'Withdrawal request of ₦' . number_format($amount, 2) . ' submitted for approval. Reference: ' . $transaction->reference);
@@ -193,34 +185,16 @@ class SavingsController extends Controller
 
     public function approveDeposit(SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
     {
-        $this->authorize('deposit-savings');
-
-        if ($transaction->type !== 'deposit' || $transaction->status !== 'pending') {
-            return back()->withErrors(['error' => 'Only pending deposits can be confirmed.']);
-        }
-
-        $savingsService = new \App\Services\SavingsService();
         try {
-            $transaction = $savingsService->approveDeposit($transaction);
-        } catch (\Exception $e) {
+            $transaction = ApproveDeposit::run($transaction);
+            return back()->with('success', 'Deposit of ₦' . number_format($transaction->amount, 2) . ' confirmed successfully. Balance updated.');
+        } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        if ($transaction->savingsAccount && $transaction->savingsAccount->member && $transaction->savingsAccount->member->user) {
-            try {
-                $transaction->savingsAccount->member->user->notify(new \App\Notifications\DepositRecordedNotification($transaction));
-            } catch (\Exception $e) {
-                \Log::error('Deposit notification failed: ' . $e->getMessage());
-            }
-        }
-
-        return back()->with('success', 'Deposit of ₦' . number_format($transaction->amount, 2) . ' confirmed successfully. Balance updated.');
     }
 
     public function rejectDeposit(Request $request, SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
     {
-        $this->authorize('deposit-savings');
-
         if ($transaction->type !== 'deposit' || $transaction->status !== 'pending') {
             return back()->withErrors(['error' => 'Only pending deposits can be rejected.']);
         }
@@ -241,34 +215,16 @@ class SavingsController extends Controller
 
     public function approveWithdrawal(SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
     {
-        $this->authorize('withdraw-savings');
-
-        if ($transaction->type !== 'withdrawal' || $transaction->status !== 'pending') {
-            return back()->withErrors(['error' => 'Only pending withdrawals can be approved.']);
-        }
-
-        $savingsService = new \App\Services\SavingsService();
         try {
-            $transaction = $savingsService->approveWithdrawal($transaction);
-        } catch (\Exception $e) {
+            $transaction = ApproveWithdrawal::run($transaction);
+            return back()->with('success', 'Withdrawal of ₦' . number_format($transaction->amount, 2) . ' approved and processed successfully.');
+        } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        if ($transaction->savingsAccount && $transaction->savingsAccount->member && $transaction->savingsAccount->member->user) {
-            try {
-                $transaction->savingsAccount->member->user->notify(new WithdrawalStatusNotification($transaction, 'pending'));
-            } catch (\Exception $e) {
-                \Log::error('Withdrawal notification failed: ' . $e->getMessage());
-            }
-        }
-
-        return back()->with('success', 'Withdrawal of ₦' . number_format($transaction->amount, 2) . ' approved and processed successfully.');
     }
 
     public function rejectWithdrawal(Request $request, SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
     {
-        $this->authorize('withdraw-savings');
-
         if ($transaction->type !== 'withdrawal' || $transaction->status !== 'pending') {
             return back()->withErrors(['error' => 'Only pending withdrawals can be rejected.']);
         }
@@ -286,10 +242,10 @@ class SavingsController extends Controller
 
         if ($transaction->savingsAccount && $transaction->savingsAccount->member && $transaction->savingsAccount->member->user) {
             try {
-                $transaction->savingsAccount->member->user->notify(new WithdrawalStatusNotification($transaction, 'pending'));
-            } catch (\Exception $e) {
-                \Log::error('Withdrawal rejection notification failed: ' . $e->getMessage());
-            }
+                $transaction->savingsAccount->member->user->notify(
+                    new \App\Notifications\WithdrawalStatusNotification($transaction, 'pending')
+                );
+            } catch (\Exception $e) {}
         }
 
         return back()->with('success', 'Withdrawal request rejected.');
@@ -311,12 +267,20 @@ class SavingsController extends Controller
             'import_file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
+        $batchId = (string) Str::uuid();
+        $import = new SavingsImport($batchId);
+        $fileName = $request->file('import_file')->getClientOriginalName();
+
         try {
-            Excel::import(new SavingsImport, $request->file('import_file'));
+            Excel::import($import, $request->file('import_file'));
+
+            ImportLog::record($batchId, 'savings', $fileName, $import->importStats());
 
             return redirect()->route('savings.index')
-                ->with('success', 'Savings transactions imported successfully.');
+                ->with('success', 'Savings transactions imported successfully. Batch: ' . substr($batchId, 0, 8) . '…');
         } catch (\Exception $e) {
+            ImportLog::record($batchId, 'savings', $fileName, $import->importStats(), 'failed', $e->getMessage());
+
             return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
         }
     }
@@ -330,10 +294,10 @@ class SavingsController extends Controller
 
         $callback = function () {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['staff_id', 'amount', 'type', 'transaction_date', 'notes']);
-            fputcsv($file, ['STF001', '5000', 'deposit', '2026-01-15', 'January savings deduction']);
-            fputcsv($file, ['STF002', '3000', 'deposit', '2026-01-15', 'January savings deduction']);
-            fputcsv($file, ['STF001', '2000', 'withdrawal', '2026-02-01', 'February withdrawal']);
+            fputcsv($file, ['staff_id', 'amount', 'type', 'transaction_date', 'notes', 'external_reference']);
+            fputcsv($file, ['STF001', '5000', 'deposit', '2026-01-15', 'January savings deduction', '']);
+            fputcsv($file, ['STF002', '3000', 'deposit', '2026-01-15', 'January savings deduction', '']);
+            fputcsv($file, ['STF001', '2000', 'withdrawal', '2026-02-01', 'February withdrawal', '']);
             fclose($file);
         };
 

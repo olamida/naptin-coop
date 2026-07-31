@@ -18,4 +18,14 @@ enum LoanType: string
             self::Special => 'Special',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Regular => 'blue',
+            self::Emergency => 'danger',
+            self::Educational => 'emerald',
+            self::Special => 'purple',
+        };
+    }
 }

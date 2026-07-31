@@ -1,33 +1,33 @@
 <x-app-layout title="{{ $member->first_name }} {{ $member->last_name }} - Loans">
     <div class="space-y-6">
         <div class="flex items-center gap-3">
-            <a href="{{ route('members.show', $member) }}" class="text-gray-500 hover:text-gray-700">&larr;</a>
+            <a href="{{ route('members.show', $member) }}" class="text-slate-500 hover:text-slate-700">&larr;</a>
             <div>
-                <h2 class="text-2xl font-bold text-gray-800">Loan Records</h2>
-                <p class="text-sm text-gray-500">{{ $member->full_name }} &middot; {{ $member->staff_id }}</p>
+                <h2 class="text-2xl font-bold text-[#0F172A]">Loan Records</h2>
+                <p class="text-sm text-slate-500">{{ $member->full_name }} &middot; {{ $member->staff_id_display }}</p>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 overflow-hidden">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-200">
+                <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Loan #</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Type</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Outstanding</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
+                        <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Loan #</th>
+                        <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                        <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                        <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Outstanding</th>
+                        <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody class="divide-y divide-slate-50">
                     @forelse ($loans as $loan)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 font-mono text-xs">{{ $loan->loan_number }}</td>
-                            <td class="px-4 py-3 text-gray-700">{{ ucfirst($loan->type) }}</td>
-                            <td class="px-4 py-3 text-right">₦{{ number_format($loan->amount, 2) }}</td>
-                            <td class="px-4 py-3 text-right font-medium">₦{{ number_format($loan->outstanding, 2) }}</td>
-                            <td class="px-4 py-3">
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-5 py-3.5 font-mono text-xs">{{ $loan->loan_number }}</td>
+                            <td class="px-5 py-3.5 text-slate-700">{{ ucfirst($loan->type) }}</td>
+                            <td class="px-5 py-3.5 text-right">₦{{ number_format($loan->amount, 2) }}</td>
+                            <td class="px-5 py-3.5 text-right font-medium">₦{{ number_format($loan->outstanding, 2) }}</td>
+                            <td class="px-5 py-3.5">
                                 <span class="px-2 py-1 text-xs rounded-full
                                     {{ $loan->status === 'completed' ? 'bg-green-100 text-green-700' : '' }}
                                     {{ $loan->status === 'repaying' ? 'bg-blue-100 text-blue-700' : '' }}
@@ -38,10 +38,10 @@
                                     {{ ucfirst($loan->status) }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-right space-x-2">
+                            <td class="px-5 py-3.5 text-right space-x-2">
                                 <a href="{{ route('loans.show', $loan) }}" class="text-blue-600 hover:underline text-xs">View</a>
                                 @if ($loan->status === 'disbursed' || $loan->status === 'repaying')
-                                    <a href="{{ route('receipts.loan-disbursement', $loan) }}" target="_blank" class="text-gray-500 hover:text-gray-700">
+                                    <a href="{{ route('receipts.loan-disbursement', $loan) }}" target="_blank" class="text-slate-500 hover:text-slate-700">
                                         <span class="material-symbols-outlined text-[16px]">print</span>
                                     </a>
                                 @endif
@@ -49,7 +49,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">No loans found.</td>
+                            <td colspan="6" class="px-5 py-8 text-center text-slate-500">No loans found.</td>
                         </tr>
                     @endforelse
                 </tbody>

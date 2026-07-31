@@ -11,9 +11,9 @@ use App\Models\SavingsTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use App\Services\LoanService;
+use App\Services\CartService;
 use Illuminate\Support\Facades\Log;
 
 class MemberPortalController extends Controller
@@ -21,6 +21,11 @@ class MemberPortalController extends Controller
     private function member()
     {
         return Auth::user()->member;
+    }
+
+    private function cartService(): CartService
+    {
+        return new CartService('member', Auth::id(), $this->member()->id);
     }
 
     public function index(): \Illuminate\View\View
@@ -48,10 +53,43 @@ class MemberPortalController extends Controller
             ? $savingsAccount->transactions()->where('type', 'withdrawal')->where('status', 'pending')->sum('amount')
             : 0;
 
+        $nextDue = null;
+        foreach ($activeLoans as $loan) {
+            $schedule = $loan->schedules()->where('status', 'unpaid')->orderBy('due_date')->first();
+            $candidate = $schedule
+                ? (object) [
+                    'loan' => $loan,
+                    'amount' => (float) $schedule->principal_amount + (float) $schedule->interest_amount,
+                    'due_date' => $schedule->due_date,
+                ]
+                : (object) [
+                    'loan' => $loan,
+                    'amount' => (float) $loan->monthly_repayment,
+                    'due_date' => now()->addMonth()->startOfMonth(),
+                ];
+
+            if (! $nextDue || $candidate->due_date < $nextDue->due_date) {
+                $nextDue = $candidate;
+            }
+        }
+        if ($nextDue) {
+            $nextDue->days_until = max(now()->startOfDay()->diffInDays($nextDue->due_date->startOfDay(), false), 0);
+            $nextDue->overdue = now()->startOfDay()->gt($nextDue->due_date->startOfDay());
+        }
+
+        $emergencyProduct = LoanProduct::where('slug', 'emergency')
+            ->orWhere('name', 'like', '%emergency%')
+            ->first();
+        $milestoneTarget = $emergencyProduct ? (float) $emergencyProduct->max_amount : 100000;
+        $milestoneSavings = round($milestoneTarget / 3, 2);
+        $milestonePercent = $milestoneSavings > 0 ? min(round(($totalSavings / $milestoneSavings) * 100), 100) : 0;
+        $milestoneRemaining = max(round($milestoneSavings - $totalSavings, 2), 0);
+
         return view('portal.dashboard', compact(
             'member', 'savingsAccount', 'shareAccount', 'activeLoans',
             'recentSavings', 'recentPurchases', 'totalSavings', 'totalShares', 'shareCount',
-            'totalLoanBalance', 'pendingGuarantorCount', 'pendingWithdrawals', 'pendingWithdrawalAmount'
+            'totalLoanBalance', 'pendingGuarantorCount', 'pendingWithdrawals', 'pendingWithdrawalAmount',
+            'nextDue', 'milestoneTarget', 'milestonePercent', 'milestoneRemaining'
         ));
     }
 
@@ -135,7 +173,34 @@ class MemberPortalController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        return view('portal.loan-apply', compact('member', 'loanProducts', 'otherMembers'));
+        $savingsBalance = (float) ($member->savingsAccount?->balance ?? 0);
+
+        $guarantorExposures = \App\Models\LoanGuarantor::query()
+            ->where('status', \App\Enums\GuarantorStatus::Accepted->value)
+            ->whereHas('loan', fn($q) => $q->whereIn('status', ['approved', 'disbursed', 'repaying']))
+            ->with('loan:id,outstanding')
+            ->get()
+            ->groupBy('member_id')
+            ->map(fn($group) => round((float) $group->sum(fn($g) => (float) $g->loan->outstanding), 2));
+
+        $guarantorLimit = 500000;
+
+        $guarantorList = $otherMembers->map(fn($m) => [
+            'id' => $m->id,
+            'name' => $m->full_name ?? ($m->first_name . ' ' . $m->last_name),
+            'staff' => $m->staff_id_display ?? $m->staff_id,
+            'exposure' => round((float) ($guarantorExposures[$m->id] ?? 0), 2),
+        ])->values();
+
+        return view('portal.loan-apply', compact(
+            'member',
+            'loanProducts',
+            'otherMembers',
+            'savingsBalance',
+            'guarantorExposures',
+            'guarantorLimit',
+            'guarantorList'
+        ));
     }
 
     public function submitLoanApplication(Request $request): \Illuminate\Http\RedirectResponse
@@ -212,6 +277,7 @@ class MemberPortalController extends Controller
             $loan = Loan::create([
                 'member_id' => $member->id,
                 'loan_product_id' => $validated['loan_product_id'],
+                'loan_number' => $loanNumber,
                 'type' => $validated['type'],
                 'amount' => $validated['amount'],
                 'interest_rate' => $validated['interest_rate'],
@@ -242,14 +308,7 @@ class MemberPortalController extends Controller
                 }
             }
 
-            LoanApprovalLog::create([
-                'loan_id' => $loan->id,
-                'user_id' => auth()->id(),
-                'action' => 'submitted',
-                'old_status' => null,
-                'new_status' => 'pending',
-                'notes' => 'Loan application submitted by member.',
-            ]);
+            \App\Models\LoanApprovalLog::record($loan->id, 'submitted', null, 'pending', 'Loan application submitted by member.');
         });
 
         try {
@@ -289,19 +348,13 @@ class MemberPortalController extends Controller
             $evidencePath = $request->file('payment_evidence')->store('payment-evidence', 'public');
         }
 
-        $transaction = SavingsTransaction::create([
-            'savings_account_id' => $account->id,
-            'reference' => 'SAV/DEP/' . strtoupper(Str::random(8)),
-            'type' => 'deposit',
-            'amount' => $amount,
-            'balance_before' => $account->balance,
-            'balance_after' => $account->balance,
-            'source' => 'member_request',
-            'notes' => $validated['notes'] ?? 'Deposit requested by member',
-            'payment_evidence_path' => $evidencePath,
-            'transaction_date' => now(),
-            'status' => 'pending',
-        ]);
+        $transaction = app(\App\Services\SavingsService::class)->recordDeposit(
+            $member->id, $amount, $validated['notes'] ?? null, 'member_request', $evidencePath
+        );
+
+        if ($transaction->status === 'completed') {
+            return back()->with('success', 'Deposit of ₦' . number_format($amount, 2) . ' auto-approved and credited.');
+        }
 
         try {
             $approverUsers = \App\Models\User::where('id', '!=', auth()->id())->whereHas('roles', function ($q) {
@@ -378,42 +431,14 @@ class MemberPortalController extends Controller
 
     public function cart(): \Illuminate\View\View
     {
-        $cart = session()->get('cart', []);
-        $items = [];
-        $total = 0;
-
-        foreach ($cart as $productId => $quantity) {
-            $product = \App\Models\Product::find($productId);
-            if ($product) {
-                $items[] = [
-                    'product' => $product,
-                    'quantity' => $quantity,
-                    'subtotal' => $product->unit_price * $quantity,
-                ];
-                $total += $product->unit_price * $quantity;
-            }
-        }
+        ['items' => $items, 'total' => $total] = $this->cartService()->resolveCartItems();
 
         return view('portal.cart', ['items' => $items, 'total' => $total]);
     }
 
     public function checkout(): \Illuminate\View\View
     {
-        $cart = session()->get('cart', []);
-        $items = [];
-        $total = 0;
-
-        foreach ($cart as $productId => $quantity) {
-            $product = \App\Models\Product::find($productId);
-            if ($product) {
-                $items[] = [
-                    'product' => $product,
-                    'quantity' => $quantity,
-                    'subtotal' => $product->unit_price * $quantity,
-                ];
-                $total += $product->unit_price * $quantity;
-            }
-        }
+        ['items' => $items, 'total' => $total] = $this->cartService()->resolveCartItems();
 
         $member = $this->member();
 
@@ -427,46 +452,11 @@ class MemberPortalController extends Controller
             'monthly_repayment' => 'required_if:payment_type,hire_purchase|nullable|numeric|min:0',
         ]);
 
-        $cart = session()->get('cart', []);
-
-        if (empty($cart)) {
-            return back()->withErrors(['error' => 'Your cart is empty.']);
+        try {
+            $orders = $this->cartService()->processCheckout($this->member()->id, $request->payment_type, $request->monthly_repayment);
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        $member = $this->member();
-        $orderGroup = 'GRP-' . date('Y') . '-' . strtoupper(Str::random(8));
-        $year = date('Y');
-        $baseCount = \App\Models\PurchaseOrder::whereYear('created_at', $year)->count();
-        $orders = [];
-
-        foreach ($cart as $productId => $quantity) {
-            $product = \App\Models\Product::find($productId);
-            if (! $product || $quantity > $product->stock_quantity) {
-                return back()->withErrors(['error' => "Insufficient stock for {$product->name}. Available: {$product->stock_quantity}"]);
-            }
-
-            $count = $baseCount + count($orders) + 1;
-            $orderNumber = 'PO/' . $year . '/' . str_pad($count, 6, '0', STR_PAD_LEFT);
-            $totalAmount = round($quantity * $product->unit_price, 2);
-            $status = $request->payment_type === 'cash' ? 'approved' : 'pending';
-
-            $orders[] = \App\Models\PurchaseOrder::create([
-                'order_number' => $orderNumber,
-                'order_group' => $orderGroup,
-                'member_id' => $member->id,
-                'product_id' => $product->id,
-                'quantity' => $quantity,
-                'unit_price' => $product->unit_price,
-                'total_amount' => $totalAmount,
-                'payment_type' => $request->payment_type,
-                'monthly_repayment' => $request->monthly_repayment ?? 0,
-                'status' => $status,
-            ]);
-
-            $product->decrement('stock_quantity', $quantity);
-        }
-
-        session()->forget('cart');
 
         return redirect()->route('portal.purchases')
             ->with('success', count($orders) . ' item(s) ordered successfully.');
@@ -517,22 +507,14 @@ class MemberPortalController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $cart = Session::get('cart', []);
-        $productId = (string) $request->product_id;
-        $quantity = $request->quantity;
-
-        $cart[$productId] = ($cart[$productId] ?? 0) + $quantity;
-        Session::put('cart', $cart);
-
-        $cartCount = count($cart);
-        $totalQuantity = array_sum($cart);
+        $counts = $this->cartService()->add((int) $request->product_id, $request->quantity);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Added to cart.',
-                'cart_count' => $cartCount,
-                'cart_quantity' => $totalQuantity,
+                'cart_count' => $counts['cart_count'],
+                'cart_quantity' => $counts['cart_quantity'],
             ]);
         }
 
@@ -546,25 +528,14 @@ class MemberPortalController extends Controller
             'quantity' => 'required|integer|min:0',
         ]);
 
-        $cart = Session::get('cart', []);
-
-        if ($request->quantity <= 0) {
-            unset($cart[(string) $request->product_id]);
-        } else {
-            $cart[(string) $request->product_id] = $request->quantity;
-        }
-
-        Session::put('cart', $cart);
-
-        $cartCount = count($cart);
-        $totalQuantity = array_sum($cart);
+        $counts = $this->cartService()->update((int) $request->product_id, $request->quantity);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Cart updated.',
-                'cart_count' => $cartCount,
-                'cart_quantity' => $totalQuantity,
+                'cart_count' => $counts['cart_count'],
+                'cart_quantity' => $counts['cart_quantity'],
             ]);
         }
 
@@ -573,19 +544,14 @@ class MemberPortalController extends Controller
 
     public function remove_from_cart(Request $request)
     {
-        $cart = Session::get('cart', []);
-        unset($cart[(string) $request->product_id]);
-        Session::put('cart', $cart);
-
-        $cartCount = count($cart);
-        $totalQuantity = array_sum($cart);
+        $counts = $this->cartService()->remove((int) $request->product_id);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Item removed from cart.',
-                'cart_count' => $cartCount,
-                'cart_quantity' => $totalQuantity,
+                'cart_count' => $counts['cart_count'],
+                'cart_quantity' => $counts['cart_quantity'],
             ]);
         }
 
@@ -594,7 +560,7 @@ class MemberPortalController extends Controller
 
     public function clear_cart(Request $request)
     {
-        Session::forget('cart');
+        $this->cartService()->clear();
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -610,11 +576,7 @@ class MemberPortalController extends Controller
 
     public function cart_count()
     {
-        $cart = Session::get('cart', []);
-        return response()->json([
-            'cart_count' => count($cart),
-            'cart_quantity' => array_sum($cart),
-        ]);
+        return response()->json($this->cartService()->counts());
     }
 
     public function notifications(): \Illuminate\View\View

@@ -16,4 +16,13 @@ enum GuarantorStatus: string
             self::Declined => 'Declined',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Pending => 'warning',
+            self::Accepted => 'success',
+            self::Declined => 'danger',
+        };
+    }
 }

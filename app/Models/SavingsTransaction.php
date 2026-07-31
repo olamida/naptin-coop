@@ -25,6 +25,8 @@ class SavingsTransaction extends Model
         'approved_by',
         'approved_at',
         'rejection_reason',
+        'import_batch_id',
+        'external_reference',
     ];
 
     protected $casts = [

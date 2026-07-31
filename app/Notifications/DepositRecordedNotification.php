@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\SavingsTransaction;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class DepositRecordedNotification extends Notification
+class DepositRecordedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -22,7 +23,7 @@ class DepositRecordedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = '₦' . number_format($this->transaction->amount, 2);
+        $amount = 'Ã¢â€šÂ¦' . number_format($this->transaction->amount, 2);
         $ref = $this->transaction->reference;
 
         return (new MailMessage)
@@ -30,13 +31,13 @@ class DepositRecordedNotification extends Notification
             ->greeting('Hello ' . $notifiable->name . '!')
             ->line("A savings deposit of {$amount} has been recorded to your account.")
             ->line("Reference: {$ref}")
-            ->line("New balance: ₦" . number_format($this->transaction->balance_after, 2))
+            ->line("New balance: Ã¢â€šÂ¦" . number_format($this->transaction->balance_after, 2))
             ->action('View Savings', route('portal.savings'));
     }
 
     public function toArray(object $notifiable): array
     {
-        $amount = '₦' . number_format($this->transaction->amount, 2);
+        $amount = 'Ã¢â€šÂ¦' . number_format($this->transaction->amount, 2);
 
         return [
             'type' => 'deposit_recorded',

@@ -20,4 +20,15 @@ enum MemberStatus: string
             self::Suspended => 'Suspended',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Pending => 'warning',
+            self::Active => 'success',
+            self::Inactive => 'gray',
+            self::Retired => 'indigo',
+            self::Suspended => 'danger',
+        };
+    }
 }

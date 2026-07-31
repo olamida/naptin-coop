@@ -7,13 +7,13 @@
 ])
 
 <div class="text-center py-12">
-    <span class="material-symbols-outlined text-5xl text-gray-300">{{ $icon }}</span>
-    <h3 class="text-lg font-medium text-gray-900 mt-4">{{ $title }}</h3>
+    <span class="material-symbols-outlined text-5xl text-slate-300">{{ $icon }}</span>
+    <h3 class="text-lg font-medium text-[#0F172A] mt-4">{{ $title }}</h3>
     @if ($message)
-        <p class="text-sm text-gray-500 mt-1">{{ $message }}</p>
+        <p class="text-sm text-slate-500 mt-1">{{ $message }}</p>
     @endif
     @if ($actionUrl && $actionLabel)
-        <a href="{{ $actionUrl }}" class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+        <a href="{{ $actionUrl }}" class="mt-4 inline-flex items-center px-4 py-2 bg-[#0F172A] text-white text-sm font-medium rounded-[10px] hover:bg-slate-800 transition">
             {{ $actionLabel }}
         </a>
     @endif

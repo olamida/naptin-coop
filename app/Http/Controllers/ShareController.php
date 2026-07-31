@@ -6,7 +6,10 @@ use App\Exports\SharesExport;
 use App\Models\Member;
 use App\Models\ShareAccount;
 use App\Models\ShareTransaction;
+use App\Services\LedgerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -93,41 +96,55 @@ class ShareController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $account = ShareAccount::where('member_id', $validated['member_id'])->firstOrFail();
-        $shares = $validated['shares'];
-        $sharePrice = $account->share_price;
-        $amount = round($shares * $sharePrice, 2);
+        try {
+            $shareTxn = DB::transaction(function () use ($validated) {
+                $account = ShareAccount::where('member_id', $validated['member_id'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-        $newTotalShares = $account->total_shares + $shares;
-        $newTotalValue = $newTotalShares * $sharePrice;
+                $shares = $validated['shares'];
+                $sharePrice = $account->share_price;
+                $amount = round($shares * $sharePrice, 2);
 
-        $account->update([
-            'total_shares' => $newTotalShares,
-            'total_value' => $newTotalValue,
-        ]);
+                $newTotalShares = $account->total_shares + $shares;
+                $newTotalValue = $newTotalShares * $sharePrice;
 
-        ShareTransaction::create([
-            'share_account_id' => $account->id,
-            'reference' => 'SHR/PUR/' . strtoupper(Str::random(8)),
-            'type' => 'purchase',
-            'shares' => $shares,
-            'amount' => $amount,
-            'balance_after' => $newTotalShares,
-            'notes' => $validated['notes'] ?? null,
-            'transaction_date' => now(),
-        ]);
+                $account->update([
+                    'total_shares' => $newTotalShares,
+                    'total_value' => $newTotalValue,
+                ]);
+
+                $shareTxn = ShareTransaction::create([
+                    'share_account_id' => $account->id,
+                    'reference' => 'SHR/PUR/' . strtoupper(Str::random(8)),
+                    'type' => 'purchase',
+                    'shares' => $shares,
+                    'amount' => $amount,
+                    'balance_after' => $newTotalShares,
+                    'notes' => $validated['notes'] ?? null,
+                    'transaction_date' => now(),
+                ]);
+
+                app(LedgerService::class)->postSharePurchase($shareTxn->id, $amount);
+
+                return $shareTxn;
+            });
+        } catch (\Throwable $e) {
+            Log::error('Share purchase failed: ' . $e->getMessage());
+
+            return back()->withErrors(['error' => 'Could not record share purchase. Please try again.'])->withInput();
+        }
 
         // Notify the member
-        $shareTxn = ShareTransaction::where('share_account_id', $account->id)->latest()->first();
-        if ($shareTxn && $account->member && $account->member->user) {
+        if ($shareTxn->shareAccount->member && $shareTxn->shareAccount->member->user) {
             try {
-                $account->member->user->notify(new \App\Notifications\SharePurchasedNotification($shareTxn));
+                $shareTxn->shareAccount->member->user->notify(new \App\Notifications\SharePurchasedNotification($shareTxn));
             } catch (\Exception $e) {
-                \Log::error('Share notification failed: ' . $e->getMessage());
+                Log::error('Share notification failed: ' . $e->getMessage());
             }
         }
 
         return redirect()->route('shares.accounts')
-            ->with('success', "Purchase of {$shares} share(s) for ₦" . number_format($amount, 2) . ' recorded.');
+            ->with('success', "Purchase of {$shareTxn->shares} share(s) for ₦" . number_format($shareTxn->amount, 2) . ' recorded.');
     }
 }

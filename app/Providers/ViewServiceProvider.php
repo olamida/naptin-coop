@@ -25,8 +25,9 @@ class ViewServiceProvider extends ServiceProvider
             $unreadCount = $user ? $user->unreadNotifications()->count() : 0;
             $recentNotifications = $user ? $user->notifications()->latest()->take(8)->get() : collect();
             $company = \App\Models\Company::instance();
+            $cartCount = count(session('cart', []));
 
-            $view->with(compact('unreadCount', 'recentNotifications', 'company'));
+            $view->with(compact('unreadCount', 'recentNotifications', 'company', 'cartCount'));
         });
 
         View::composer(['components.portal-layout'], function ($view) {

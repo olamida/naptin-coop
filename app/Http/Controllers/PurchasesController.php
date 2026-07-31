@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Imports\PurchaseImport;
+use App\Models\ImportLog;
 use App\Models\Member;
 use App\Models\PurchaseOrder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PurchasesController extends Controller
@@ -59,12 +61,20 @@ class PurchasesController extends Controller
             'import_file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
+        $batchId = (string) Str::uuid();
+        $import = new PurchaseImport($batchId);
+        $fileName = $request->file('import_file')->getClientOriginalName();
+
         try {
-            Excel::import(new PurchaseImport, $request->file('import_file'));
+            Excel::import($import, $request->file('import_file'));
+
+            ImportLog::record($batchId, 'purchase_orders', $fileName, $import->importStats());
 
             return redirect()->route('purchases.index')
-                ->with('success', 'Purchase orders imported successfully.');
+                ->with('success', 'Purchase orders imported successfully. Batch: ' . substr($batchId, 0, 8) . '…');
         } catch (\Exception $e) {
+            ImportLog::record($batchId, 'purchase_orders', $fileName, $import->importStats(), 'failed', $e->getMessage());
+
             return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
         }
     }

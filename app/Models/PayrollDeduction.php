@@ -17,11 +17,13 @@ class PayrollDeduction extends Model
         'expected_loan_repayment',
         'expected_share_contribution',
         'expected_purchase',
+        'expected_arrears',
         'total_expected',
         'actual_savings',
         'actual_loan_repayment',
         'actual_share_contribution',
         'actual_purchase',
+        'actual_arrears',
         'total_actual',
         'status',
     ];
@@ -31,11 +33,13 @@ class PayrollDeduction extends Model
         'expected_loan_repayment' => 'decimal:2',
         'expected_share_contribution' => 'decimal:2',
         'expected_purchase' => 'decimal:2',
+        'expected_arrears' => 'decimal:2',
         'total_expected' => 'decimal:2',
         'actual_savings' => 'decimal:2',
         'actual_loan_repayment' => 'decimal:2',
         'actual_share_contribution' => 'decimal:2',
         'actual_purchase' => 'decimal:2',
+        'actual_arrears' => 'decimal:2',
         'total_actual' => 'decimal:2',
     ];
 

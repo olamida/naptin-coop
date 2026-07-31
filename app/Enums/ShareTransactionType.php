@@ -18,4 +18,14 @@ enum ShareTransactionType: string
             self::Dividend => 'Dividend',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Purchase => 'success',
+            self::Sale => 'danger',
+            self::Transfer => 'indigo',
+            self::Dividend => 'emerald',
+        };
+    }
 }

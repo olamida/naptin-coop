@@ -1,6 +1,10 @@
 <?php
 
-use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\StockController;
+use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\StatisticsController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CartController;
@@ -21,10 +25,17 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SavingsController;
 use App\Http\Controllers\PurchasesController;
 use App\Http\Controllers\ShareController;
+use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\DataImportController;
+use App\Http\Controllers\GuaranteeController;
+use App\Http\Controllers\LedgerController;
+use App\Http\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/health', fn() => response()->noContent())->name('health');
+Route::get('/guarantee/{token}', [GuaranteeController::class, 'show'])->name('guarantee.show');
+Route::post('/guarantee/{token}/respond', [GuaranteeController::class, 'respond'])->name('guarantee.respond');
 Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
 Route::get('/shop', [\App\Http\Controllers\HomeController::class, 'shop'])->name('shop');
 Route::get('/about', [\App\Http\Controllers\HomeController::class, 'about'])->name('about');
@@ -33,30 +44,45 @@ Route::get('/health', fn () => response()->json(['status' => 'ok', 'timestamp' =
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [SessionController::class, 'create'])->name('login');
-    Route::post('login', [SessionController::class, 'store']);
+    Route::post('login', [SessionController::class, 'store'])->middleware('throttle:login');
 
     Route::get('register', [\App\Http\Controllers\RegistrationController::class, 'create'])->name('register');
     Route::post('register', [\App\Http\Controllers\RegistrationController::class, 'store'])->name('register.store');
 
     Route::get('forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'create'])->name('password.request');
-    Route::post('forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::post('forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'store'])->middleware('throttle:password-reset')->name('password.email');
     Route::get('reset-password/{token}', [\App\Http\Controllers\Auth\NewPasswordController::class, 'create'])->name('password.reset');
-    Route::post('reset-password', [\App\Http\Controllers\Auth\NewPasswordController::class, 'store'])->name('password.update');
+    Route::post('reset-password', [\App\Http\Controllers\Auth\NewPasswordController::class, 'store'])->middleware('throttle:password-reset')->name('password.update');
 });
 
-Route::post('logout', [SessionController::class, 'destroy'])->name('logout')->middleware('auth');
+Route::match(['get', 'post'], 'logout', [SessionController::class, 'destroy'])->name('logout');
 
-Route::middleware(['auth', 'enforce-single-session'])->group(function () {
+Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(function () {
+    Route::get('force-password-change', [ProfileController::class, 'forcePasswordForm'])->name('password.force');
+    Route::post('force-password-change', [ProfileController::class, 'forcePasswordUpdate'])->name('password.force.update');
+
+    Route::get('two-factor/challenge', [TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
+    Route::post('two-factor/challenge', [TwoFactorController::class, 'verify'])->name('two-factor.challenge.verify');
+    Route::post('two-factor/recovery', [TwoFactorController::class, 'useRecoveryCode'])->name('two-factor.recovery');
+    Route::get('two-factor/setup', [TwoFactorController::class, 'setup'])->name('two-factor.setup');
+    Route::post('two-factor/setup', [TwoFactorController::class, 'confirm'])->name('two-factor.setup.confirm');
+    Route::get('two-factor/recovery-codes', [TwoFactorController::class, 'showRecoveryCodes'])->name('two-factor.recovery-codes');
+    Route::post('two-factor/recovery-codes', [TwoFactorController::class, 'generateRecoveryCodes'])->name('two-factor.recovery-codes.generate');
+    Route::post('two-factor/disable', [TwoFactorController::class, 'disable'])->name('two-factor.disable');
+
     Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
 
-    Route::middleware('admin-only')->group(function () {
+    Route::middleware(['admin-only', 'must-change-password', 'two-factor'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+        Route::get('command/search', [DashboardController::class, 'commandSearchJson'])->name('command.search');
+
         Route::get('members/import', [MemberController::class, 'import'])->name('members.import');
-        Route::post('members/import', [MemberController::class, 'importStore'])->name('members.import.store');
+        Route::post('members/import', [MemberController::class, 'importStore'])->middleware('throttle:uploads')->name('members.import.store');
         Route::get('members/download-template', [MemberController::class, 'downloadTemplate'])->name('members.download-template');
         Route::get('members/export', [MemberController::class, 'exportMembers'])->name('members.export');
+        Route::get('members/search', [MemberController::class, 'searchJson'])->name('members.search');
         Route::post('members/bulk-status', [MemberController::class, 'bulkUpdateStatus'])->name('members.bulk-status');
         Route::resource('members', MemberController::class)->except(['show']);
         Route::get('members/{member}', [MemberController::class, 'show'])->name('members.show');
@@ -79,7 +105,7 @@ Route::middleware(['auth', 'enforce-single-session'])->group(function () {
             Route::post('/deposits/{transaction}/confirm', [SavingsController::class, 'approveDeposit'])->name('deposits.confirm');
             Route::post('/deposits/{transaction}/reject', [SavingsController::class, 'rejectDeposit'])->name('deposits.reject');
             Route::get('/import', [SavingsController::class, 'import'])->name('import');
-            Route::post('/import', [SavingsController::class, 'importStore'])->name('import.store');
+            Route::post('/import', [SavingsController::class, 'importStore'])->middleware('throttle:uploads')->name('import.store');
             Route::get('/download-template', [SavingsController::class, 'downloadTemplate'])->name('download-template');
             Route::get('/export', [SavingsController::class, 'exportSavings'])->name('export');
         });
@@ -93,7 +119,7 @@ Route::middleware(['auth', 'enforce-single-session'])->group(function () {
         Route::get('loans/{loan}/repayment', [LoanController::class, 'repayment'])->name('loans.repayment');
         Route::post('loans/{loan}/repayment', [LoanController::class, 'storeRepayment'])->name('loans.repayment.store');
         Route::get('loans/import/repayments', [LoanController::class, 'import'])->name('loans.import');
-        Route::post('loans/import/repayments', [LoanController::class, 'importStore'])->name('loans.import.store');
+        Route::post('loans/import/repayments', [LoanController::class, 'importStore'])->middleware('throttle:uploads')->name('loans.import.store');
         Route::get('loans/download-template', [LoanController::class, 'downloadTemplate'])->name('loans.download-template');
         Route::get('loans/export', [LoanController::class, 'exportLoans'])->name('loans.export');
         Route::get('loans/{loan}/topup', [LoanController::class, 'topup'])->name('loans.topup');
@@ -111,7 +137,7 @@ Route::middleware(['auth', 'enforce-single-session'])->group(function () {
             Route::get('/', [PurchasesController::class, 'index'])->name('index');
             Route::get('/create', [PurchasesController::class, 'create'])->name('create');
             Route::get('/import', [PurchasesController::class, 'import'])->name('import');
-            Route::post('/import', [PurchasesController::class, 'importStore'])->name('import.store');
+            Route::post('/import', [PurchasesController::class, 'importStore'])->middleware('throttle:uploads')->name('import.store');
             Route::get('/download-template', [PurchasesController::class, 'downloadTemplate'])->name('download-template');
         });
 
@@ -119,16 +145,22 @@ Route::middleware(['auth', 'enforce-single-session'])->group(function () {
             Route::get('/', [PayrollController::class, 'index'])->name('index');
             Route::get('/compile', [PayrollController::class, 'compile'])->name('compile');
             Route::post('/compile', [PayrollController::class, 'compilePost'])->name('compile.store');
+            Route::post('/compile-and-lock', [PayrollController::class, 'compileAndLock'])->name('compile-and-lock');
             Route::get('/{monthlyPayroll}', [PayrollController::class, 'show'])->name('show');
             Route::get('/{monthlyPayroll}/upload', [PayrollController::class, 'upload'])->name('upload');
             Route::post('/{monthlyPayroll}/upload', [PayrollController::class, 'uploadDeductions'])->name('upload-deductions');
             Route::get('/{monthlyPayroll}/export', [PayrollController::class, 'exportDeductions'])->name('export-deductions');
+            Route::get('/{monthlyPayroll}/export-csv', [PayrollController::class, 'exportCsv'])->name('export-csv');
             Route::get('/{monthlyPayroll}/download-template', [PayrollController::class, 'downloadTemplate'])->name('download-template');
             Route::get('/{monthlyPayroll}/report/savings', [PayrollController::class, 'savingsReport'])->name('savings-report');
             Route::get('/{monthlyPayroll}/report/loans', [PayrollController::class, 'loansReport'])->name('loans-report');
             Route::get('/{monthlyPayroll}/report/purchases', [PayrollController::class, 'purchasesReport'])->name('purchases-report');
             Route::get('/{monthlyPayroll}/report/shares', [PayrollController::class, 'sharesReport'])->name('shares-report');
             Route::get('/{monthlyPayroll}/report/summary', [PayrollController::class, 'summaryReport'])->name('summary-report');
+            Route::post('/{monthlyPayroll}/arrears', [PayrollController::class, 'storeArrear'])->name('arrears.store');
+            Route::post('/{monthlyPayroll}/arrears/bulk', [PayrollController::class, 'storeAllArrears'])->name('arrears.bulk');
+            Route::post('/arrears/{payrollArrear}/settle', [PayrollController::class, 'settleArrear'])->name('arrears.settle');
+            Route::delete('/arrears/{payrollArrear}', [PayrollController::class, 'destroyArrear'])->name('arrears.destroy');
         });
 
         Route::prefix('cart')->name('cart.')->group(function () {
@@ -145,7 +177,7 @@ Route::middleware(['auth', 'enforce-single-session'])->group(function () {
             Route::get('/', [ProductController::class, 'index'])->name('index');
             Route::get('/create', [ProductController::class, 'create'])->name('create');
             Route::get('/import', [ProductController::class, 'import'])->name('import');
-            Route::post('/import', [ProductController::class, 'importStore'])->name('import.store');
+            Route::post('/import', [ProductController::class, 'importStore'])->middleware('throttle:uploads')->name('import.store');
             Route::get('/download-template', [ProductController::class, 'downloadTemplate'])->name('download-template');
             Route::post('/', [ProductController::class, 'store'])->name('store');
             Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
@@ -185,16 +217,20 @@ Route::middleware(['auth', 'enforce-single-session'])->group(function () {
 
             Route::get('/data-import', [DataImportController::class, 'index'])->name('data-import');
 
+            Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding');
+            Route::post('/onboarding', [OnboardingController::class, 'importStore'])->name('onboarding.import');
+            Route::get('/onboarding/template', [OnboardingController::class, 'downloadTemplate'])->name('onboarding.template');
+
             Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
             Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
-            Route::get('/users', [AdminController::class, 'users'])->name('users.index');
-            Route::get('/users/create', [AdminController::class, 'createUser'])->name('users.create');
-            Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store');
-            Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('users.edit');
-            Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
-            Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->name('users.destroy');
-            Route::post('/users/{user}/reset-password', [AdminController::class, 'resetUserPassword'])->name('users.reset-password');
+            Route::get('/users', [UserController::class, 'index'])->name('users.index');
+            Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+            Route::post('/users', [UserController::class, 'store'])->name('users.store');
+            Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+            Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+            Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+            Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
 
             Route::get('/loan-products', [LoanProductController::class, 'index'])->name('loan-products.index');
             Route::get('/loan-products/create', [LoanProductController::class, 'create'])->name('loan-products.create');
@@ -207,19 +243,32 @@ Route::middleware(['auth', 'enforce-single-session'])->group(function () {
 
             Route::resource('regions', RegionController::class)->except(['show']);
 
-            Route::get('/stock', [AdminController::class, 'stock'])->name('stock');
-            Route::post('/stock/{product}', [AdminController::class, 'updateStock'])->name('stock.update');
-            Route::get('/backup', [AdminController::class, 'backup'])->name('backup');
-            Route::get('/statistics', [AdminController::class, 'statistics'])->name('statistics');
+            Route::get('/stock', [StockController::class, 'index'])->name('stock');
+            Route::post('/stock/{product}', [StockController::class, 'update'])->name('stock.update');
+            Route::get('/backup', [BackupController::class, 'download'])->name('backup');
+            Route::get('/statistics', [StatisticsController::class, 'index'])->name('statistics');
 
             Route::get('/broadcasts', [\App\Http\Controllers\BroadcastController::class, 'index'])->name('broadcasts.index');
             Route::get('/broadcasts/create', [\App\Http\Controllers\BroadcastController::class, 'create'])->name('broadcasts.create');
             Route::post('/broadcasts', [\App\Http\Controllers\BroadcastController::class, 'store'])->name('broadcasts.store');
 
-            Route::get('/notifications', [AdminController::class, 'notifications'])->name('notifications.index');
-            Route::post('/notifications/{notification}/read', [AdminController::class, 'markNotificationRead'])->name('notifications.read');
-            Route::post('/notifications/read-all', [AdminController::class, 'markAllNotificationsRead'])->name('notifications.mark-all');
+            Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+            Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+            Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all');
         });
+    });
+
+    Route::prefix('ledger')->name('ledger.')->middleware('can:manage-users')->group(function () {
+        Route::get('/accounts', [LedgerController::class, 'accounts'])->name('accounts');
+        Route::post('/accounts', [LedgerController::class, 'storeAccount'])->name('accounts.store');
+        Route::put('/accounts/{chartOfAccount}', [LedgerController::class, 'updateAccount'])->name('accounts.update');
+        Route::get('/journals', [LedgerController::class, 'journals'])->name('journals');
+        Route::get('/journals/create', [LedgerController::class, 'createJournal'])->name('journals.create');
+        Route::post('/journals', [LedgerController::class, 'storeJournal'])->name('journals.store');
+        Route::get('/journals/{journalEntry}', [LedgerController::class, 'showJournal'])->name('journals.show');
+        Route::post('/journals/{journalEntry}/post', [LedgerController::class, 'postJournal'])->name('journals.post');
+        Route::get('/trial-balance', [LedgerController::class, 'trialBalance'])->name('trial-balance');
+        Route::get('/general-ledger', [LedgerController::class, 'generalLedger'])->name('general-ledger');
     });
 
     Route::prefix('receipts')->name('receipts.')->group(function () {
@@ -233,7 +282,7 @@ Route::middleware(['auth', 'enforce-single-session'])->group(function () {
         Route::get('/share-certificate/{account}', [ReceiptController::class, 'shareCertificate'])->name('share-certificate');
     });
 
-    Route::prefix('my')->name('portal.')->middleware('portal-member')->group(function () {
+    Route::prefix('my')->name('portal.')->middleware(['portal-member', 'must-change-password', 'two-factor'])->group(function () {
         Route::get('/', [MemberPortalController::class, 'index'])->name('dashboard');
         Route::get('/savings', [MemberPortalController::class, 'savings'])->name('savings');
         Route::post('/savings/deposit', [MemberPortalController::class, 'requestDeposit'])->name('savings.deposit');

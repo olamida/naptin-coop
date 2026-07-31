@@ -20,4 +20,15 @@ enum SavingsTransactionType: string
             self::Reversal => 'Reversal',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Deposit => 'success',
+            self::Withdrawal => 'danger',
+            self::Interest => 'emerald',
+            self::Transfer => 'indigo',
+            self::Reversal => 'warning',
+        };
+    }
 }

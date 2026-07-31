@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'termii' => [
+        'key' => env('TERMII_API_KEY'),
+        'sender_id' => env('TERMII_SENDER_ID', 'NAPTIN'),
+        'from' => env('TERMII_FROM', 'NAPTIN'),
+        'base_url' => env('TERMII_BASE_URL', 'https://api.ng.termii.com'),
+        'channel' => env('TERMII_CHANNEL', 'generic'),
+        'sms_url' => 'https://api.ng.termii.com/api/sms/send',
+    ],
+
 ];

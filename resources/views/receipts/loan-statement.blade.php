@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loan Statement — {{ $loan->loan_number }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; color: #1f2937; background: #f9fafb; padding: 2rem; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #1f2937; background: #f9fafb; padding: 2rem; }
         .statement { max-width: 850px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
         .header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 2rem; }
         .header h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
@@ -71,15 +70,16 @@
 <body>
     <div class="watermark">NAPTIN COOPERATIVE</div>
 
-    <div class="no-print" style="max-width: 850px; margin: 0 auto 1rem; text-align: right;">
-        <button onclick="window.print()" style="background: #1e40af; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
-            Print Statement
-        </button>
-        <a href="{{ route('loans.show', $loan) }}" style="color: #6b7280; text-decoration: none; font-size: 0.85rem; margin-left: 1rem;">Back to Loan</a>
-        <a href="{{ route('loans.index') }}" style="color: #6b7280; text-decoration: none; font-size: 0.85rem; margin-left: 1rem;">All Loans</a>
-    </div>
+    <div style="max-width: 850px; margin: 0 auto;">
+        <div class="no-print" style="text-align: right; margin-bottom: 1rem;">
+            <button onclick="window.print()" style="background: #1e40af; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
+                Print Statement
+            </button>
+            <a href="{{ route('loans.show', $loan) }}" style="color: #6b7280; text-decoration: none; font-size: 0.85rem; margin-left: 1rem;">Back to Loan</a>
+            <a href="{{ route('loans.index') }}" style="color: #6b7280; text-decoration: none; font-size: 0.85rem; margin-left: 1rem;">All Loans</a>
+        </div>
 
-    <div class="statement">
+        <div class="statement">
         <div class="header">
             @php $company = \App\Models\Company::instance(); @endphp
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
@@ -104,7 +104,7 @@
                 <div class="info-block">
                     <h3>Borrower Information</h3>
                     <p class="value">{{ $loan->member->first_name ?? 'N/A' }} {{ $loan->member->last_name ?? '' }}</p>
-                    <p><span class="label">Staff ID:</span> <span class="value">{{ $loan->member->staff_id ?? 'N/A' }}</span></p>
+                    <p><span class="label">Staff ID:</span> <span class="value">{{ $loan->member->staff_id_display ?? 'N/A' }}</span></p>
                     <p><span class="label">Region:</span> <span class="value">{{ $loan->member->region->name ?? 'N/A' }}</span></p>
                     <p><span class="label">Phone:</span> <span class="value">{{ $loan->member->phone ?? 'N/A' }}</span></p>
                     <p><span class="label">Email:</span> <span class="value">{{ $loan->member->email ?? 'N/A' }}</span></p>
@@ -269,7 +269,7 @@
                             </div>
                             <div class="guarantor-info">
                                 <div class="name">{{ $guarantor->member->first_name ?? 'Deleted' }} {{ $guarantor->member->last_name ?? '' }}</div>
-                                <div class="detail">{{ $guarantor->member->staff_id ?? 'N/A' }}</div>
+                                <div class="detail">{{ $guarantor->member->staff_id_display ?? 'N/A' }}</div>
                             </div>
                             <span class="status-badge" style="background: {{ $gColors[$guarantor->status->value] ?? '#e5e7eb' }}20; color: {{ $gColors[$guarantor->status->value] ?? '#6b7280' }};">
                                 {{ $guarantor->status->label() }}
@@ -288,6 +288,7 @@
             @endif
             <p style="margin-top: 0.5rem;">Generated on {{ now()->format('d M Y, h:i A') }}</p>
         </div>
-    </div>
+    </div>  <!-- close statement -->
+    </div>  <!-- close wrapper -->
 </body>
 </html>

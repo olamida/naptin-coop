@@ -37,6 +37,8 @@ class Member extends Model
         'status',
         'is_exco',
         'photo_path',
+        'import_batch_id',
+        'external_reference',
     ];
 
     protected $casts = [
@@ -123,5 +125,42 @@ class Member extends Model
     public function getInitialsAttribute(): string
     {
         return strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name ?? '', 0, 1));
+    }
+
+    public function getStaffIdDisplayAttribute(): string
+    {
+        return 'NAP/' . ($this->attributes['staff_id'] ?? '');
+    }
+
+    public function healthScore(): float
+    {
+        $savings = $this->savingsAccount?->balance ?? 0;
+        $outstanding = $this->loans()
+            ->whereIn('status', ['disbursed', 'repaying', 'arrears'])
+            ->sum('outstanding');
+
+        return round($savings / max($outstanding, 1) * 100, 1);
+    }
+
+    public function healthLabel(): string
+    {
+        $score = $this->healthScore();
+        return match (true) {
+            $score > 100 => 'Excellent',
+            $score > 50 => 'Good',
+            $score > 25 => 'Fair',
+            default => 'At Risk',
+        };
+    }
+
+    public function healthColor(): string
+    {
+        $score = $this->healthScore();
+        return match (true) {
+            $score > 100 => 'emerald',
+            $score > 50 => 'blue',
+            $score > 25 => 'amber',
+            default => 'rose',
+        };
     }
 }

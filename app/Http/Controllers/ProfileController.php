@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -52,9 +53,51 @@ class ProfileController extends Controller
             $data['profile_photo_path'] = $request->file('profile_photo')->store('profile-photos', 'public');
         }
 
+        if (!empty($validated['password'])) {
+            $data['must_change_password'] = false;
+        }
+
         $user->update($data);
 
         return redirect()->route('profile.edit')
             ->with('success', 'Profile updated successfully.');
+    }
+
+    public function forcePasswordForm()
+    {
+        if (!auth()->user()->must_change_password) {
+            return redirect()->intended(route('dashboard'));
+        }
+
+        return view('profile.force-password-change');
+    }
+
+    public function forcePasswordUpdate(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', function ($attribute, $value, $fail) use ($user) {
+                if (!Hash::check($value, $user->password)) {
+                    $fail('Current password is incorrect.');
+                }
+            }],
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user->update([
+            'password' => $validated['password'],
+            'must_change_password' => false,
+        ]);
+
+        $request->session()->regenerate();
+
+        ActivityLog::log('password_force_change', $user->name . ' changed forced password');
+
+        if ($user->member_id) {
+            return redirect()->intended(route('portal.dashboard'));
+        }
+
+        return redirect()->intended(route('dashboard'));
     }
 }

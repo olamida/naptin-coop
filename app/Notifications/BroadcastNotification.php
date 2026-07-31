@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class BroadcastNotification extends Notification
+class BroadcastNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -28,7 +28,7 @@ class BroadcastNotification extends Notification
         return (new MailMessage)
             ->subject($this->title)
             ->line($this->message)
-            ->line('— ' . $this->senderName);
+            ->line('Ã¢â‚¬â€ ' . $this->senderName);
     }
 
     public function toArray(object $notifiable): array

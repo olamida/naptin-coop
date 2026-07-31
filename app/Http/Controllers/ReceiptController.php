@@ -4,104 +4,56 @@ namespace App\Http\Controllers;
 
 use App\Models\Loan;
 use App\Models\LoanRepayment;
+use App\Models\PurchaseOrder;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
-use App\Models\PurchaseOrder;
+use App\Models\ShareAccount;
 use App\Models\ShareTransaction;
-use Illuminate\Http\Request;
+use App\Services\DocumentService;
 
 class ReceiptController extends Controller
 {
-    private function authorizeMemberAccess($memberId): void
+    public function __construct(
+        private readonly DocumentService $documentService,
+    ) {}
+
+    public function savingsDeposit(SavingsTransaction $transaction)
     {
-        $user = auth()->user();
-        if ($user->member_id && $user->member_id !== $memberId) {
-            abort(403, 'You are not authorized to view this receipt.');
-        }
+        return $this->documentService->savingsDepositReceipt($transaction);
     }
 
-    public function savingsDeposit(SavingsTransaction $transaction): \Illuminate\View\View
+    public function loanRepayment(LoanRepayment $repayment)
     {
-        $transaction->load(['savingsAccount.member.region']);
-        $this->authorizeMemberAccess($transaction->savingsAccount->member_id);
-
-        return view('receipts.savings-deposit', ['transaction' => $transaction]);
+        return $this->documentService->loanRepaymentReceipt($repayment);
     }
 
-    public function loanRepayment(LoanRepayment $repayment): \Illuminate\View\View
+    public function purchaseOrder(PurchaseOrder $order)
     {
-        $repayment->load(['loan.member.region']);
-        $this->authorizeMemberAccess($repayment->loan->member_id);
-
-        return view('receipts.loan-repayment', ['repayment' => $repayment]);
+        return $this->documentService->purchaseOrderReceipt($order);
     }
 
-    public function purchaseOrder(PurchaseOrder $order): \Illuminate\View\View
+    public function sharePurchase(ShareTransaction $transaction)
     {
-        $order->load(['member.region', 'product', 'approvedBy']);
-        $this->authorizeMemberAccess($order->member_id);
-
-        return view('receipts.purchase-order', ['order' => $order]);
+        return $this->documentService->sharePurchaseReceipt($transaction);
     }
 
-    public function sharePurchase(ShareTransaction $transaction): \Illuminate\View\View
+    public function loanDisbursement(Loan $loan)
     {
-        $transaction->load(['shareAccount.member.region']);
-        $this->authorizeMemberAccess($transaction->shareAccount->member_id);
-
-        return view('receipts.share-purchase', ['transaction' => $transaction]);
+        return $this->documentService->loanDisbursementReceipt($loan);
     }
 
-    public function loanDisbursement(Loan $loan): \Illuminate\View\View
+    public function loanStatement(Loan $loan)
     {
-        $loan->load(['member.region', 'loanProduct']);
-        $this->authorizeMemberAccess($loan->member_id);
-
-        return view('receipts.loan-disbursement', ['loan' => $loan]);
+        return $this->documentService->loanStatement($loan);
     }
 
-    public function loanStatement(Loan $loan): \Illuminate\View\View
+    public function savingsStatement(SavingsAccount $account)
     {
-        $loan->load([
-            'member.region',
-            'loanProduct',
-            'approvedBy',
-            'repayments',
-            'schedules',
-            'guarantors.member',
-        ]);
-        $this->authorizeMemberAccess($loan->member_id);
-
-        return view('receipts.loan-statement', ['loan' => $loan]);
+        return $this->documentService->savingsStatement($account);
     }
 
-    public function savingsStatement(SavingsAccount $account): \Illuminate\View\View
+    public function shareCertificate($account)
     {
-        $account->load([
-            'member.region',
-            'transactions',
-        ]);
-        $this->authorizeMemberAccess($account->member_id);
-
-        return view('receipts.savings-statement', ['account' => $account]);
-    }
-
-    public function shareCertificate($account): \Illuminate\View\View
-    {
-        $account = \App\Models\ShareAccount::with([
-            'member.region',
-            'transactions',
-        ])->findOrFail($account);
-        $this->authorizeMemberAccess($account->member_id);
-
-        $firstPurchase = $account->transactions()
-            ->where('type', 'purchase')
-            ->orderBy('transaction_date')
-            ->first();
-
-        return view('receipts.share-certificate', [
-            'account' => $account,
-            'firstPurchase' => $firstPurchase,
-        ]);
+        return $this->documentService->shareCertificate((int) $account);
     }
 }

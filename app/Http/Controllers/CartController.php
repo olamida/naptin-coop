@@ -2,43 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
-use App\Models\PurchaseOrder;
+use App\Models\Member;
+use App\Services\CartService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
 {
+    private function cartService(): CartService
+    {
+        return new CartService('admin', Auth::id());
+    }
+
     public function index(): \Illuminate\View\View
     {
-        $cartService = new \App\Services\CartService();
-        ['items' => $items, 'total' => $total] = $cartService->resolveCartItems();
+        ['items' => $items, 'total' => $total] = $this->cartService()->resolveCartItems();
 
         return view('cart.index', ['items' => $items, 'total' => $total]);
     }
 
-    public function add(Request $request): \Illuminate\Http\RedirectResponse
+    public function add(Request $request)
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $cart = Session::get('cart', []);
-        $productId = $request->product_id;
-        $quantity = $request->quantity;
-
-        if (isset($cart[$productId])) {
-            $cart[$productId] += $quantity;
-        } else {
-            $cart[$productId] = $quantity;
-        }
-
-        Session::put('cart', $cart);
-
-        if ($request->has('member_id')) {
-            Session::put('cart_member_id', $request->member_id);
-        }
+        $this->cartService()->add($request->product_id, $request->quantity);
 
         if ($request->ajax()) {
             return response()->json(['success' => true, 'message' => 'Product added to cart.']);
@@ -54,15 +44,7 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:0',
         ]);
 
-        $cart = Session::get('cart', []);
-
-        if ($request->quantity <= 0) {
-            unset($cart[$request->product_id]);
-        } else {
-            $cart[$request->product_id] = $request->quantity;
-        }
-
-        Session::put('cart', $cart);
+        $this->cartService()->update($request->product_id, $request->quantity);
 
         return back()->with('success', 'Cart updated.');
     }
@@ -72,29 +54,26 @@ class CartController extends Controller
         $request->validate([
             'product_id' => 'required|exists:products,id',
         ]);
-        $cart = Session::get('cart', []);
-        unset($cart[$request->product_id]);
-        Session::put('cart', $cart);
+
+        $this->cartService()->remove($request->product_id);
 
         return back()->with('success', 'Item removed from cart.');
     }
 
     public function clear(): \Illuminate\Http\RedirectResponse
     {
-        Session::forget('cart');
+        $this->cartService()->clear();
 
         return back()->with('success', 'Cart cleared.');
     }
 
     public function checkout(): \Illuminate\View\View
     {
-        $cartService = new \App\Services\CartService();
-        ['items' => $items, 'total' => $total] = $cartService->resolveCartItems();
+        ['items' => $items, 'total' => $total] = $this->cartService()->resolveCartItems();
 
-        $members = \App\Models\Member::where('status', 'active')->orderBy('first_name')->get();
-        $memberId = Session::get('cart_member_id');
+        $members = Member::where('status', 'active')->orderBy('first_name')->get();
 
-        return view('cart.checkout', ['items' => $items, 'total' => $total, 'members' => $members, 'memberId' => $memberId]);
+        return view('cart.checkout', ['items' => $items, 'total' => $total, 'members' => $members]);
     }
 
     public function processCheckout(Request $request): \Illuminate\Http\RedirectResponse
@@ -105,16 +84,8 @@ class CartController extends Controller
             'monthly_repayment' => 'required_if:payment_type,hire_purchase|nullable|numeric|min:0',
         ]);
 
-        $cart = Session::get('cart', []);
-        if (empty($cart)) {
-            return back()->withErrors(['error' => 'Your cart is empty.']);
-        }
-
-        $member = \App\Models\Member::findOrFail($request->member_id);
-        $cartService = new \App\Services\CartService();
-
         try {
-            $orders = $cartService->processCheckout($cart, $member->id, $request->payment_type, $request->monthly_repayment);
+            $orders = $this->cartService()->processCheckout($request->member_id, $request->payment_type, $request->monthly_repayment);
         } catch (\Exception $e) {
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }

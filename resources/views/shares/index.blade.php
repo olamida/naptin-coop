@@ -1,72 +1,70 @@
 <x-app-layout title="Shares">
-    <div class="space-y-6">
+    <div class="space-y-6 fade-in">
         <x-breadcrumb :items="[['label' => 'Shares']]" />
         <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-bold text-gray-800">Shares</h2>
+            <div>
+                <h2 class="text-2xl font-bold text-[#0F172A]">Shares</h2>
+                <p class="text-xs text-slate-500 mt-1">Track member share holdings, purchases and transactions</p>
+            </div>
             <div class="flex items-center gap-2">
                 @can('view-shares')
-                    <a href="{{ route('shares.export') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm transition flex items-center gap-1.5">
+                    <a href="{{ route('shares.export') }}" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-[10px] text-sm transition flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-[16px]">download</span>
                         Export
                     </a>
                 @endcan
                 @can('purchase-shares')
-                    <a href="{{ route('shares.purchase') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition">+ Purchase</a>
+                    <a href="{{ route('shares.purchase') }}" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-lg">add</span>
+                        Purchase
+                    </a>
                 @endcan
             </div>
         </div>
 
         {{-- Sub-Navigation Tabs --}}
-        <div class="flex items-center gap-1 border-b border-gray-200">
-            <a href="{{ route('shares.index') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-blue-600 text-blue-600 -mb-px">
+        <div class="flex items-center gap-1 border-b border-slate-200">
+            <a href="{{ route('shares.index') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-[#0F172A] text-[#0F172A] -mb-px">
                 Transactions
             </a>
-            <a href="{{ route('shares.accounts') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 -mb-px transition">
+            <a href="{{ route('shares.accounts') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 -mb-px transition">
                 Accounts
             </a>
         </div>
 
-        {{-- Stats Cards --}}
+        {{-- KPI Cards --}}
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-purple-500 text-lg">trending_up</span>
-                    <p class="text-xs text-gray-500">Total Shares</p>
-                </div>
-                <p class="text-xl font-bold text-purple-700">{{ number_format($stats['total_shares']) }}</p>
+            <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+                <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Total Shares</p>
+                <p class="mt-2 text-2xl font-bold text-purple-700">{{ number_format($stats['total_shares']) }}</p>
+                <p class="text-xs text-slate-400 mt-1">Units held</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-green-500 text-lg">payments</span>
-                    <p class="text-xs text-gray-500">Portfolio Value</p>
-                </div>
-                <p class="text-xl font-bold text-green-700">₦{{ number_format($stats['total_value'], 2) }}</p>
+            <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+                <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Portfolio Value</p>
+                <p class="mt-2 text-2xl font-mono font-bold text-emerald-700 truncate" title="₦{{ number_format($stats['total_value'], 2) }}">₦{{ number_format($stats['total_value'], 2) }}</p>
+                <p class="text-xs text-slate-400 mt-1">Total worth</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-blue-500 text-lg">swap_horiz</span>
-                    <p class="text-xs text-gray-500">Transactions</p>
-                </div>
-                <p class="text-xl font-bold">{{ $stats['total_transactions'] }}</p>
+            <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+                <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Transactions</p>
+                <p class="mt-2 text-2xl font-bold text-[#0F172A]">{{ $stats['total_transactions'] }}</p>
+                <p class="text-xs text-slate-400 mt-1">All time volume</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-amber-500 text-lg">people</span>
-                    <p class="text-xs text-gray-500">Shareholders</p>
-                </div>
-                <p class="text-xl font-bold">{{ $stats['members_with_shares'] }}</p>
+            <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+                <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Shareholders</p>
+                <p class="mt-2 text-2xl font-bold text-amber-600">{{ $stats['members_with_shares'] }}</p>
+                <p class="text-xs text-slate-400 mt-1">Active members</p>
             </div>
         </div>
 
         <form method="GET" class="flex flex-wrap gap-3 items-end">
             <div class="flex-1 min-w-[200px]">
-                <label class="block text-xs text-gray-500 mb-1">Search</label>
+                <label class="block text-xs font-medium text-slate-500 mb-1">Search</label>
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Member name, Staff ID, or Reference..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
             </div>
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Type</label>
-                <select name="type" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <label class="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                <select name="type" class="px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     <option value="">All Types</option>
                     <option value="purchase" {{ request('type') === 'purchase' ? 'selected' : '' }}>Purchase</option>
                     <option value="sale" {{ request('type') === 'sale' ? 'selected' : '' }}>Sale</option>
@@ -74,68 +72,77 @@
                     <option value="dividend" {{ request('type') === 'dividend' ? 'selected' : '' }}>Dividend</option>
                 </select>
             </div>
-            <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition">Filter</button>
+            <button type="submit" class="bg-[#0F172A] hover:bg-slate-800 text-white px-5 py-2 rounded-[10px] text-sm font-medium transition">Filter</button>
             @if (request()->hasAny(['search', 'type']))
-                <a href="{{ route('shares.index') }}" class="text-sm text-gray-500 hover:underline py-2">Clear</a>
+                <a href="{{ route('shares.index') }}" class="text-sm text-slate-500 hover:underline py-2">Clear</a>
             @endif
         </form>
 
         @if (session('success'))
-            <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">{{ session('success') }}</div>
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-[12px] text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-lg">check_circle</span>
+                {{ session('success') }}
+            </div>
         @endif
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Date</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Reference</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Member</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Type</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Shares</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse ($transactions as $txn)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 text-gray-600">{{ $txn->transaction_date?->format('d M Y') }}</td>
-                            <td class="px-4 py-3 font-mono text-xs">{{ $txn->reference }}</td>
-                            <td class="px-4 py-3">
-                                @if ($txn->shareAccount?->member)
-                                    {{ $txn->shareAccount->member->first_name }} {{ $txn->shareAccount->member->last_name }}
-                                @else
-                                    <span class="text-gray-400">N/A</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3">
-                                <span class="px-2 py-1 text-xs rounded-full
-                                    {{ $txn->type === 'purchase' ? 'bg-blue-100 text-blue-700' : '' }}
-                                    {{ $txn->type === 'sale' ? 'bg-orange-100 text-orange-700' : '' }}
-                                    {{ $txn->type === 'transfer' ? 'bg-purple-100 text-purple-700' : '' }}
-                                    {{ $txn->type === 'dividend' ? 'bg-green-100 text-green-700' : '' }}">
-                                    {{ ucfirst($txn->type) }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-right">{{ number_format($txn->shares) }}</td>
-                            <td class="px-4 py-3 text-right font-medium">₦{{ number_format($txn->amount, 2) }}</td>
-                            <td class="px-4 py-3 text-right">
-                                @if ($txn->type === 'purchase')
-                                    <a href="{{ route('receipts.share-purchase', $txn) }}" target="_blank" class="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
-                                        <span class="material-symbols-outlined text-[14px]">print</span>
-                                        Receipt
-                                    </a>
-                                @endif
-                            </td>
+        <div class="bg-white rounded-[16px] border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-100">
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Reference</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Member</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                            <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Shares</th>
+                            <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                            <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">No transactions found.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @forelse ($transactions as $txn)
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="px-5 py-3.5 text-xs text-slate-600">{{ $txn->transaction_date?->format('d M Y') }}</td>
+                                <td class="px-5 py-3.5 font-mono text-xs text-slate-500">{{ $txn->reference }}</td>
+                                <td class="px-5 py-3.5">
+                                    @if ($txn->shareAccount?->member)
+                                        <a href="{{ route('members.show', $txn->shareAccount->member) }}" class="text-slate-800 font-medium hover:text-blue-600 transition">{{ $txn->shareAccount->member->first_name }} {{ $txn->shareAccount->member->last_name }}</a>
+                                    @else
+                                        <span class="text-slate-400">N/A</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span class="px-2.5 py-1 text-[10px] font-medium rounded-full border
+                                        {{ $txn->type === 'purchase' ? 'bg-blue-50 text-blue-700 border-blue-200' : '' }}
+                                        {{ $txn->type === 'sale' ? 'bg-orange-50 text-orange-700 border-orange-200' : '' }}
+                                        {{ $txn->type === 'transfer' ? 'bg-purple-50 text-purple-700 border-purple-200' : '' }}
+                                        {{ $txn->type === 'dividend' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : '' }}">
+                                        {{ ucfirst($txn->type) }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3.5 text-right font-mono text-sm font-medium text-slate-800">{{ number_format($txn->shares) }}</td>
+                                <td class="px-5 py-3.5 text-right font-mono text-sm font-medium text-slate-800">₦{{ number_format($txn->amount, 2) }}</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <div class="flex items-center justify-end gap-1">
+                                        @if ($txn->type === 'purchase')
+                                            <a href="{{ route('receipts.share-purchase', $txn) }}" target="_blank" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition" title="Print Receipt">
+                                                <span class="material-symbols-outlined text-[16px]">print</span>
+                                            </a>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="px-5 py-12 text-center text-slate-500">
+                                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-2 block">trending_up</span>
+                                    <p class="text-sm">No transactions found.</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         {{ $transactions->links() }}

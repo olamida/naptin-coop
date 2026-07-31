@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Member;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class MemberRegisteredNotification extends Notification
+class MemberRegisteredNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -26,7 +27,7 @@ class MemberRegisteredNotification extends Notification
             'type' => 'member_registered',
             'member_id' => $this->member->id,
             'staff_id' => $this->member->staff_id,
-            'message' => "New member registered: {$this->member->first_name} {$this->member->last_name} ({$this->member->staff_id}).",
+            'message' => "New member registered: {$this->member->first_name} {$this->member->last_name} ({$this->member->staff_id_display}).",
         ];
     }
 }

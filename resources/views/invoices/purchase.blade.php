@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice {{ $order->order_number }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; color: #1f2937; background: #f9fafb; padding: 2rem; }
+        body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; color: #1f2937; background: #f9fafb; padding: 2rem; }
         .invoice { max-width: 800px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
         .header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 2rem; }
         .header h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
@@ -78,7 +77,7 @@
                 <div class="info-block">
                     <h3>Bill To</h3>
                     <p class="value">{{ $order->member->first_name ?? 'N/A' }} {{ $order->member->last_name ?? '' }}</p>
-                    <p><span class="label">Staff ID:</span> <span class="value">{{ $order->member->staff_id ?? 'N/A' }}</span></p>
+                    <p><span class="label">Staff ID:</span> <span class="value">{{ $order->member->staff_id_display ?? 'N/A' }}</span></p>
                     <p><span class="label">Region:</span> <span class="value">{{ $order->member->region->name ?? 'N/A' }}</span></p>
                     <p><span class="label">Phone:</span> <span class="value">{{ $order->member->phone ?? 'N/A' }}</span></p>
                     <p><span class="label">Email:</span> <span class="value">{{ $order->member->email ?? 'N/A' }}</span></p>

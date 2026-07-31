@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\MonthlyPayroll;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class PayrollCompiledNotification extends Notification
+class PayrollCompiledNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -26,7 +27,7 @@ class PayrollCompiledNotification extends Notification
             ->subject('Payroll Compiled - ' . $this->payroll->month . ' ' . $this->payroll->year)
             ->greeting('Hello ' . $notifiable->name . '!')
             ->line("The {$this->payroll->month} {$this->payroll->year} payroll has been compiled.")
-            ->line("Total deductions: ₦" . number_format($this->payroll->grand_total, 2))
+            ->line("Total deductions: Ã¢â€šÂ¦" . number_format($this->payroll->grand_total, 2))
             ->line("Members included: {$this->payroll->member_count}")
             ->line("Please review and process the payroll deductions.");
     }
@@ -38,7 +39,7 @@ class PayrollCompiledNotification extends Notification
             'payroll_id' => $this->payroll->id,
             'month' => $this->payroll->month,
             'year' => $this->payroll->year,
-            'message' => "The {$this->payroll->month} {$this->payroll->year} payroll has been compiled (₦" . number_format($this->payroll->grand_total, 2) . ").",
+            'message' => "The {$this->payroll->month} {$this->payroll->year} payroll has been compiled (Ã¢â€šÂ¦" . number_format($this->payroll->grand_total, 2) . ").",
         ];
     }
 }

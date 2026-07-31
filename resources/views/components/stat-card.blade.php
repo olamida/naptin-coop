@@ -28,17 +28,17 @@
     };
 @endphp
 
-<div class="stat-card bg-white rounded-xl border border-gray-100 p-5 {{ $class }}">
+<div class="stat-card bg-white rounded-[16px] border border-slate-200 p-5 {{ $class }}">
     <div class="flex items-center justify-between">
         <div>
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $title }}</p>
-            <p class="text-2xl font-bold text-gray-900 mt-1">{{ $value }}</p>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $title }}</p>
+            <p class="text-2xl font-bold text-[#0F172A] mt-1">{{ $value }}</p>
             @if ($subtitle)
-                <p class="text-xs text-gray-400 mt-1">{{ $subtitle }}</p>
+                <p class="text-xs text-slate-400 mt-1">{{ $subtitle }}</p>
             @endif
         </div>
         @if ($icon)
-            <div class="w-12 h-12 rounded-xl {{ $iconColorClasses }} flex items-center justify-center flex-shrink-0">
+            <div class="w-12 h-12 rounded-[16px] {{ $iconColorClasses }} flex items-center justify-center flex-shrink-0">
                 <span class="material-symbols-outlined text-xl {{ $colorClasses }}">{{ $icon }}</span>
             </div>
         @endif

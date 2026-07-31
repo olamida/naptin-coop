@@ -28,7 +28,7 @@ class RegistrationController extends Controller
             'email' => 'required|email|unique:members,email',
             'phone' => 'required|string|max:20',
             'region_id' => 'required|exists:regions,id',
-            'staff_id' => 'required|string|unique:members,staff_id',
+            'staff_id' => 'required|numeric|unique:members,staff_id',
             'gender' => 'nullable|in:male,female',
             'date_of_birth' => 'nullable|date',
             'nin' => 'nullable|string|unique:members,nin',

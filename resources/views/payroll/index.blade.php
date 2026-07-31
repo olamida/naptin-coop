@@ -1,84 +1,103 @@
 <x-app-layout title="Payroll">
-    <div class="space-y-6">
+    <div class="space-y-6 fade-in">
         <x-breadcrumb :items="[['label' => 'Payroll']]" />
         <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-bold text-gray-800">Payroll</h2>
+            <div>
+                <h2 class="text-2xl font-bold text-[#0F172A]">Payroll</h2>
+                <p class="text-xs text-slate-500 mt-1">Compile, manage and reconcile monthly payroll deductions</p>
+            </div>
             @can('compile-payroll')
-                <a href="{{ route('payroll.compile') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                    + Compile Payroll
+                <a href="{{ route('payroll.compile') }}" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-lg">add</span>
+                    Compile Payroll
                 </a>
             @endcan
         </div>
 
-        {{-- Stats Cards --}}
+        {{-- KPI Cards --}}
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-blue-500 text-lg">receipt_long</span>
-                    <p class="text-xs text-gray-500">Total Payrolls</p>
-                </div>
-                <p class="text-xl font-bold">{{ $stats['total_payrolls'] }}</p>
+            <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+                <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Total Payrolls</p>
+                <p class="mt-2 text-2xl font-bold text-[#0F172A]">{{ $stats['total_payrolls'] }}</p>
+                <p class="text-xs text-slate-400 mt-1">All time runs</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-green-500 text-lg">payments</span>
-                    <p class="text-xs text-gray-500">Total Deductions</p>
-                </div>
-                <p class="text-xl font-bold text-green-700">₦{{ number_format($stats['total_deductions'], 2) }}</p>
+            <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+                <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Total Deductions</p>
+                <p class="mt-2 text-2xl font-mono font-bold text-emerald-700 truncate" title="₦{{ number_format($stats['total_deductions'], 2) }}">₦{{ number_format($stats['total_deductions'], 2) }}</p>
+                <p class="text-xs text-slate-400 mt-1">Aggregate deducted</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-purple-500 text-lg">people</span>
-                    <p class="text-xs text-gray-500">Members (Latest)</p>
-                </div>
-                <p class="text-xl font-bold">{{ $stats['total_members'] }}</p>
+            <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+                <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Members</p>
+                <p class="mt-2 text-2xl font-bold text-[#0F172A]">{{ $stats['total_members'] }}</p>
+                <p class="text-xs text-slate-400 mt-1">In latest payroll</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-amber-500 text-lg">info</span>
-                    <p class="text-xs text-gray-500">Latest Status</p>
-                </div>
-                <p class="text-xl font-bold capitalize">{{ $stats['latest_status'] ?? 'N/A' }}</p>
+            <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+                <p class="text-xs font-semibold text-slate-500 tracking-wider uppercase">Latest Status</p>
+                <p class="mt-2 text-2xl font-bold capitalize {{ $stats['latest_status'] === 'completed' ? 'text-emerald-600' : ($stats['latest_status'] === 'deducted' ? 'text-blue-600' : 'text-amber-600') }}">
+                    {{ $stats['latest_status'] ?? 'N/A' }}
+                </p>
+                <p class="text-xs text-slate-400 mt-1">Current payroll run</p>
             </div>
         </div>
 
         @if (session('success'))
-            <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">{{ session('success') }}</div>
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-[12px] text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-lg">check_circle</span>
+                {{ session('success') }}
+            </div>
         @endif
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Payroll #</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Period</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Members</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Grand Total</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                        <th class="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse ($payrolls as $payroll)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 font-mono text-xs">{{ $payroll->payroll_number }}</td>
-                            <td class="px-4 py-3">{{ $payroll->month }} {{ $payroll->year }}</td>
-                            <td class="px-4 py-3 text-right">{{ $payroll->member_count }}</td>
-                            <td class="px-4 py-3 text-right font-medium">₦{{ number_format($payroll->grand_total, 2) }}</td>
-                            <td class="px-4 py-3">
-                                <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">{{ ucfirst($payroll->status) }}</span>
-                            </td>
-                            <td class="px-4 py-3 text-right">
-                                <a href="{{ route('payroll.show', $payroll) }}" class="text-blue-600 hover:underline text-xs">View</a>
-                            </td>
+        <div class="bg-white rounded-[16px] border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-100">
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Payroll #</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Period</th>
+                            <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Members</th>
+                            <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Grand Total</th>
+                            <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th class="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">No payroll records found.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @forelse ($payrolls as $payroll)
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="px-5 py-3.5 font-mono text-xs text-slate-500">{{ $payroll->payroll_number }}</td>
+                                <td class="px-5 py-3.5 text-slate-800 font-medium">{{ $payroll->month }} {{ $payroll->year }}</td>
+                                <td class="px-5 py-3.5 text-right text-slate-600">{{ $payroll->member_count }}</td>
+                                <td class="px-5 py-3.5 text-right font-mono font-medium text-slate-800">₦{{ number_format($payroll->grand_total, 2) }}</td>
+                                <td class="px-5 py-3.5">
+                                    @php
+                                        $statusStyles = [
+                                            'draft' => 'bg-slate-50 text-slate-600 border-slate-200',
+                                            'compiled' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                            'deducted' => 'bg-purple-50 text-purple-700 border-purple-200',
+                                            'completed' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                        ];
+                                    @endphp
+                                    <span class="px-2.5 py-1 text-[10px] font-medium rounded-full border {{ $statusStyles[$payroll->status] ?? 'bg-slate-50 text-slate-600 border-slate-200' }}">
+                                        {{ ucfirst($payroll->status) }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <a href="{{ route('payroll.show', $payroll) }}" class="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition">
+                                        View
+                                        <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-5 py-12 text-center text-slate-500">
+                                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-2 block">payments</span>
+                                    <p class="text-sm">No payroll records found.</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         {{ $payrolls->links() }}

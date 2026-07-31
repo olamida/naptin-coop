@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\ShareTransaction;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class SharePurchasedNotification extends Notification
+class SharePurchasedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -23,7 +24,7 @@ class SharePurchasedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $shares = $this->transaction->shares;
-        $amount = '₦' . number_format($this->transaction->amount, 2);
+        $amount = 'Ã¢â€šÂ¦' . number_format($this->transaction->amount, 2);
 
         return (new MailMessage)
             ->subject('Share Purchase Confirmed')
@@ -38,7 +39,7 @@ class SharePurchasedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         $shares = $this->transaction->shares;
-        $amount = '₦' . number_format($this->transaction->amount, 2);
+        $amount = 'Ã¢â€šÂ¦' . number_format($this->transaction->amount, 2);
 
         return [
             'type' => 'share_purchased',

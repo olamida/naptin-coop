@@ -18,4 +18,14 @@ enum PaymentMethod: string
             self::SavingsDeduction => 'Savings Deduction',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Cash => 'success',
+            self::BankTransfer => 'blue',
+            self::SalaryDeduction => 'indigo',
+            self::SavingsDeduction => 'purple',
+        };
+    }
 }

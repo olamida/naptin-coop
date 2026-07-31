@@ -17,12 +17,25 @@ class LoanGuarantor extends Model
         'status',
         'notes',
         'responded_at',
+        'accept_token',
+        'token_expires_at',
+        'accepted_ip',
+        'accepted_user_agent',
     ];
 
     protected $casts = [
         'status' => GuarantorStatus::class,
         'responded_at' => 'datetime',
+        'token_expires_at' => 'datetime',
     ];
+
+    public function isValidToken(): bool
+    {
+        return $this->accept_token
+            && $this->status === GuarantorStatus::Pending
+            && $this->token_expires_at
+            && $this->token_expires_at->isFuture();
+    }
 
     public function loan(): BelongsTo
     {

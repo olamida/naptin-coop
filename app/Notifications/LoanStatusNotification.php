@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Loan;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class LoanStatusNotification extends Notification
+class LoanStatusNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -36,9 +37,9 @@ class LoanStatusNotification extends Notification
         $message = match ($this->newStatus) {
             'approved' => "Your loan application {$this->loan->loan_number} has been approved. Please visit the cooperative office to complete disbursement.",
             'rejected' => "We regret to inform you that your loan application {$this->loan->loan_number} has been rejected." . ($this->loan->rejection_reason ? " Reason: {$this->loan->rejection_reason}" : ''),
-            'disbursed' => "Your loan {$this->loan->loan_number} of ₦" . number_format($this->loan->amount, 2) . " has been disbursed. Monthly repayment: ₦" . number_format($this->loan->monthly_repayment, 2) . ".",
+            'disbursed' => "Your loan {$this->loan->loan_number} of Ã¢â€šÂ¦" . number_format($this->loan->amount, 2) . " has been disbursed. Monthly repayment: Ã¢â€šÂ¦" . number_format($this->loan->monthly_repayment, 2) . ".",
             'completed' => "Congratulations! Your loan {$this->loan->loan_number} has been fully repaid. Thank you for fulfilling your obligation.",
-            'defaulted' => "Your loan {$this->loan->loan_number} has exceeded its maturity date and remains unpaid. Outstanding: ₦" . number_format($this->loan->outstanding, 2) . ". Please contact the cooperative.",
+            'defaulted' => "Your loan {$this->loan->loan_number} has exceeded its maturity date and remains unpaid. Outstanding: Ã¢â€šÂ¦" . number_format($this->loan->outstanding, 2) . ". Please contact the cooperative.",
             default => "Your loan {$this->loan->loan_number} status has been updated to {$this->newStatus}.",
         };
 

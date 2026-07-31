@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal-member' => \App\Http\Middleware\PortalMember::class,
             'admin-only' => \App\Http\Middleware\MemberGuard::class,
             'enforce-single-session' => \App\Http\Middleware\EnforceSingleSession::class,
+            'must-change-password' => \App\Http\Middleware\MustChangePassword::class,
+            'two-factor' => \App\Http\Middleware\RequireTwoFactor::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

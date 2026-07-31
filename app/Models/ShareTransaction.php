@@ -20,6 +20,8 @@ class ShareTransaction extends Model
         'status',
         'notes',
         'transaction_date',
+        'import_batch_id',
+        'external_reference',
     ];
 
     protected $casts = [

@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Member Status Report - {{ $member->first_name }} {{ $member->last_name }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; color: #1f2937; background: #f9fafb; padding: 2rem; }
+        body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; color: #1f2937; background: #f9fafb; padding: 2rem; }
         .report { max-width: 800px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
         .header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 2rem; }
         .header h1 { font-size: 1.25rem; font-weight: 700; }
@@ -82,7 +81,7 @@
 
         <div class="member-info">
             <div class="item"><span class="label">Name:</span> <span class="value">{{ $member->first_name }} {{ $member->middle_name ?? '' }} {{ $member->last_name }}</span></div>
-            <div class="item"><span class="label">Staff ID:</span> <span class="value">{{ $member->staff_id }}</span></div>
+            <div class="item"><span class="label">Staff ID:</span> <span class="value">{{ $member->staff_id_display }}</span></div>
             <div class="item"><span class="label">Region:</span> <span class="value">{{ $member->region->name ?? 'N/A' }}</span></div>
             <div class="item"><span class="label">Status:</span> <span class="value">{{ ucfirst($member->status) }}</span></div>
             <div class="item"><span class="label">Grade Level:</span> <span class="value">{{ $member->grade_level ?? 'N/A' }}</span></div>

@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Loan;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class LoanAppliedNotification extends Notification
+class LoanAppliedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -22,7 +23,7 @@ class LoanAppliedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = '₦' . number_format($this->loan->amount, 2);
+        $amount = 'Ã¢â€šÂ¦' . number_format($this->loan->amount, 2);
         $member = $this->loan->member;
         $memberName = "{$member->first_name} {$member->last_name}";
         $purpose = $this->loan->purpose ?: 'Not specified';
@@ -31,7 +32,7 @@ class LoanAppliedNotification extends Notification
             ->subject('New Loan Application - ' . $this->loan->loan_number)
             ->greeting('Hello ' . $notifiable->name . '!')
             ->line("A new loan application has been submitted and requires your review.")
-            ->line("Applicant: {$memberName} ({$member->staff_id})")
+            ->line("Applicant: {$memberName} ({$member->staff_id_display})")
             ->line("Loan Number: {$this->loan->loan_number}")
             ->line("Amount: {$amount}")
             ->line("Purpose: {$purpose}")
@@ -40,7 +41,7 @@ class LoanAppliedNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $amount = '₦' . number_format($this->loan->amount, 2);
+        $amount = 'Ã¢â€šÂ¦' . number_format($this->loan->amount, 2);
         $member = $this->loan->member;
 
         return [

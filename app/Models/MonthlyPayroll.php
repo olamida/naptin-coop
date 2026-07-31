@@ -19,6 +19,7 @@ class MonthlyPayroll extends Model
         'total_loan_repayments',
         'total_share_contributions',
         'total_purchases',
+        'total_arrears',
         'grand_total',
         'member_count',
         'status',
@@ -32,6 +33,7 @@ class MonthlyPayroll extends Model
         'total_loan_repayments' => 'decimal:2',
         'total_share_contributions' => 'decimal:2',
         'total_purchases' => 'decimal:2',
+        'total_arrears' => 'decimal:2',
         'grand_total' => 'decimal:2',
         'member_count' => 'integer',
     ];
@@ -39,5 +41,10 @@ class MonthlyPayroll extends Model
     public function deductions(): HasMany
     {
         return $this->hasMany(PayrollDeduction::class);
+    }
+
+    public function arrears(): HasMany
+    {
+        return $this->hasMany(PayrollArrear::class);
     }
 }

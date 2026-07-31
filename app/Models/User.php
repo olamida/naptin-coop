@@ -21,6 +21,11 @@ class User extends Authenticatable
         'profile_photo_path',
         'member_id',
         'active_session_token',
+        'must_change_password',
+        'totp_secret',
+        'totp_enabled',
+        'totp_recovery_codes',
+        'totp_confirmed_at',
     ];
 
     protected $hidden = [
@@ -34,6 +39,10 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
+            'totp_enabled' => 'boolean',
+            'totp_recovery_codes' => 'array',
+            'totp_confirmed_at' => 'datetime',
         ];
     }
 

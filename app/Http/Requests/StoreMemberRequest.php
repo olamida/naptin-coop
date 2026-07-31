@@ -16,7 +16,7 @@ class StoreMemberRequest extends FormRequest
     {
         return [
             'region_id' => 'required|exists:regions,id',
-            'staff_id' => 'required|string|unique:members,staff_id',
+            'staff_id' => 'required|numeric|unique:members,staff_id',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',

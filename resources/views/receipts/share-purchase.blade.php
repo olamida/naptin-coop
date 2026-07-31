@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Share Purchase Receipt</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
             body { margin: 0; }
@@ -13,15 +12,16 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-8">
-    <div class="no-print mb-6 text-center">
-        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium">
-            Print Receipt
-        </button>
-        <a href="javascript:window.close()" class="ml-3 text-gray-500 hover:text-gray-700 text-sm">Close</a>
-    </div>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-lg mx-auto">
+        <div class="no-print mb-6 text-center">
+            <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium">
+                Print Receipt
+            </button>
+            <a href="javascript:window.close()" class="ml-3 text-gray-500 hover:text-gray-700 text-sm">Close</a>
+        </div>
 
-    <div class="print-area bg-white rounded-xl shadow-lg max-w-lg w-full p-8">
+        <div class="print-area bg-white rounded-xl shadow-lg w-full p-8">
         @php $company = \App\Models\Company::instance(); @endphp
         <div class="text-center border-b border-gray-200 pb-6 mb-6">
             @if ($company->logo_path)
@@ -46,7 +46,7 @@
             </div>
             <div class="flex justify-between text-sm">
                 <span class="text-gray-500">Staff ID:</span>
-                <span class="text-gray-900">{{ $transaction->shareAccount->member->staff_id }}</span>
+                <span class="text-gray-900">{{ $transaction->shareAccount->member->staff_id_display }}</span>
             </div>
 
             <div class="border-t border-dashed border-gray-300 my-4"></div>
@@ -72,6 +72,7 @@
         <div class="mt-8 pt-6 border-t border-gray-200 text-center text-xs text-gray-400">
             <p>Generated {{ now()->format('d M Y, h:i A') }} &middot; {{ $company->name }}</p>
         </div>
-    </div>
+    </div>  <!-- close print-area -->
+    </div>  <!-- close wrapper -->
 </body>
 </html>

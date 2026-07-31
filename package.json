@@ -15,6 +15,10 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
-        "alpinejs": "^3.15.12"
+        "@alpinejs/focus": "^3.15.12",
+        "@fontsource/inter": "^5.3.0",
+        "@fontsource/jetbrains-mono": "^5.3.0",
+        "alpinejs": "^3.15.12",
+        "material-symbols": "^0.45.9"
     }
 }

@@ -1,17 +1,17 @@
 <x-app-layout title="Import Purchases">
     <div class="max-w-2xl mx-auto space-y-6">
         <div class="flex items-center gap-3">
-            <a href="{{ route('admin.data-import') }}" class="text-gray-500 hover:text-gray-700">&larr;</a>
-            <h2 class="text-2xl font-bold text-gray-800">Import Purchase Orders</h2>
+            <a href="{{ route('admin.data-import') }}" class="text-slate-500 hover:text-slate-700">&larr;</a>
+            <h2 class="text-2xl font-bold text-[#0F172A]">Import Purchase Orders</h2>
         </div>
 
-        <div class="flex items-center gap-2 text-sm text-gray-500">
+        <div class="flex items-center gap-2 text-sm text-slate-500">
             <a href="{{ route('admin.data-import') }}" class="hover:text-cyan-600 transition">Data Import</a>
             <span class="material-symbols-outlined text-[16px]">chevron_right</span>
-            <span class="text-gray-800 font-medium">Import Purchase Orders</span>
+            <span class="text-[#0F172A] font-medium">Import Purchase Orders</span>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6">
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-sm font-semibold text-blue-800">Expected Column Headers</h3>
@@ -34,20 +34,20 @@
                 @csrf
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Select Excel File</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Select Excel File</label>
                         <input type="file" name="import_file" accept=".xlsx,.xls,.csv" required
-                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                               class="block w-full text-sm text-slate-500 file:mr-4 file:py-3 file:px-6 file:rounded-[10px] file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
                     </div>
 
                     @if ($errors->has('import_file'))
                         <p class="text-red-600 text-sm">{{ $errors->first('import_file') }}</p>
                     @endif
 
-                    <div class="flex items-center gap-3 pt-4 border-t border-gray-100">
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
+                    <div class="flex items-center gap-3 pt-4 border-t border-slate-200">
+                        <button type="submit" class="bg-[#0F172A] hover:bg-slate-800 text-white px-6 py-2 rounded-[10px] text-sm font-medium transition">
                             Import Purchases
                         </button>
-                        <a href="{{ route('purchases.index') }}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+                        <a href="{{ route('purchases.index') }}" class="text-sm text-slate-500 hover:text-slate-700">Cancel</a>
                     </div>
                 </div>
             </form>

@@ -1,30 +1,30 @@
 {
     "name": "NAPTIN Staff Thrift Cooperative Society",
     "short_name": "NAPTIN Coop",
-    "description": "Staff Thrift Cooperative Management System",
-    "start_url": "/dev-angle/Starter-folder/naptin-coop/public/dashboard",
+    "description": "Staff Thrift Cooperative Management System - Member Portal",
+    "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#f9fafb",
-    "theme_color": "#2563eb",
-    "orientation": "any",
+    "background_color": "#0F172A",
+    "theme_color": "#0F172A",
+    "orientation": "portrait",
+    "id": "/my/",
     "icons": [
         {
-            "src": "/dev-angle/Starter-folder/naptin-coop/public/favicon.ico",
-            "sizes": "64x64",
-            "type": "image/x-icon"
-        },
-        {
-            "src": "/dev-angle/Starter-folder/naptin-coop/public/icon-192.png",
+            "src": "icon-192.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "/dev-angle/Starter-folder/naptin-coop/public/icon-512.png",
+            "src": "icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
         }
     ],
-    "categories": ["finance", "business"]
+    "categories": ["finance", "business"],
+    "screenshots": [],
+    "prefer_related_applications": false,
+    "related_applications": []
 }

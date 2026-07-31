@@ -33,7 +33,7 @@
                                         <table width="100%" cellpadding="0" cellspacing="0">
                                             <tr>
                                                 <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Staff ID</td>
-                                                <td style="padding: 6px 0; color: #1f2937; font-size: 13px; font-weight: 600; text-align: right;">{{ $member->staff_id }}</td>
+                                                <td style="padding: 6px 0; color: #1f2937; font-size: 13px; font-weight: 600; text-align: right;">{{ $member->staff_id_display }}</td>
                                             </tr>
                                             <tr>
                                                 <td style="padding: 6px 0; color: #6b7280; font-size: 13px;">Full Name</td>

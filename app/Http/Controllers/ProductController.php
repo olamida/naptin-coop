@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Imports\ProductImport;
+use App\Models\ImportLog;
 use App\Models\Member;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
@@ -240,10 +241,22 @@ class ProductController extends Controller
             'import_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        Excel::import(new ProductImport, $request->file('import_file'));
+        $batchId = (string) Str::uuid();
+        $import = new ProductImport($batchId);
+        $fileName = $request->file('import_file')->getClientOriginalName();
 
-        return redirect()->route('products.index')
-            ->with('success', 'Products imported successfully.');
+        try {
+            Excel::import($import, $request->file('import_file'));
+
+            ImportLog::record($batchId, 'products', $fileName, $import->importStats());
+
+            return redirect()->route('products.index')
+                ->with('success', 'Products imported successfully. Batch: ' . substr($batchId, 0, 8) . '…');
+        } catch (\Exception $e) {
+            ImportLog::record($batchId, 'products', $fileName, $import->importStats(), 'failed', $e->getMessage());
+
+            return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
+        }
     }
 
     public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse

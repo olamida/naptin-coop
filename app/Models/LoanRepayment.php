@@ -22,6 +22,8 @@ class LoanRepayment extends Model
         'source',
         'payment_date',
         'notes',
+        'import_batch_id',
+        'external_reference',
     ];
 
     protected $casts = [

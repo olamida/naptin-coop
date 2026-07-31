@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Loan;
+use App\Models\ImportLog;
 use App\Models\Member;
 use App\Models\MonthlyPayroll;
 use App\Models\Product;
@@ -93,6 +94,11 @@ class DataImportController extends Controller
             ],
         ];
 
-        return view('admin.data-import.index', compact('imports'));
+        $recentBatches = ImportLog::with('creator')
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        return view('admin.data-import.index', compact('imports', 'recentBatches'));
     }
 }

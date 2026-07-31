@@ -3,15 +3,25 @@
 namespace App\Imports;
 
 use App\Models\Product;
+use App\Imports\Concerns\TracksImportStats;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class ProductImport implements ToModel, WithHeadingRow, WithValidation
+class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
 {
+    use TracksImportStats;
+
+    public function __construct(
+        public ?string $batchId = null,
+    ) {}
+
     public function model(array $row): ?Product
     {
-        return Product::updateOrCreate(
+        $this->trackRow();
+
+        $product = Product::updateOrCreate(
             ['name' => $row['name']],
             [
                 'description' => $row['description'] ?? null,
@@ -20,6 +30,10 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation
                 'enabled' => in_array(strtolower($row['enabled'] ?? 'yes'), ['yes', 'true', '1', 'active'], true),
             ]
         );
+
+        $this->markSuccess();
+
+        return $product;
     }
 
     public function rules(): array

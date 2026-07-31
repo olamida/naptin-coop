@@ -6,7 +6,7 @@
                 <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined text-blue-600">person</span>
                     <div>
-                        <p class="text-sm font-semibold text-blue-800">Ordering for: {{ $orderMember->full_name }} ({{ $orderMember->staff_id }})</p>
+                        <p class="text-sm font-semibold text-blue-800">Ordering for: {{ $orderMember->full_name }} ({{ $orderMember->staff_id_display }})</p>
                         <p class="text-xs text-blue-600">Products added to cart will be assigned to this member.</p>
                     </div>
                 </div>
@@ -14,22 +14,22 @@
             </div>
         @endif
         <div class="flex items-center justify-between">
-            <h2 class="text-xl font-bold text-gray-800">Products</h2>
+            <h2 class="text-xl font-bold text-[#0F172A]">Products</h2>
             <div class="flex items-center gap-3">
-                <div class="flex items-center bg-gray-100 rounded-lg p-0.5">
+                <div class="flex items-center bg-slate-100 rounded-[10px] p-0.5">
                     <button x-on:click="viewMode = 'grid'; localStorage.setItem('productViewMode', 'grid')"
-                            :class="viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
+                            :class="viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'"
                             class="p-1.5 rounded-md transition">
                         <span class="material-symbols-outlined text-lg">grid_view</span>
                     </button>
                     <button x-on:click="viewMode = 'list'; localStorage.setItem('productViewMode', 'list')"
-                            :class="viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
+                            :class="viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'"
                             class="p-1.5 rounded-md transition">
                         <span class="material-symbols-outlined text-lg">view_list</span>
                     </button>
                 </div>
                 @if (! $isAdmin || $memberId)
-                    <a href="{{ route('cart.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1.5 relative">
+                    <a href="{{ route('cart.index') }}" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5 relative">
                         <span class="material-symbols-outlined text-lg">shopping_cart</span>
                         Cart
                         @php $cartCount = count(session('cart', [])); @endphp
@@ -40,11 +40,11 @@
                 @endif
                 @if ($isAdmin)
                     @can('manage-products')
-                        <a href="{{ route('products.import') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1.5">
+                        <a href="{{ route('products.import') }}" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-lg">upload_file</span>
                             Import
                         </a>
-                        <a href="{{ route('products.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                        <a href="{{ route('products.create') }}" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-2">
                             <span class="material-symbols-outlined text-lg">add</span>
                             Add Product
                         </a>
@@ -55,33 +55,33 @@
 
         {{-- Sub-Navigation Tabs --}}
         @if ($isAdmin)
-            <div class="flex items-center gap-1 border-b border-gray-200">
+            <div class="flex items-center gap-1 border-b border-slate-200">
                 <a href="{{ route('products.index') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-blue-600 text-blue-600 -mb-px">
                     Products
                 </a>
-                <a href="{{ route('products.orders') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 -mb-px transition">
+                <a href="{{ route('products.orders') }}" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 -mb-px transition">
                     Orders
                 </a>
             </div>
         @endif
 
-        <form method="GET" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <form method="GET" class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-4">
             <div class="flex flex-wrap gap-3 items-end">
                 <div class="flex-1 min-w-[200px]">
-                    <label class="block text-xs text-gray-500 mb-1">Search Products</label>
+                    <label class="block text-xs text-slate-500 mb-1">Search Products</label>
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Product name or description..."
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 @if ($isAdmin)
                     <div class="flex items-center gap-2">
                         <input type="checkbox" name="in_stock" value="1" id="inStock" {{ request('in_stock') ? 'checked' : '' }}
-                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <label for="inStock" class="text-sm text-gray-600">In Stock Only</label>
+                            class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        <label for="inStock" class="text-sm text-slate-600">In Stock Only</label>
                     </div>
                 @endif
-                <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition">Search</button>
+                <button type="submit" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition">Search</button>
                 @if (request()->hasAny(['search', 'in_stock']))
-                    <a href="{{ route('products.index') }}" class="text-sm text-gray-500 hover:underline py-2">Clear</a>
+                    <a href="{{ route('products.index') }}" class="text-sm text-slate-500 hover:underline py-2">Clear</a>
                 @endif
             </div>
         </form>
@@ -89,21 +89,21 @@
         {{-- Grid View (default for members) --}}
         <div x-show="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             @forelse ($products as $product)
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition">
-                    <div class="h-40 bg-gray-100 flex items-center justify-center">
+                <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition">
+                    <div class="h-40 bg-slate-100 flex items-center justify-center">
                         @if ($product->image_url)
                             <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-full h-full object-cover">
                         @else
-                            <span class="material-symbols-outlined text-4xl text-gray-300">inventory_2</span>
+                            <span class="material-symbols-outlined text-4xl text-slate-300">inventory_2</span>
                         @endif
                     </div>
                     <div class="p-4">
-                        <h3 class="font-semibold text-gray-800 text-sm mb-1">{{ $product->name }}</h3>
-                        <p class="text-xs text-gray-500 line-clamp-1 mb-3">{{ $product->description ?? 'No description' }}</p>
+                        <h3 class="font-semibold text-[#0F172A] text-sm mb-1">{{ $product->name }}</h3>
+                        <p class="text-xs text-slate-500 line-clamp-1 mb-3">{{ $product->description ?? 'No description' }}</p>
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm font-bold text-gray-900">₦{{ number_format($product->unit_price, 2) }}</span>
+                            <span class="text-sm font-bold text-[#0F172A]">₦{{ number_format($product->unit_price, 2) }}</span>
                             @if ($isAdmin)
-                                <span class="text-xs text-gray-500">Stock: <span class="font-semibold {{ $product->stock_quantity <= 0 ? 'text-red-600' : '' }}">{{ $product->stock_quantity }}</span></span>
+                                <span class="text-xs text-slate-500">Stock: <span class="font-semibold {{ $product->stock_quantity <= 0 ? 'text-red-600' : '' }}">{{ $product->stock_quantity }}</span></span>
                             @endif
                         </div>
                         @if (! $isAdmin || $memberId)
@@ -130,7 +130,7 @@
                                         @if ($memberId)
                                             <input type="hidden" name="member_id" value="{{ $memberId }}">
                                         @endif
-                                        <button type="submit" :disabled="loading || added" :class="added ? 'bg-green-600 hover:bg-green-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'" class="w-full text-white px-3 py-2 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed">
+                                        <button type="submit" :disabled="loading || added" :class="added ? 'bg-green-600 hover:bg-green-600 cursor-not-allowed' : 'bg-[#0F172A] hover:bg-slate-800'" class="w-full text-white px-3 py-2 rounded-[10px] text-xs font-medium transition flex items-center justify-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed">
                                             <template x-if="!added && !loading">
                                                 <span class="flex items-center gap-1">
                                                     <span class="material-symbols-outlined text-[14px]">add_shopping_cart</span>
@@ -153,7 +153,7 @@
                                     </form>
                                 </div>
                             @else
-                                <button disabled class="w-full bg-gray-200 text-gray-500 px-3 py-2 rounded-lg text-xs font-medium cursor-not-allowed">
+                                <button disabled class="w-full bg-slate-200 text-slate-500 px-3 py-2 rounded-[10px] text-xs font-medium cursor-not-allowed">
                                     Out of Stock
                                 </button>
                             @endif
@@ -165,9 +165,9 @@
                     </div>
                 </div>
             @empty
-                <div class="col-span-full bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-                    <span class="material-symbols-outlined text-4xl text-gray-300 mb-2">inventory_2</span>
-                    <p class="text-sm text-gray-500">No products yet.</p>
+                <div class="col-span-full bg-white rounded-[16px] shadow-sm border border-slate-200 p-8 text-center">
+                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">inventory_2</span>
+                    <p class="text-sm text-slate-500">No products yet.</p>
                     @if ($isAdmin && Auth::user()->can('manage-products'))
                         <a href="{{ route('products.create') }}" class="inline-block mt-3 text-sm text-blue-600 hover:underline">Add First Product &rarr;</a>
                     @endif
@@ -176,50 +176,50 @@
         </div>
 
         {{-- List View (default for admin, shows stock) --}}
-        <div x-show="viewMode === 'list'" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div x-show="viewMode === 'list'" class="bg-white rounded-[16px] shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full">
-                    <thead class="bg-gray-50 border-b border-gray-200">
+                    <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Product</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Price</th>
+                            <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Product</th>
+                            <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Price</th>
                             @if ($isAdmin)
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Stock</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Stock</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                             @endif
-                            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                            <th class="px-5 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody class="divide-y divide-slate-50">
                         @forelse ($products as $product)
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3">
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-5 py-3.5">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                                        <div class="w-10 h-10 rounded-[10px] bg-slate-100 overflow-hidden flex-shrink-0">
                                             @if ($product->image_url)
                                                 <img src="{{ $product->image_url }}" alt="" class="w-full h-full object-cover">
                                             @else
                                                 <div class="w-full h-full flex items-center justify-center">
-                                                    <span class="material-symbols-outlined text-gray-400 text-xl">inventory_2</span>
+                                                    <span class="material-symbols-outlined text-slate-400 text-xl">inventory_2</span>
                                                 </div>
                                             @endif
                                         </div>
                                         <div>
-                                            <p class="font-medium text-gray-900 text-sm">{{ $product->name }}</p>
-                                            <p class="text-xs text-gray-500 max-w-[200px] truncate">{{ $product->description ?? 'No description' }}</p>
+                                            <p class="font-medium text-[#0F172A] text-sm">{{ $product->name }}</p>
+                                            <p class="text-xs text-slate-500 max-w-[200px] truncate">{{ $product->description ?? 'No description' }}</p>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-sm font-semibold text-gray-900">₦{{ number_format($product->unit_price, 2) }}</td>
+                                <td class="px-5 py-3.5 text-sm font-semibold text-[#0F172A]">₦{{ number_format($product->unit_price, 2) }}</td>
                                 @if ($isAdmin)
-                                    <td class="px-4 py-3 text-sm {{ $product->stock_quantity <= 0 ? 'text-red-600 font-semibold' : 'text-gray-700' }}">{{ $product->stock_quantity }}</td>
-                                    <td class="px-4 py-3">
-                                        <span class="px-2 py-0.5 text-[10px] font-medium rounded-full {{ $product->enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
+                                    <td class="px-5 py-3.5 text-sm {{ $product->stock_quantity <= 0 ? 'text-red-600 font-semibold' : 'text-slate-700' }}">{{ $product->stock_quantity }}</td>
+                                    <td class="px-5 py-3.5">
+                                        <span class="px-2 py-0.5 text-[10px] font-medium rounded-full {{ $product->enabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' }}">
                                             {{ $product->enabled ? 'Active' : 'Disabled' }}
                                         </span>
                                     </td>
                                 @endif
-                                <td class="px-4 py-3 text-right">
+                                <td class="px-5 py-3.5 text-right">
                                     @if ($isAdmin && ! $memberId && Auth::user()->can('manage-products'))
                                         <a href="{{ route('products.edit', $product) }}" class="text-xs text-blue-600 hover:underline font-medium">Edit</a>
                                     @else
@@ -250,14 +250,14 @@
                                                 </form>
                                             </div>
                                         @else
-                                            <span class="text-xs text-gray-400">Out of stock</span>
+                                            <span class="text-xs text-slate-400">Out of stock</span>
                                         @endif
                                     @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $isAdmin ? 5 : 3 }}" class="px-4 py-8 text-center text-sm text-gray-500">No products yet</td>
+                                <td colspan="{{ $isAdmin ? 5 : 3 }}" class="px-5 py-8 text-center text-sm text-slate-500">No products yet</td>
                             </tr>
                         @endforelse
                     </tbody>

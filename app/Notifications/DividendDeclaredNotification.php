@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Dividend;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class DividendDeclaredNotification extends Notification
+class DividendDeclaredNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -23,7 +24,7 @@ class DividendDeclaredNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = '₦' . number_format($this->memberAmount, 2);
+        $amount = 'Ã¢â€šÂ¦' . number_format($this->memberAmount, 2);
 
         return (new MailMessage)
             ->subject('Dividend Declaration - ' . $this->dividend->year)
@@ -36,7 +37,7 @@ class DividendDeclaredNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $amount = '₦' . number_format($this->memberAmount, 2);
+        $amount = 'Ã¢â€šÂ¦' . number_format($this->memberAmount, 2);
 
         return [
             'type' => 'dividend_declared',
