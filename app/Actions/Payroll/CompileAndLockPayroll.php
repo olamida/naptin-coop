@@ -24,7 +24,7 @@ class CompileAndLockPayroll extends Action
         }
 
         $count = MonthlyPayroll::where('year', $year)->count() + 1;
-        $payrollNumber = 'PAY/' . $year . '/' . str_pad($count, 6, '0', STR_PAD_LEFT);
+        $payrollNumber = 'PAY/'.$year.'/'.str_pad($count, 6, '0', STR_PAD_LEFT);
 
         $members = Member::where('status', 'active')
             ->with('savingsAccount')

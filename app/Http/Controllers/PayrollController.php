@@ -2,25 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\PayrollDeductionExport;
-use App\Exports\PayrollUploadTemplateExport;
-use App\Imports\PayrollDeductionImport;
 use App\Actions\Payroll\CompileAndLockPayroll;
 use App\Actions\Payroll\DestroyArrear;
 use App\Actions\Payroll\SettleArrear;
 use App\Actions\Payroll\StoreAllArrears;
 use App\Actions\Payroll\StoreArrear;
+use App\Exports\PayrollDeductionExport;
+use App\Exports\PayrollUploadTemplateExport;
+use App\Imports\PayrollDeductionImport;
 use App\Models\ImportLog;
 use App\Models\MonthlyPayroll;
 use App\Models\PayrollArrear;
 use App\Models\PayrollDeduction;
+use App\Models\User;
+use App\Notifications\PayrollCompiledNotification;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PayrollController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         $payrolls = MonthlyPayroll::latest('year')->latest('month_number')->paginate(15);
 
@@ -34,15 +39,15 @@ class PayrollController extends Controller
         return view('payroll.index', ['payrolls' => $payrolls, 'stats' => $stats]);
     }
 
-    public function compile(): \Illuminate\View\View
+    public function compile(): View
     {
         return view('payroll.compile');
     }
 
-    public function compilePost(Request $request): \Illuminate\Http\RedirectResponse
+    public function compilePost(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'year' => 'required|integer|min:2020|max:' . (date('Y') + 1),
+            'year' => 'required|integer|min:2020|max:'.(date('Y') + 1),
             'month_number' => 'required|integer|between:1,12',
         ]);
 
@@ -54,32 +59,32 @@ class PayrollController extends Controller
 
         // Notify admins about compiled payroll
         try {
-            $adminUsers = \App\Models\User::whereHas('roles', function ($q) {
+            $adminUsers = User::whereHas('roles', function ($q) {
                 $q->whereIn('name', ['super-admin', 'admin', 'treasurer']);
             })->get();
             foreach ($adminUsers as $admin) {
-                $admin->notify(new \App\Notifications\PayrollCompiledNotification($payroll));
+                $admin->notify(new PayrollCompiledNotification($payroll));
             }
         } catch (\Exception $e) {
-            \Log::error('Payroll notification failed: ' . $e->getMessage());
+            \Log::error('Payroll notification failed: '.$e->getMessage());
         }
 
         return redirect()->route('payroll.show', $payroll)
             ->with('success', "Payroll for {$payroll->month} {$payroll->year} compiled and locked with {$payroll->member_count} members.");
     }
 
-    public function compileAndLock(Request $request): \Illuminate\Http\RedirectResponse
+    public function compileAndLock(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'year' => 'required|integer|min:2020|max:' . (date('Y') + 1),
+            'year' => 'required|integer|min:2020|max:'.(date('Y') + 1),
             'month_number' => 'required|integer|between:1,12',
         ]);
 
         try {
             $payroll = CompileAndLockPayroll::run($validated['year'], $validated['month_number']);
 
-            \App\Models\User::whereHas('roles', fn($q) => $q->whereIn('name', ['super-admin', 'admin', 'treasurer']))
-                ->get()->each(fn($user) => $user->notify(new \App\Notifications\PayrollCompiledNotification($payroll)));
+            User::whereHas('roles', fn ($q) => $q->whereIn('name', ['super-admin', 'admin', 'treasurer']))
+                ->get()->each(fn ($user) => $user->notify(new PayrollCompiledNotification($payroll)));
 
             return redirect()->route('payroll.show', $payroll)
                 ->with('success', "Payroll for {$payroll->month} {$payroll->year} compiled and locked with {$payroll->member_count} members.");
@@ -88,14 +93,14 @@ class PayrollController extends Controller
         }
     }
 
-    public function show(MonthlyPayroll $monthlyPayroll): \Illuminate\View\View
+    public function show(MonthlyPayroll $monthlyPayroll): View
     {
         $monthlyPayroll->load(['deductions.member.region']);
 
         return view('payroll.show', ['payroll' => $monthlyPayroll]);
     }
 
-    public function storeArrear(Request $request, MonthlyPayroll $monthlyPayroll): \Illuminate\Http\RedirectResponse
+    public function storeArrear(Request $request, MonthlyPayroll $monthlyPayroll): RedirectResponse
     {
         $validated = $request->validate([
             'member_id' => 'required|exists:members,id',
@@ -121,14 +126,14 @@ class PayrollController extends Controller
         return back()->with('success', 'Arrear recorded for member and will be carried into the next payroll.');
     }
 
-    public function storeAllArrears(Request $request, MonthlyPayroll $monthlyPayroll): \Illuminate\Http\RedirectResponse
+    public function storeAllArrears(Request $request, MonthlyPayroll $monthlyPayroll): RedirectResponse
     {
         $count = StoreAllArrears::run($monthlyPayroll->id);
 
         return back()->with('success', "{$count} arrear(s) recorded from shortfalls and will be carried into the next payroll.");
     }
 
-    public function settleArrear(PayrollArrear $payrollArrear): \Illuminate\Http\RedirectResponse
+    public function settleArrear(PayrollArrear $payrollArrear): RedirectResponse
     {
         try {
             SettleArrear::run($payrollArrear);
@@ -139,21 +144,21 @@ class PayrollController extends Controller
         return back()->with('success', 'Arrear marked as settled.');
     }
 
-    public function destroyArrear(PayrollArrear $payrollArrear): \Illuminate\Http\RedirectResponse
+    public function destroyArrear(PayrollArrear $payrollArrear): RedirectResponse
     {
         DestroyArrear::run($payrollArrear);
 
         return back()->with('success', 'Arrear removed.');
     }
 
-    public function upload(MonthlyPayroll $monthlyPayroll): \Illuminate\View\View
+    public function upload(MonthlyPayroll $monthlyPayroll): View
     {
         $monthlyPayroll->load(['deductions.member']);
 
         return view('payroll.upload', ['payroll' => $monthlyPayroll]);
     }
 
-    public function downloadTemplate(MonthlyPayroll $monthlyPayroll): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function downloadTemplate(MonthlyPayroll $monthlyPayroll): BinaryFileResponse
     {
         $safe = str_replace('/', '-', $monthlyPayroll->payroll_number);
         $filename = "payroll_upload_template_{$safe}.xlsx";
@@ -161,7 +166,7 @@ class PayrollController extends Controller
         return Excel::download(new PayrollUploadTemplateExport($monthlyPayroll->id), $filename);
     }
 
-    public function exportDeductions(MonthlyPayroll $monthlyPayroll): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function exportDeductions(MonthlyPayroll $monthlyPayroll): BinaryFileResponse
     {
         $safe = str_replace('/', '-', $monthlyPayroll->payroll_number);
         $filename = "payroll_deductions_{$safe}.xlsx";
@@ -184,7 +189,7 @@ class PayrollController extends Controller
             $handle = fopen('php://output', 'w');
 
             // UTF-8 BOM for Excel
-            fputs($handle, "\xEF\xBB\xBF");
+            fwrite($handle, "\xEF\xBB\xBF");
 
             // Header row
             fputcsv($handle, ['Staff ID', 'Member Name', 'Region', 'Monthly Salary', 'Savings', 'Loan Repayment', 'Share Contribution', 'Purchase', 'Arrears', 'Total Expected', 'Total Actual', 'Status']);
@@ -225,7 +230,7 @@ class PayrollController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function uploadDeductions(Request $request, MonthlyPayroll $monthlyPayroll): \Illuminate\Http\RedirectResponse
+    public function uploadDeductions(Request $request, MonthlyPayroll $monthlyPayroll): RedirectResponse
     {
         $request->validate([
             'deductions_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
@@ -244,7 +249,7 @@ class PayrollController extends Controller
         } catch (\Exception $e) {
             ImportLog::record($batchId, 'payroll_deductions', $fileName, $import->importStats(), 'failed', $e->getMessage());
 
-            return back()->withErrors(['error' => 'Upload failed: ' . $e->getMessage()]);
+            return back()->withErrors(['error' => 'Upload failed: '.$e->getMessage()]);
         }
 
         ImportLog::record($batchId, 'payroll_deductions', $fileName, $import->importStats());
@@ -261,35 +266,35 @@ class PayrollController extends Controller
         return back()->with('success', "Payroll deductions uploaded. {$completedCount} of {$totalDeductions} members processed.");
     }
 
-    public function savingsReport(MonthlyPayroll $monthlyPayroll): \Illuminate\View\View
+    public function savingsReport(MonthlyPayroll $monthlyPayroll): View
     {
         $monthlyPayroll->load(['deductions.member.region']);
 
         return view('payroll.savings-report', ['payroll' => $monthlyPayroll]);
     }
 
-    public function loansReport(MonthlyPayroll $monthlyPayroll): \Illuminate\View\View
+    public function loansReport(MonthlyPayroll $monthlyPayroll): View
     {
         $monthlyPayroll->load(['deductions.member.region']);
 
         return view('payroll.loans-report', ['payroll' => $monthlyPayroll]);
     }
 
-    public function purchasesReport(MonthlyPayroll $monthlyPayroll): \Illuminate\View\View
+    public function purchasesReport(MonthlyPayroll $monthlyPayroll): View
     {
         $monthlyPayroll->load(['deductions.member.region']);
 
         return view('payroll.purchases-report', ['payroll' => $monthlyPayroll]);
     }
 
-    public function sharesReport(MonthlyPayroll $monthlyPayroll): \Illuminate\View\View
+    public function sharesReport(MonthlyPayroll $monthlyPayroll): View
     {
         $monthlyPayroll->load(['deductions.member.region']);
 
         return view('payroll.shares-report', ['payroll' => $monthlyPayroll]);
     }
 
-    public function summaryReport(MonthlyPayroll $monthlyPayroll): \Illuminate\View\View
+    public function summaryReport(MonthlyPayroll $monthlyPayroll): View
     {
         $monthlyPayroll->load(['deductions.member.region']);
 

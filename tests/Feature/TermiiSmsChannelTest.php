@@ -21,7 +21,7 @@ class TermiiSmsChannelTest extends TestCase
         $region = Region::create(['name' => 'R', 'code' => 'R1', 'state' => 'S', 'enabled' => true]);
         $member = Member::create([
             'region_id' => $region->id,
-            'staff_id' => 'S-' . substr(uniqid(), -6),
+            'staff_id' => 'S-'.substr(uniqid(), -6),
             'first_name' => 'SMS',
             'last_name' => 'User',
             'phone' => '08012345678',
@@ -43,7 +43,7 @@ class TermiiSmsChannelTest extends TestCase
 
         $notification = $this->makeNotificationWithTermii();
 
-        $channel = new TermiiSmsChannel();
+        $channel = new TermiiSmsChannel;
         $channel->send((new AnonymousNotifiable)->route('sms', '08012345678'), $notification);
 
         Http::assertSent(function ($request) {
@@ -60,7 +60,7 @@ class TermiiSmsChannelTest extends TestCase
 
         Http::fake();
 
-        $channel = new TermiiSmsChannel();
+        $channel = new TermiiSmsChannel;
         $channel->send((new AnonymousNotifiable)->route('sms', '08012345678'), $this->makeNotificationWithTermii());
 
         Http::assertNothingSent();

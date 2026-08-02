@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\BroadcastMessage;
 use App\Models\Member;
-use App\Models\User;
 use App\Notifications\BroadcastNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,7 +64,7 @@ class BroadcastController extends Controller
                         );
                         $recipientsCount++;
                     } catch (\Exception $e) {
-                        Log::error('Broadcast notification failed for user ' . $member->user_id . ': ' . $e->getMessage());
+                        Log::error('Broadcast notification failed for user '.$member->user_id.': '.$e->getMessage());
                     }
                 }
             }

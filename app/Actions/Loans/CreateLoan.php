@@ -22,7 +22,7 @@ class CreateLoan extends Action
     {
         $loanService = app(LoanService::class);
 
-        if (!empty($data['loan_product_id'])) {
+        if (! empty($data['loan_product_id'])) {
             $product = LoanProduct::find($data['loan_product_id']);
             if ($product) {
                 $error = $loanService->validateLoanProduct(
@@ -61,7 +61,7 @@ class CreateLoan extends Action
                 'status' => 'pending',
             ]);
 
-            if (!empty($data['guarantor_ids'])) {
+            if (! empty($data['guarantor_ids'])) {
                 foreach ($data['guarantor_ids'] as $guarantorId) {
                     $guarantor = LoanGuarantor::create([
                         'loan_id' => $loan->id,
@@ -75,7 +75,8 @@ class CreateLoan extends Action
                     if ($guarantorMember && $guarantorMember->user) {
                         try {
                             $guarantorMember->user->notify(new GuarantorRequestNotification($guarantor));
-                        } catch (\Exception $e) {}
+                        } catch (\Exception $e) {
+                        }
                     }
                 }
             }
@@ -90,11 +91,12 @@ class CreateLoan extends Action
     {
         try {
             $reviewerUsers = User::where('id', '!=', auth()->id())
-                ->whereHas('roles', fn($q) => $q->whereIn('name', ['super-admin', 'admin', 'loan-officer']))
+                ->whereHas('roles', fn ($q) => $q->whereIn('name', ['super-admin', 'admin', 'loan-officer']))
                 ->get();
             foreach ($reviewerUsers as $user) {
                 $user->notify(new LoanAppliedNotification($loan));
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
     }
 }

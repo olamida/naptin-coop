@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -34,7 +33,7 @@ class Product extends Model
     public function getImageUrlAttribute(): string
     {
         if ($this->image_path) {
-            return asset('storage/' . $this->image_path);
+            return asset('storage/'.$this->image_path);
         }
 
         return '';

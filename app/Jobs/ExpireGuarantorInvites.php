@@ -22,7 +22,7 @@ class ExpireGuarantorInvites implements ShouldQueue
             ->where('token_expires_at', '<', $now)
             ->update([
                 'status' => GuarantorStatus::Declined->value,
-                'notes' => 'Invitation expired on ' . $now->toDateTimeString() . '.',
+                'notes' => 'Invitation expired on '.$now->toDateTimeString().'.',
                 'responded_at' => $now,
             ]);
     }

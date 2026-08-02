@@ -29,7 +29,8 @@ class RejectLoan extends Action
             if ($loan->member && $loan->member->user) {
                 try {
                     $loan->member->user->notify(new LoanStatusNotification($loan, $oldStatus, 'rejected'));
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
 
             return $loan->fresh();

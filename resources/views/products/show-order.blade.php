@@ -70,6 +70,9 @@
                             <td class="px-5 py-3 text-right">&#8358;{{ number_format($order->unit_price, 2) }}</td>
                             <td class="px-5 py-3 text-right font-semibold">&#8358;{{ number_format($order->total_amount, 2) }}</td>
                             <td class="px-5 py-3">
+                                @if ($order->is_society_expense)
+                                    <span class="px-2 py-1 text-xs rounded-full bg-rose-100 text-rose-700">Society Expense</span>
+                                @endif
                                 <span class="px-2 py-1 text-xs rounded-full
                                     {{ $order->status === 'completed' ? 'bg-green-100 text-green-700' : '' }}
                                     {{ $order->status === 'approved' ? 'bg-blue-100 text-blue-700' : '' }}

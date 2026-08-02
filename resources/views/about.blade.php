@@ -1,7 +1,12 @@
 <x-public-layout title="About Us">
+    @php $brandingHero = app(\App\Services\BrandingService::class)->getHero('about'); @endphp
     {{-- Hero --}}
-    <section class="hero-gradient text-white py-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <section class="relative text-white py-20 {{ $brandingHero ? '' : 'hero-gradient' }}">
+        @if ($brandingHero)
+            <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('{{ $brandingHero }}');"></div>
+            <div class="absolute inset-0 bg-gradient-to-br from-[#0F172A]/95 via-[#0F172A]/70 to-[#2563eb]/30"></div>
+        @endif
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 class="text-3xl lg:text-4xl font-extrabold mb-4">About Our Cooperative</h1>
             <p class="text-lg text-blue-100 max-w-2xl mx-auto">
                 {{ $company->slogan ?? 'Building Financial Independence Together' }}

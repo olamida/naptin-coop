@@ -1,8 +1,16 @@
 <?php
 
+use App\Http\Middleware\EnforceSingleSession;
+use App\Http\Middleware\MemberGuard;
+use App\Http\Middleware\MustChangePassword;
+use App\Http\Middleware\PortalMember;
+use App\Http\Middleware\RequireTwoFactor;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,14 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'portal-member' => \App\Http\Middleware\PortalMember::class,
-            'admin-only' => \App\Http\Middleware\MemberGuard::class,
-            'enforce-single-session' => \App\Http\Middleware\EnforceSingleSession::class,
-            'must-change-password' => \App\Http\Middleware\MustChangePassword::class,
-            'two-factor' => \App\Http\Middleware\RequireTwoFactor::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'portal-member' => PortalMember::class,
+            'admin-only' => MemberGuard::class,
+            'enforce-single-session' => EnforceSingleSession::class,
+            'must-change-password' => MustChangePassword::class,
+            'two-factor' => RequireTwoFactor::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

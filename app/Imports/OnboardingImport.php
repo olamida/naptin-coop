@@ -2,9 +2,10 @@
 
 namespace App\Imports;
 
+use Maatwebsite\Excel\Concerns\SkipsUnknownSheets;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
-class OnboardingImport implements WithMultipleSheets
+class OnboardingImport implements SkipsUnknownSheets, WithMultipleSheets
 {
     public MemberImport $members;
 
@@ -26,6 +27,11 @@ class OnboardingImport implements WithMultipleSheets
             'opening_savings' => $this->openingSavings,
             'shares' => $this->openingShares,
         ];
+    }
+
+    public function onUnknownSheet($sheetName)
+    {
+        // Optional sheets may be omitted from the uploaded workbook.
     }
 
     public function aggregateStats(): array

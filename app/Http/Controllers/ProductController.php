@@ -7,14 +7,20 @@ use App\Models\ImportLog;
 use App\Models\Member;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
+use App\Services\CartService;
+use App\Services\LedgerService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductController extends Controller
 {
-    public function index(Request $request): \Illuminate\View\View
+    public function index(Request $request): View
     {
         $isAdmin = auth()->user()->hasAnyRole(['super-admin', 'admin']);
         $query = Product::query();
@@ -36,12 +42,12 @@ class ProductController extends Controller
         return view('products.index', ['products' => $products, 'isAdmin' => $isAdmin, 'memberId' => $memberId, 'orderMember' => $orderMember]);
     }
 
-    public function create(): \Illuminate\View\View
+    public function create(): View
     {
         return view('products.create');
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -65,12 +71,12 @@ class ProductController extends Controller
             ->with('success', 'Product created successfully.');
     }
 
-    public function edit(Product $product): \Illuminate\View\View
+    public function edit(Product $product): View
     {
         return view('products.edit', ['product' => $product]);
     }
 
-    public function update(Request $request, Product $product): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, Product $product): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -83,13 +89,13 @@ class ProductController extends Controller
         ]);
 
         if ($request->boolean('remove_image') && $product->image_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
+            Storage::disk('public')->delete($product->image_path);
             $validated['image_path'] = null;
         }
 
         if ($request->hasFile('image')) {
             if ($product->image_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
+                Storage::disk('public')->delete($product->image_path);
             }
             $validated['image_path'] = $request->file('image')->store('product-images', 'public');
         }
@@ -102,7 +108,7 @@ class ProductController extends Controller
             ->with('success', 'Product updated successfully.');
     }
 
-    public function orders(Request $request): \Illuminate\View\View
+    public function orders(Request $request): View
     {
         $query = PurchaseOrder::with(['member', 'product'])
             ->selectRaw('order_group, member_id, payment_type, status, MIN(created_at) as created_at, SUM(total_amount) as total_amount, COUNT(*) as item_count')
@@ -131,7 +137,7 @@ class ProductController extends Controller
         return view('products.orders', ['orders' => $orders]);
     }
 
-    public function showOrderGroup(string $orderGroup): \Illuminate\View\View
+    public function showOrderGroup(string $orderGroup): View
     {
         $orders = PurchaseOrder::with(['member', 'product', 'approvedBy'])
             ->where('order_group', $orderGroup)
@@ -144,7 +150,7 @@ class ProductController extends Controller
         return view('products.show-order', ['orders' => $orders, 'orderGroup' => $orderGroup]);
     }
 
-    public function createOrder(): \Illuminate\View\View
+    public function createOrder(): View
     {
         $members = Member::where('status', 'active')->orderBy('first_name')->get();
         $products = Product::where('enabled', true)->orderBy('name')->get();
@@ -152,7 +158,7 @@ class ProductController extends Controller
         return view('products.create-order', compact('members', 'products'));
     }
 
-    public function storeOrder(Request $request): \Illuminate\Http\RedirectResponse
+    public function storeOrder(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'member_id' => 'required|exists:members,id',
@@ -160,6 +166,7 @@ class ProductController extends Controller
             'quantity' => 'required|integer|min:1',
             'payment_type' => 'required|in:cash,hire_purchase',
             'monthly_repayment' => 'required_if:payment_type,hire_purchase|nullable|numeric|min:0',
+            'is_society_expense' => 'boolean',
         ]);
 
         $product = Product::findOrFail($validated['product_id']);
@@ -168,19 +175,20 @@ class ProductController extends Controller
         $totalAmount = round($quantity * $unitPrice, 2);
 
         if ($quantity > $product->stock_quantity) {
-            return back()->withErrors(['quantity' => 'Insufficient stock. Available: ' . $product->stock_quantity])->withInput();
+            return back()->withErrors(['quantity' => 'Insufficient stock. Available: '.$product->stock_quantity])->withInput();
         }
 
-        $cartService = new \App\Services\CartService();
+        $cartService = new CartService;
         $orderNumber = $cartService->generateOrderNumber();
 
         $status = $validated['payment_type'] === 'cash' ? 'approved' : 'pending';
+        $isSocietyExpense = $request->boolean('is_society_expense');
 
         $order = null;
-        DB::transaction(function () use ($validated, $product, $quantity, $unitPrice, $totalAmount, $orderNumber, $status, &$order) {
+        DB::transaction(function () use ($validated, $product, $quantity, $unitPrice, $totalAmount, $orderNumber, $status, $isSocietyExpense, &$order) {
             $product->lockForUpdate();
             if ($quantity > $product->stock_quantity) {
-                throw new \Exception('Insufficient stock. Available: ' . $product->stock_quantity);
+                throw new \Exception('Insufficient stock. Available: '.$product->stock_quantity);
             }
 
             $order = PurchaseOrder::create([
@@ -191,14 +199,17 @@ class ProductController extends Controller
                 'unit_price' => $unitPrice,
                 'total_amount' => $totalAmount,
                 'payment_type' => $validated['payment_type'],
+                'is_society_expense' => $isSocietyExpense,
                 'monthly_repayment' => $validated['monthly_repayment'] ?? 0,
                 'status' => $status,
             ]);
 
             $product->decrement('stock_quantity', $quantity);
 
-            $ledger = app(\App\Services\LedgerService::class);
-            if ($validated['payment_type'] === 'cash') {
+            $ledger = app(LedgerService::class);
+            if ($isSocietyExpense) {
+                $ledger->postSocietyExpense($order->id, $totalAmount);
+            } elseif ($validated['payment_type'] === 'cash') {
                 $ledger->postCashSale($order->id, $totalAmount);
             } else {
                 $ledger->postHirePurchaseSale($order->id, $totalAmount);
@@ -209,7 +220,7 @@ class ProductController extends Controller
             ->with('success', "Purchase order {$orderNumber} created successfully.");
     }
 
-    public function approveOrder(PurchaseOrder $order): \Illuminate\Http\RedirectResponse
+    public function approveOrder(PurchaseOrder $order): RedirectResponse
     {
         if ($order->status !== 'pending') {
             return back()->withErrors(['error' => 'Only pending orders can be approved.']);
@@ -223,9 +234,9 @@ class ProductController extends Controller
         return back()->with('success', 'Purchase order approved successfully.');
     }
 
-    public function collectOrder(PurchaseOrder $order): \Illuminate\Http\RedirectResponse
+    public function collectOrder(PurchaseOrder $order): RedirectResponse
     {
-        if (!in_array($order->status, ['approved', 'active'])) {
+        if (! in_array($order->status, ['approved', 'active'])) {
             return back()->withErrors(['error' => 'Order must be approved before collection.']);
         }
 
@@ -237,12 +248,29 @@ class ProductController extends Controller
         return back()->with('success', 'Product collected successfully.');
     }
 
-    public function import(): \Illuminate\View\View
+    public function adjustStock(Request $request, Product $product): RedirectResponse
+    {
+        $validated = $request->validate([
+            'adjustment' => 'required|integer',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $newQuantity = $product->stock_quantity + $validated['adjustment'];
+        if ($newQuantity < 0) {
+            return back()->withErrors(['error' => 'Stock cannot go below zero. Current stock: '.$product->stock_quantity]);
+        }
+
+        $product->update(['stock_quantity' => $newQuantity]);
+
+        return back()->with('success', "Stock for {$product->name} updated to {$newQuantity}.");
+    }
+
+    public function import(): View
     {
         return view('products.import');
     }
 
-    public function importStore(Request $request): \Illuminate\Http\RedirectResponse
+    public function importStore(Request $request): RedirectResponse
     {
         $request->validate([
             'import_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
@@ -258,15 +286,15 @@ class ProductController extends Controller
             ImportLog::record($batchId, 'products', $fileName, $import->importStats());
 
             return redirect()->route('products.index')
-                ->with('success', 'Products imported successfully. Batch: ' . substr($batchId, 0, 8) . '…');
+                ->with('success', 'Products imported successfully. Batch: '.substr($batchId, 0, 8).'…');
         } catch (\Exception $e) {
             ImportLog::record($batchId, 'products', $fileName, $import->importStats(), 'failed', $e->getMessage());
 
-            return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
+            return back()->withErrors(['import_file' => 'Import failed: '.$e->getMessage()])->withInput();
         }
     }
 
-    public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function downloadTemplate(): StreamedResponse
     {
         $filename = 'products_template.csv';
         $headers = ['name', 'description', 'unit_price', 'stock_quantity', 'enabled'];
@@ -279,7 +307,7 @@ class ProductController extends Controller
             fclose($handle);
         }, 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'Pragma' => 'no-cache',
             'Expires' => '0',

@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LoanGuarantor;
 use App\Enums\GuarantorStatus;
-use App\Models\Loan;
+use App\Models\LoanGuarantor;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class GuaranteeController extends Controller
 {
-    public function show(string $token): \Illuminate\View\View
+    public function show(string $token): View
     {
         $guarantor = LoanGuarantor::where('accept_token', $token)
             ->with(['loan.loanProduct', 'loan.member', 'member'])
             ->firstOrFail();
 
-        if (!$guarantor->isValidToken()) {
+        if (! $guarantor->isValidToken()) {
             if ($guarantor->status === GuarantorStatus::Accepted) {
                 return view('guarantee.accept', [
                     'guarantor' => $guarantor,
@@ -40,20 +41,20 @@ class GuaranteeController extends Controller
         ]);
     }
 
-    public function respond(Request $request, string $token): \Illuminate\Http\RedirectResponse
+    public function respond(Request $request, string $token): RedirectResponse
     {
         $guarantor = LoanGuarantor::where('accept_token', $token)
             ->with('loan')
             ->firstOrFail();
 
-        if (!$guarantor->isValidToken()) {
+        if (! $guarantor->isValidToken()) {
             return redirect()->route('guarantee.show', $token)
                 ->with('error', 'This invitation has expired or already been responded to.');
         }
 
         $action = $request->input('action');
 
-        if (!in_array($action, ['accept', 'decline'], true)) {
+        if (! in_array($action, ['accept', 'decline'], true)) {
             return back()->with('error', 'Invalid action.');
         }
 

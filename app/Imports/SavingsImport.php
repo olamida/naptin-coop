@@ -2,17 +2,17 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\TracksImportStats;
 use App\Models\Member;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
-use App\Imports\Concerns\TracksImportStats;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class SavingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class SavingsImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
     use TracksImportStats;
 
@@ -24,8 +24,8 @@ class SavingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
     {
         $this->trackRow();
 
-        if (!empty($row['external_reference']) && SavingsTransaction::where('external_reference', $row['external_reference'])->exists()) {
-            $this->markFailure('Duplicate external reference "' . $row['external_reference'] . '" — skipped');
+        if (! empty($row['external_reference']) && SavingsTransaction::where('external_reference', $row['external_reference'])->exists()) {
+            $this->markFailure('Duplicate external reference "'.$row['external_reference'].'" — skipped');
 
             return null;
         }
@@ -33,7 +33,7 @@ class SavingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
         $member = Member::where('staff_id', $row['staff_id'])->first();
 
         if (! $member) {
-            $this->markFailure('No member found for staff_id ' . $row['staff_id']);
+            $this->markFailure('No member found for staff_id '.$row['staff_id']);
 
             return null;
         }
@@ -41,7 +41,7 @@ class SavingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
         $account = SavingsAccount::where('member_id', $member->id)->first();
 
         if (! $account) {
-            $this->markFailure('No savings account found for member ' . $row['staff_id']);
+            $this->markFailure('No savings account found for member '.$row['staff_id']);
 
             return null;
         }
@@ -59,7 +59,7 @@ class SavingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 
         return SavingsTransaction::create([
             'savings_account_id' => $account->id,
-            'reference' => 'SAV/IMP/' . strtoupper(Str::random(8)),
+            'reference' => 'SAV/IMP/'.strtoupper(Str::random(8)),
             'type' => $type,
             'amount' => $amount,
             'balance_before' => $balanceBefore,

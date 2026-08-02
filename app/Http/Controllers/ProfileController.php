@@ -23,7 +23,7 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|email|max:255|unique:users,email,'.$user->id,
             'phone' => 'nullable|string|max:30',
             'whatsapp_enabled' => 'nullable|boolean',
             'current_password' => 'required_with:password',
@@ -44,8 +44,8 @@ class ProfileController extends Controller
             $data['whatsapp_enabled'] = $request->boolean('whatsapp_enabled');
         }
 
-        if (!empty($validated['password'])) {
-            if (!Hash::check($validated['current_password'], $user->password)) {
+        if (! empty($validated['password'])) {
+            if (! Hash::check($validated['current_password'], $user->password)) {
                 return back()->withErrors(['current_password' => 'Current password is incorrect.']);
             }
             $data['password'] = $validated['password'];
@@ -63,7 +63,7 @@ class ProfileController extends Controller
             $data['profile_photo_path'] = $request->file('profile_photo')->store('profile-photos', 'public');
         }
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $data['must_change_password'] = false;
         }
 
@@ -75,7 +75,7 @@ class ProfileController extends Controller
 
     public function forcePasswordForm()
     {
-        if (!auth()->user()->must_change_password) {
+        if (! auth()->user()->must_change_password) {
             return redirect()->intended(route('dashboard'));
         }
 
@@ -88,7 +88,7 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'current_password' => ['required', function ($attribute, $value, $fail) use ($user) {
-                if (!Hash::check($value, $user->password)) {
+                if (! Hash::check($value, $user->password)) {
                     $fail('Current password is incorrect.');
                 }
             }],
@@ -102,7 +102,7 @@ class ProfileController extends Controller
 
         $request->session()->regenerate();
 
-        ActivityLog::log('password_force_change', $user->name . ' changed forced password');
+        ActivityLog::log('password_force_change', $user->name.' changed forced password');
 
         if ($user->member_id) {
             return redirect()->intended(route('portal.dashboard'));

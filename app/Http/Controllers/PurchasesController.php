@@ -6,13 +6,16 @@ use App\Imports\PurchaseImport;
 use App\Models\ImportLog;
 use App\Models\Member;
 use App\Models\PurchaseOrder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PurchasesController extends Controller
 {
-    public function index(Request $request): \Illuminate\View\View
+    public function index(Request $request): View
     {
         $query = PurchaseOrder::with(['member', 'product'])
             ->selectRaw('order_group, member_id, payment_type, status, MIN(created_at) as created_at, SUM(total_amount) as total_amount, COUNT(*) as item_count')
@@ -42,7 +45,7 @@ class PurchasesController extends Controller
         return view('purchases.index', compact('orders', 'members'));
     }
 
-    public function create(Request $request): \Illuminate\View\View
+    public function create(Request $request): View
     {
         $memberId = $request->input('member_id');
         $member = $memberId ? Member::find($memberId) : null;
@@ -50,12 +53,12 @@ class PurchasesController extends Controller
         return view('purchases.create', ['member' => $member, 'memberId' => $memberId]);
     }
 
-    public function import(): \Illuminate\View\View
+    public function import(): View
     {
         return view('purchases.import');
     }
 
-    public function importStore(Request $request): \Illuminate\Http\RedirectResponse
+    public function importStore(Request $request): RedirectResponse
     {
         $request->validate([
             'import_file' => 'required|mimes:xlsx,xls,csv|max:10240',
@@ -71,15 +74,15 @@ class PurchasesController extends Controller
             ImportLog::record($batchId, 'purchase_orders', $fileName, $import->importStats());
 
             return redirect()->route('purchases.index')
-                ->with('success', 'Purchase orders imported successfully. Batch: ' . substr($batchId, 0, 8) . '…');
+                ->with('success', 'Purchase orders imported successfully. Batch: '.substr($batchId, 0, 8).'…');
         } catch (\Exception $e) {
             ImportLog::record($batchId, 'purchase_orders', $fileName, $import->importStats(), 'failed', $e->getMessage());
 
-            return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
+            return back()->withErrors(['import_file' => 'Import failed: '.$e->getMessage()])->withInput();
         }
     }
 
-    public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function downloadTemplate(): StreamedResponse
     {
         $headers = [
             'Content-Type' => 'text/csv',

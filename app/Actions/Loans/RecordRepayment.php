@@ -5,6 +5,7 @@ namespace App\Actions\Loans;
 use App\Actions\Action;
 use App\Models\Loan;
 use App\Models\LoanRepayment;
+use App\Notifications\LoanStatusNotification;
 use App\Services\LedgerService;
 use App\Services\LoanService;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ class RecordRepayment extends Action
 
         if ($amount > $loan->outstanding) {
             throw new \RuntimeException(
-                'Payment exceeds outstanding amount of ₦' . number_format($loan->outstanding, 2)
+                'Payment exceeds outstanding amount of ₦'.number_format($loan->outstanding, 2)
             );
         }
 
@@ -30,7 +31,7 @@ class RecordRepayment extends Action
 
             if ($amount > $locked->outstanding) {
                 throw new \RuntimeException(
-                    'Payment exceeds outstanding amount of ₦' . number_format($locked->outstanding, 2)
+                    'Payment exceeds outstanding amount of ₦'.number_format($locked->outstanding, 2)
                 );
             }
 
@@ -40,7 +41,7 @@ class RecordRepayment extends Action
             $repayment = LoanRepayment::create([
                 'loan_id' => $locked->id,
                 'member_id' => $locked->member_id,
-                'reference' => 'LN/REPAY/' . strtoupper(Str::random(8)),
+                'reference' => 'LN/REPAY/'.strtoupper(Str::random(8)),
                 'amount' => $amount,
                 'principal_portion' => $split['principal_portion'],
                 'interest_portion' => $split['interest_portion'],
@@ -73,9 +74,10 @@ class RecordRepayment extends Action
             if ($newStatus === 'completed' && $locked->member && $locked->member->user) {
                 try {
                     $locked->member->user->notify(
-                        new \App\Notifications\LoanStatusNotification($locked, 'repaying', 'completed')
+                        new LoanStatusNotification($locked, 'repaying', 'completed')
                     );
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
 
             return [

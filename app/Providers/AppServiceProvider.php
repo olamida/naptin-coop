@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Loan;
+use App\Policies\LoanPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -17,10 +19,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Gate::policy(\App\Models\Loan::class, \App\Policies\LoanPolicy::class);
+        Gate::policy(Loan::class, LoanPolicy::class);
 
         RateLimiter::for('login', function (Request $request) {
-            $key = strtolower($request->input('email')) . '|' . $request->ip();
+            $key = strtolower($request->input('email')).'|'.$request->ip();
 
             return Limit::perMinute(5)->by($key);
         });
@@ -32,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('password-reset', function (Request $request) {
-            $key = strtolower($request->input('email')) . '|' . $request->ip();
+            $key = strtolower($request->input('email')).'|'.$request->ip();
 
             return Limit::perMinute(3)->by($key);
         });

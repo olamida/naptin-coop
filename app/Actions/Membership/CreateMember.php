@@ -22,7 +22,7 @@ class CreateMember extends Action
 
         SavingsAccount::create([
             'member_id' => $member->id,
-            'account_number' => 'SAV/' . Str::upper(Str::random(2)) . '/' . str_pad($member->id, 6, '0', STR_PAD_LEFT),
+            'account_number' => 'SAV/'.Str::upper(Str::random(2)).'/'.str_pad($member->id, 6, '0', STR_PAD_LEFT),
             'balance' => 0,
         ]);
 
@@ -32,10 +32,10 @@ class CreateMember extends Action
             'total_value' => 0,
         ]);
 
-        if (!empty($data['email'])) {
+        if (! empty($data['email'])) {
             $tempPassword = Str::random(12);
             $user = User::create([
-                'name' => $data['first_name'] . ' ' . $data['last_name'],
+                'name' => $data['first_name'].' '.$data['last_name'],
                 'email' => $data['email'],
                 'password' => Hash::make($tempPassword),
             ]);
@@ -48,7 +48,7 @@ class CreateMember extends Action
             try {
                 Mail::to($data['email'])->send(new WelcomeEmail($user, $member, $tempPassword));
             } catch (\Exception $e) {
-                Log::error('Email/notification failed for member: ' . $e->getMessage());
+                Log::error('Email/notification failed for member: '.$e->getMessage());
             }
         }
 
@@ -61,7 +61,7 @@ class CreateMember extends Action
                 $admin->notify(new MemberRegisteredNotification($member));
             }
         } catch (\Exception $e) {
-            Log::error('Email/notification failed for member: ' . $e->getMessage());
+            Log::error('Email/notification failed for member: '.$e->getMessage());
         }
 
         return $member;

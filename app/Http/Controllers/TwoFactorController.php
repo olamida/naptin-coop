@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Company;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use PragmaRX\Google2FA\Google2FA;
 
 class TwoFactorController extends Controller
@@ -16,14 +18,14 @@ class TwoFactorController extends Controller
 
     public function __construct()
     {
-        $this->google2fa = new Google2FA();
+        $this->google2fa = new Google2FA;
     }
 
     public function challenge()
     {
         $user = auth()->user();
 
-        if (!$user->totp_enabled) {
+        if (! $user->totp_enabled) {
             return redirect()->route('two-factor.setup');
         }
 
@@ -40,13 +42,13 @@ class TwoFactorController extends Controller
 
         $user = auth()->user();
 
-        if (!$user->totp_secret) {
+        if (! $user->totp_secret) {
             return back()->withErrors(['code' => 'Two-factor authentication is not configured.']);
         }
 
         $valid = $this->google2fa->verifyKey($user->totp_secret, $request->code);
 
-        if (!$valid) {
+        if (! $valid) {
             ActivityLog::log('two_factor_failed', "Failed 2FA attempt for {$user->email}");
 
             return back()->withErrors(['code' => 'Invalid authentication code.']);
@@ -66,7 +68,7 @@ class TwoFactorController extends Controller
 
         $user = auth()->user();
 
-        if (!$user->totp_recovery_codes || !is_array($user->totp_recovery_codes)) {
+        if (! $user->totp_recovery_codes || ! is_array($user->totp_recovery_codes)) {
             return back()->withErrors(['code' => 'No recovery codes available.']);
         }
 
@@ -81,7 +83,7 @@ class TwoFactorController extends Controller
             }
         }
 
-        if (!$found) {
+        if (! $found) {
             return back()->withErrors(['code' => 'Invalid recovery code.']);
         }
 
@@ -107,13 +109,13 @@ class TwoFactorController extends Controller
         $secret = session('pending_totp_secret') ?? $this->google2fa->generateSecretKey();
         session(['pending_totp_secret' => $secret]);
 
-        $company = \App\Models\Company::instance();
+        $company = Company::instance();
         $appName = str_replace(' ', '', $company->name ?? 'NAPTIN Cooperative');
         $qrUrl = $this->google2fa->getQRCodeUrl($appName, $user->email, $secret);
 
         $renderer = new ImageRenderer(
             new RendererStyle(200),
-            new SvgImageBackEnd()
+            new SvgImageBackEnd
         );
         $writer = new Writer($renderer);
         $qrSvg = $writer->writeString($qrUrl);
@@ -128,21 +130,21 @@ class TwoFactorController extends Controller
         $user = auth()->user();
         $secret = session('pending_totp_secret');
 
-        if (!$secret) {
+        if (! $secret) {
             return redirect()->route('two-factor.setup')
                 ->withErrors(['code' => 'Session expired. Please start again.']);
         }
 
         $valid = $this->google2fa->verifyKey($secret, $request->code);
 
-        if (!$valid) {
+        if (! $valid) {
             return back()->withErrors(['code' => 'Invalid code. Please try again.']);
         }
 
         $recoveryCodes = [];
         for ($i = 0; $i < 8; $i++) {
             $recoveryCodes[] = strtoupper(
-                substr(hash('sha256', $secret . $i . $user->id), 0, 10)
+                substr(hash('sha256', $secret.$i.$user->id), 0, 10)
             );
         }
 
@@ -175,7 +177,7 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'confirm_password' => ['required', function ($attribute, $value, $fail) {
-                if (!\Illuminate\Support\Facades\Hash::check($value, auth()->user()->password)) {
+                if (! Hash::check($value, auth()->user()->password)) {
                     $fail('Password is incorrect.');
                 }
             }],
@@ -185,7 +187,7 @@ class TwoFactorController extends Controller
         $newCodes = [];
         for ($i = 0; $i < 8; $i++) {
             $newCodes[] = strtoupper(
-                substr(hash('sha256', $user->totp_secret . $i . now()->timestamp), 0, 10)
+                substr(hash('sha256', $user->totp_secret.$i.now()->timestamp), 0, 10)
             );
         }
 
@@ -198,7 +200,7 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'confirm_password' => ['required', function ($attribute, $value, $fail) {
-                if (!\Illuminate\Support\Facades\Hash::check($value, auth()->user()->password)) {
+                if (! Hash::check($value, auth()->user()->password)) {
                     $fail('Password is incorrect.');
                 }
             }],

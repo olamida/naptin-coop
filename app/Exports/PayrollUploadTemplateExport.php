@@ -23,7 +23,7 @@ class PayrollUploadTemplateExport implements FromCollection, WithHeadings
             ->map(function ($deduction) {
                 return [
                     'staff_id' => $deduction->member->staff_id ?? '',
-                    'member_name' => trim(($deduction->member->first_name ?? '') . ' ' . ($deduction->member->last_name ?? '')),
+                    'member_name' => trim(($deduction->member->first_name ?? '').' '.($deduction->member->last_name ?? '')),
                     'actual_savings' => $deduction->expected_savings,
                     'actual_loan_repayment' => $deduction->expected_loan_repayment,
                     'actual_share_contribution' => $deduction->expected_share_contribution,

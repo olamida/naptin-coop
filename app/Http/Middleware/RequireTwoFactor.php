@@ -11,7 +11,7 @@ class RequireTwoFactor
     {
         $user = $request->user();
 
-        if ($user && $user->totp_enabled && !$request->session()->get('two_factor_verified', false)) {
+        if ($user && $user->totp_enabled && ! $request->session()->get('two_factor_verified', false)) {
             return redirect()->route('two-factor.challenge');
         }
 

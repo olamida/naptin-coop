@@ -24,20 +24,20 @@ class DividendDeclaredNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = '₦' . number_format($this->memberAmount, 2);
+        $amount = '₦'.number_format($this->memberAmount, 2);
 
         return (new MailMessage)
-            ->subject('Dividend Declaration - ' . $this->dividend->year)
-            ->greeting('Hello ' . $notifiable->name . '!')
+            ->subject('Dividend Declaration - '.$this->dividend->year)
+            ->greeting('Hello '.$notifiable->name.'!')
             ->line("The {$this->dividend->year} dividend has been declared and your share has been calculated.")
             ->line("Your dividend: {$amount}")
-            ->line("Based on your share holding in the cooperative.")
+            ->line('Based on your share holding in the cooperative.')
             ->action('View Dividends', route('portal.shares'));
     }
 
     public function toArray(object $notifiable): array
     {
-        $amount = '₦' . number_format($this->memberAmount, 2);
+        $amount = '₦'.number_format($this->memberAmount, 2);
 
         return [
             'type' => 'dividend_declared',

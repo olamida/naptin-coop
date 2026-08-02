@@ -12,6 +12,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class PayrollDeductionExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
     private int $payrollId;
+
     private int $row = 0;
 
     public function __construct(int $payrollId)
@@ -53,7 +54,7 @@ class PayrollDeductionExport implements FromCollection, WithHeadings, WithMappin
 
         return [
             $deduction->member->staff_id ?? '',
-            ($deduction->member->first_name ?? '') . ' ' . ($deduction->member->last_name ?? ''),
+            ($deduction->member->first_name ?? '').' '.($deduction->member->last_name ?? ''),
             $deduction->expected_savings,
             $deduction->expected_loan_repayment,
             $deduction->expected_share_contribution,

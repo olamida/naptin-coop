@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class OpeningSavingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class OpeningSavingsImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
     use TracksImportStats;
 
@@ -24,8 +24,8 @@ class OpeningSavingsImport implements ToModel, WithHeadingRow, WithValidation, S
     {
         $this->trackRow();
 
-        if (!empty($row['external_reference']) && SavingsTransaction::where('external_reference', $row['external_reference'])->exists()) {
-            $this->markFailure('Duplicate external reference "' . $row['external_reference'] . '" — skipped');
+        if (! empty($row['external_reference']) && SavingsTransaction::where('external_reference', $row['external_reference'])->exists()) {
+            $this->markFailure('Duplicate external reference "'.$row['external_reference'].'" — skipped');
 
             return null;
         }
@@ -33,7 +33,7 @@ class OpeningSavingsImport implements ToModel, WithHeadingRow, WithValidation, S
         $member = Member::where('staff_id', $row['staff_id'])->first();
 
         if (! $member) {
-            $this->markFailure('No member found for staff_id ' . $row['staff_id']);
+            $this->markFailure('No member found for staff_id '.$row['staff_id']);
 
             return null;
         }
@@ -41,13 +41,13 @@ class OpeningSavingsImport implements ToModel, WithHeadingRow, WithValidation, S
         $account = SavingsAccount::where('member_id', $member->id)->first();
 
         if (! $account) {
-            $this->markFailure('No savings account found for member ' . $row['staff_id']);
+            $this->markFailure('No savings account found for member '.$row['staff_id']);
 
             return null;
         }
 
         if (SavingsTransaction::where('savings_account_id', $account->id)->where('reference', 'like', 'SAV/OPN/%')->exists()) {
-            $this->markFailure('Opening balance already posted for member ' . $row['staff_id']);
+            $this->markFailure('Opening balance already posted for member '.$row['staff_id']);
 
             return null;
         }
@@ -55,7 +55,7 @@ class OpeningSavingsImport implements ToModel, WithHeadingRow, WithValidation, S
         $amount = round((float) $row['amount'], 2);
 
         if ($amount <= 0) {
-            $this->markFailure('Opening savings amount must be greater than zero for member ' . $row['staff_id']);
+            $this->markFailure('Opening savings amount must be greater than zero for member '.$row['staff_id']);
 
             return null;
         }
@@ -69,7 +69,7 @@ class OpeningSavingsImport implements ToModel, WithHeadingRow, WithValidation, S
 
         return SavingsTransaction::create([
             'savings_account_id' => $account->id,
-            'reference' => 'SAV/OPN/' . strtoupper(Str::random(8)),
+            'reference' => 'SAV/OPN/'.strtoupper(Str::random(8)),
             'type' => 'deposit',
             'amount' => $amount,
             'balance_before' => $balanceBefore,

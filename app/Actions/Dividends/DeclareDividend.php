@@ -14,7 +14,7 @@ class DeclareDividend extends Action
             throw new \RuntimeException("Dividend for {$validated['year']} already exists.");
         }
 
-        $dividendNumber = 'DIV/' . $validated['year'] . '/' . str_pad(
+        $dividendNumber = 'DIV/'.$validated['year'].'/'.str_pad(
             Dividend::where('year', $validated['year'])->count() + 1,
             4,
             '0',

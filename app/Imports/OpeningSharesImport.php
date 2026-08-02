@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class OpeningSharesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class OpeningSharesImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
     use TracksImportStats;
 
@@ -24,8 +24,8 @@ class OpeningSharesImport implements ToModel, WithHeadingRow, WithValidation, Sk
     {
         $this->trackRow();
 
-        if (!empty($row['external_reference']) && ShareTransaction::where('external_reference', $row['external_reference'])->exists()) {
-            $this->markFailure('Duplicate external reference "' . $row['external_reference'] . '" — skipped');
+        if (! empty($row['external_reference']) && ShareTransaction::where('external_reference', $row['external_reference'])->exists()) {
+            $this->markFailure('Duplicate external reference "'.$row['external_reference'].'" — skipped');
 
             return null;
         }
@@ -33,7 +33,7 @@ class OpeningSharesImport implements ToModel, WithHeadingRow, WithValidation, Sk
         $member = Member::where('staff_id', $row['staff_id'])->first();
 
         if (! $member) {
-            $this->markFailure('No member found for staff_id ' . $row['staff_id']);
+            $this->markFailure('No member found for staff_id '.$row['staff_id']);
 
             return null;
         }
@@ -41,13 +41,13 @@ class OpeningSharesImport implements ToModel, WithHeadingRow, WithValidation, Sk
         $account = ShareAccount::where('member_id', $member->id)->first();
 
         if (! $account) {
-            $this->markFailure('No share account found for member ' . $row['staff_id']);
+            $this->markFailure('No share account found for member '.$row['staff_id']);
 
             return null;
         }
 
         if (ShareTransaction::where('share_account_id', $account->id)->where('reference', 'like', 'SHR/OPN/%')->exists()) {
-            $this->markFailure('Opening share allotment already posted for member ' . $row['staff_id']);
+            $this->markFailure('Opening share allotment already posted for member '.$row['staff_id']);
 
             return null;
         }
@@ -55,7 +55,7 @@ class OpeningSharesImport implements ToModel, WithHeadingRow, WithValidation, Sk
         $shares = (int) ($row['shares'] ?? 0);
 
         if ($shares < 1) {
-            $this->markFailure('Share count must be at least 1 for member ' . $row['staff_id']);
+            $this->markFailure('Share count must be at least 1 for member '.$row['staff_id']);
 
             return null;
         }
@@ -76,7 +76,7 @@ class OpeningSharesImport implements ToModel, WithHeadingRow, WithValidation, Sk
 
         return ShareTransaction::create([
             'share_account_id' => $account->id,
-            'reference' => 'SHR/OPN/' . strtoupper(Str::random(8)),
+            'reference' => 'SHR/OPN/'.strtoupper(Str::random(8)),
             'type' => 'purchase',
             'shares' => $shares,
             'amount' => $amount,

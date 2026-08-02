@@ -3,18 +3,18 @@
 namespace App\Imports;
 
 use App\Enums\MemberStatus;
+use App\Imports\Concerns\TracksImportStats;
 use App\Models\Member;
 use App\Models\Region;
 use App\Models\SavingsAccount;
 use App\Models\ShareAccount;
-use App\Imports\Concerns\TracksImportStats;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class MemberImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class MemberImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
     use TracksImportStats;
 
@@ -32,13 +32,13 @@ class MemberImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFa
             }
         }
 
-        if (!empty($row['external_reference']) && Member::where('external_reference', $row['external_reference'])->exists()) {
-            $this->markFailure('Duplicate external reference "' . $row['external_reference'] . '" — skipped');
+        if (! empty($row['external_reference']) && Member::where('external_reference', $row['external_reference'])->exists()) {
+            $this->markFailure('Duplicate external reference "'.$row['external_reference'].'" — skipped');
 
             return null;
         }
 
-        $region = Region::where('name', 'like', '%' . $row['region'] . '%')->first();
+        $region = Region::where('name', 'like', '%'.$row['region'].'%')->first();
 
         if (! $region) {
             $region = Region::firstOrCreate(
@@ -70,7 +70,7 @@ class MemberImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFa
 
         SavingsAccount::create([
             'member_id' => $member->id,
-            'account_number' => 'SAV/' . Str::upper(Str::random(2)) . '/' . str_pad($member->id, 6, '0', STR_PAD_LEFT),
+            'account_number' => 'SAV/'.Str::upper(Str::random(2)).'/'.str_pad($member->id, 6, '0', STR_PAD_LEFT),
             'balance' => 0,
         ]);
 

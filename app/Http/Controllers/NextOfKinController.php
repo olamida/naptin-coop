@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Member;
 use App\Models\NextOfKin;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class NextOfKinController extends Controller
 {
-    public function store(Request $request, Member $member): \Illuminate\Http\RedirectResponse
+    public function store(Request $request, Member $member): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -19,7 +20,7 @@ class NextOfKinController extends Controller
             'is_primary' => 'boolean',
         ]);
 
-        if (!empty($validated['is_primary']) && $validated['is_primary']) {
+        if (! empty($validated['is_primary']) && $validated['is_primary']) {
             NextOfKin::where('member_id', $member->id)->update(['is_primary' => false]);
         }
 
@@ -29,7 +30,7 @@ class NextOfKinController extends Controller
             ->with('success', 'Next of kin added successfully.');
     }
 
-    public function destroy(Member $member, NextOfKin $nextOfKin): \Illuminate\Http\RedirectResponse
+    public function destroy(Member $member, NextOfKin $nextOfKin): RedirectResponse
     {
         $nextOfKin->delete();
 

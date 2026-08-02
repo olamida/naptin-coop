@@ -3,23 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\LoanProduct;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class LoanProductController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         $products = LoanProduct::latest()->get();
 
         return view('admin.loan-products.index', ['products' => $products]);
     }
 
-    public function create(): \Illuminate\View\View
+    public function create(): View
     {
         return view('admin.loan-products.create');
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -44,12 +46,12 @@ class LoanProductController extends Controller
             ->with('success', 'Loan product created successfully.');
     }
 
-    public function edit(LoanProduct $loanProduct): \Illuminate\View\View
+    public function edit(LoanProduct $loanProduct): View
     {
         return view('admin.loan-products.edit', ['product' => $loanProduct]);
     }
 
-    public function update(Request $request, LoanProduct $loanProduct): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, LoanProduct $loanProduct): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -73,7 +75,7 @@ class LoanProductController extends Controller
             ->with('success', 'Loan product updated successfully.');
     }
 
-    public function destroy(LoanProduct $loanProduct): \Illuminate\Http\RedirectResponse
+    public function destroy(LoanProduct $loanProduct): RedirectResponse
     {
         $loanProduct->delete();
 

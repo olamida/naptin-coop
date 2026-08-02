@@ -9,6 +9,7 @@ use App\Actions\Loans\DisburseLoan;
 use App\Actions\Loans\RecordRepayment;
 use App\Actions\Loans\RejectLoan;
 use App\Actions\Loans\UpdateGuarantor;
+use App\Enums\GuarantorStatus;
 use App\Exports\LoansExport;
 use App\Imports\LoanRepaymentImport;
 use App\Models\ImportLog;
@@ -16,14 +17,16 @@ use App\Models\Loan;
 use App\Models\LoanGuarantor;
 use App\Models\LoanProduct;
 use App\Models\Member;
-use App\Services\LoanService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LoanController extends Controller
 {
-    public function index(Request $request): \Illuminate\View\View
+    public function index(Request $request): View
     {
         $query = Loan::with('member');
 
@@ -54,28 +57,28 @@ class LoanController extends Controller
         return view('loans.index', compact('loans', 'stats'));
     }
 
-    public function create(): \Illuminate\View\View
+    public function create(): View
     {
-        $members = Member::with('savingsAccount')->withCount(['loans as active_loans_count' => fn($q) => $q->whereIn('status', ['disbursed', 'repaying'])])
+        $members = Member::with('savingsAccount')->withCount(['loans as active_loans_count' => fn ($q) => $q->whereIn('status', ['disbursed', 'repaying'])])
             ->where('status', 'active')->orderBy('first_name')->get();
         $loanProducts = LoanProduct::where('enabled', true)->orderBy('name')->get();
 
         $guarantorLimit = 500000;
-        $guarantorExposure = \App\Models\LoanGuarantor::query()
-            ->where('status', \App\Enums\GuarantorStatus::Accepted->value)
-            ->whereHas('loan', fn($q) => $q->whereIn('status', ['approved', 'disbursed', 'repaying']))
+        $guarantorExposure = LoanGuarantor::query()
+            ->where('status', GuarantorStatus::Accepted->value)
+            ->whereHas('loan', fn ($q) => $q->whereIn('status', ['approved', 'disbursed', 'repaying']))
             ->with('loan:id,outstanding')
             ->get()
             ->groupBy('member_id')
-            ->map(fn($group) => [
-                'guaranteeing' => round((float) $group->sum(fn($g) => (float) $g->loan->outstanding), 2),
+            ->map(fn ($group) => [
+                'guaranteeing' => round((float) $group->sum(fn ($g) => (float) $g->loan->outstanding), 2),
                 'limit' => $guarantorLimit,
             ]);
 
         return view('loans.create', compact('members', 'loanProducts', 'guarantorExposure', 'guarantorLimit'));
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'member_id' => 'required|exists:members,id',
@@ -97,13 +100,13 @@ class LoanController extends Controller
             $createAction->notifyReviewers($loan);
 
             return redirect()->route('loans.show', $loan)
-                ->with('success', 'Loan application submitted successfully. Number: ' . $loanNumber);
+                ->with('success', 'Loan application submitted successfully. Number: '.$loanNumber);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
     }
 
-    public function show(Loan $loan): \Illuminate\View\View
+    public function show(Loan $loan): View
     {
         $loan->load([
             'member.region',
@@ -119,19 +122,20 @@ class LoanController extends Controller
         return view('loans.show', ['loan' => $loan]);
     }
 
-    public function approve(Loan $loan): \Illuminate\Http\RedirectResponse
+    public function approve(Loan $loan): RedirectResponse
     {
         $this->authorize('approve', $loan);
 
         try {
             ApproveLoan::run($loan);
+
             return back()->with('success', 'Loan approved successfully.');
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
-    public function reject(Request $request, Loan $loan): \Illuminate\Http\RedirectResponse
+    public function reject(Request $request, Loan $loan): RedirectResponse
     {
         $this->authorize('reject', $loan);
 
@@ -141,13 +145,14 @@ class LoanController extends Controller
 
         try {
             RejectLoan::run($loan, $validated['rejection_reason']);
+
             return back()->with('success', 'Loan rejected.');
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
-    public function addNote(Request $request, Loan $loan): \Illuminate\Http\RedirectResponse
+    public function addNote(Request $request, Loan $loan): RedirectResponse
     {
         $validated = $request->validate([
             'admin_notes' => 'required|string|max:1000',
@@ -158,7 +163,7 @@ class LoanController extends Controller
         return back()->with('success', 'Note added.');
     }
 
-    public function updateGuarantor(Request $request, Loan $loan, LoanGuarantor $guarantor): \Illuminate\Http\RedirectResponse
+    public function updateGuarantor(Request $request, Loan $loan, LoanGuarantor $guarantor): RedirectResponse
     {
         $validated = $request->validate([
             'status' => 'required|in:accepted,declined',
@@ -169,31 +174,34 @@ class LoanController extends Controller
             UpdateGuarantor::run($loan, $guarantor, $validated['status'], $validated['notes'] ?? null, $request->ip(), $request->userAgent());
 
             $statusText = $validated['status'] === 'accepted' ? 'accepted' : 'declined';
+
             return back()->with('success', "Guarantor request {$statusText} successfully.");
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
-    public function disburse(Loan $loan): \Illuminate\Http\RedirectResponse
+    public function disburse(Loan $loan): RedirectResponse
     {
         $this->authorize('disburse', $loan);
 
         try {
             DisburseLoan::run($loan);
+
             return back()->with('success', 'Loan disbursed successfully.');
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
-    public function repayment(Loan $loan): \Illuminate\View\View
+    public function repayment(Loan $loan): View
     {
         $loan->load('member');
+
         return view('loans.repayment', ['loan' => $loan]);
     }
 
-    public function storeRepayment(Request $request, Loan $loan): \Illuminate\Http\RedirectResponse
+    public function storeRepayment(Request $request, Loan $loan): RedirectResponse
     {
         $this->authorize('repay', $loan);
 
@@ -208,16 +216,17 @@ class LoanController extends Controller
             $result = RecordRepayment::run($loan, $validated);
             $message = $result['is_completed']
                 ? 'Final repayment recorded. Loan is now completed!'
-                : 'Repayment of ₦' . number_format($validated['amount'], 2) . ' recorded. Outstanding: ₦' . number_format($result['outstanding_after'], 2);
+                : 'Repayment of ₦'.number_format($validated['amount'], 2).' recorded. Outstanding: ₦'.number_format($result['outstanding_after'], 2);
+
             return back()->with('success', $message);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['amount' => $e->getMessage()])->withInput();
         }
     }
 
-    public function topup(Loan $loan): \Illuminate\View\View
+    public function topup(Loan $loan): View
     {
-        if (!$loan->canTopup()) {
+        if (! $loan->canTopup()) {
             return back()->withErrors(['error' => 'This loan is not eligible for top-up.']);
         }
 
@@ -228,9 +237,9 @@ class LoanController extends Controller
         return view('loans.topup', compact('loan', 'members', 'loanProducts'));
     }
 
-    public function storeTopup(Request $request, Loan $parentLoan): \Illuminate\Http\RedirectResponse
+    public function storeTopup(Request $request, Loan $parentLoan): RedirectResponse
     {
-        if (!$parentLoan->canTopup()) {
+        if (! $parentLoan->canTopup()) {
             return back()->withErrors(['error' => 'This loan is not eligible for top-up.']);
         }
 
@@ -248,8 +257,9 @@ class LoanController extends Controller
 
         try {
             $topupLoan = CreateLoan::run($validated);
+
             return redirect()->route('loans.show', $topupLoan)
-                ->with('success', 'Loan top-up application submitted successfully. Number: ' . $topupLoan->loan_number);
+                ->with('success', 'Loan top-up application submitted successfully. Number: '.$topupLoan->loan_number);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
@@ -257,15 +267,15 @@ class LoanController extends Controller
 
     public function exportLoans()
     {
-        return Excel::download(new LoansExport, 'loans_export_' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download(new LoansExport, 'loans_export_'.now()->format('Y-m-d').'.xlsx');
     }
 
-    public function import(): \Illuminate\View\View
+    public function import(): View
     {
         return view('loans.import');
     }
 
-    public function importStore(Request $request): \Illuminate\Http\RedirectResponse
+    public function importStore(Request $request): RedirectResponse
     {
         $request->validate([
             'import_file' => 'required|mimes:xlsx,xls,csv|max:10240',
@@ -281,15 +291,15 @@ class LoanController extends Controller
             ImportLog::record($batchId, 'loan_repayments', $fileName, $import->importStats());
 
             return redirect()->route('loans.index')
-                ->with('success', 'Loan repayments imported successfully. Batch: ' . substr($batchId, 0, 8) . '…');
+                ->with('success', 'Loan repayments imported successfully. Batch: '.substr($batchId, 0, 8).'…');
         } catch (\Exception $e) {
             ImportLog::record($batchId, 'loan_repayments', $fileName, $import->importStats(), 'failed', $e->getMessage());
 
-            return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
+            return back()->withErrors(['import_file' => 'Import failed: '.$e->getMessage()])->withInput();
         }
     }
 
-    public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function downloadTemplate(): StreamedResponse
     {
         $headers = [
             'Content-Type' => 'text/csv',

@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -52,7 +52,7 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         if ($this->profile_photo_path) {
-            return asset('storage/' . $this->profile_photo_path);
+            return asset('storage/'.$this->profile_photo_path);
         }
 
         return '';
@@ -63,7 +63,7 @@ class User extends Authenticatable
         return strtoupper(substr($this->name, 0, 2));
     }
 
-    public function member(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function member(): BelongsTo
     {
         return $this->belongsTo(Member::class);
     }

@@ -140,7 +140,7 @@ class Loan extends Model
 
     public function daysOverdue(): int
     {
-        if (!$this->maturity_date || !$this->isOverdue()) {
+        if (! $this->maturity_date || ! $this->isOverdue()) {
             return 0;
         }
 
@@ -149,7 +149,7 @@ class Loan extends Model
 
     public function canTopup(): bool
     {
-        return in_array($this->status, ['disbursed', 'repaying']) && $this->outstanding > 0 && !$this->parent_loan_id;
+        return in_array($this->status, ['disbursed', 'repaying']) && $this->outstanding > 0 && ! $this->parent_loan_id;
     }
 
     public function isTopup(): bool

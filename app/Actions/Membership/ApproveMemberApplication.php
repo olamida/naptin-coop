@@ -23,10 +23,10 @@ class ApproveMemberApplication extends Action
 
         $welcomeEmail = $email ?? $member->email;
 
-        if (!empty($welcomeEmail) && !$member->user_id) {
+        if (! empty($welcomeEmail) && ! $member->user_id) {
             $tempPassword = Str::random(12);
             $user = User::create([
-                'name' => $member->first_name . ' ' . $member->last_name,
+                'name' => $member->first_name.' '.$member->last_name,
                 'email' => $welcomeEmail,
                 'password' => Hash::make($tempPassword),
             ]);
@@ -39,7 +39,7 @@ class ApproveMemberApplication extends Action
             try {
                 Mail::to($welcomeEmail)->send(new WelcomeEmail($user, $member, $tempPassword));
             } catch (\Exception $e) {
-                Log::error('Welcome email failed for member ' . $member->id . ': ' . $e->getMessage());
+                Log::error('Welcome email failed for member '.$member->id.': '.$e->getMessage());
             }
         }
 

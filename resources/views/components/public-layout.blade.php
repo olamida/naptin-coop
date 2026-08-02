@@ -6,12 +6,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#0F172A">
+    <meta name="theme-color" content="{{ $branding->getThemeColor() }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="NAPTIN Coop">
+    <meta name="apple-mobile-web-app-title" content="{{ $company->name ?? 'NAPTIN Coop' }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <link rel="apple-touch-icon" href="{{ asset('icon-192.png') }}">
+    <link rel="icon" href="{{ $branding->get('favicon', 'favicon-32x32.png') ?? asset('favicon.ico') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ $branding->get('favicon', 'favicon-180x180.png') ?? asset('icon-192.png') }}">
     <title>{{ $title ? $title . ' - ' : '' }}{{ $company->name ?? 'NAPTIN Cooperative' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
@@ -29,7 +30,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-3">
-                    @if ($company->logo_path && $company->logo_url)
+                    @if ($brandingLogo = $branding->getLogo('header'))
+                        <img src="{{ $brandingLogo }}" alt="{{ $company->name }}" class="h-9 w-9 rounded-[10px] object-contain">
+                    @elseif ($company->logo_path && $company->logo_url)
                         <img src="{{ $company->logo_url }}" alt="{{ $company->name }}" class="h-9 w-9 rounded-[10px] object-contain">
                     @else
                         <div class="h-9 w-9 bg-[#0F172A] rounded-[10px] flex items-center justify-center">
@@ -104,7 +107,9 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div class="md:col-span-2">
                     <div class="flex items-center gap-3 mb-4">
-                        @if ($company->logo_path && $company->logo_url)
+                        @if ($brandingLogo = $branding->getLogo('header'))
+                            <img src="{{ $brandingLogo }}" alt="{{ $company->name }}" class="h-10 w-10 rounded-[10px] object-contain bg-white/10 p-1">
+                        @elseif ($company->logo_path && $company->logo_url)
                             <img src="{{ $company->logo_url }}" alt="{{ $company->name }}" class="h-10 w-10 rounded-[10px] object-contain bg-white/10 p-1">
                         @else
                             <div class="h-10 w-10 bg-blue-600 rounded-[10px] flex items-center justify-center">

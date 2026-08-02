@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
+use App\Services\LedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -38,7 +39,7 @@ class LedgerController extends Controller
     public function updateAccount(Request $request, ChartOfAccount $account)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:20|unique:chart_of_accounts,code,' . $account->id,
+            'code' => 'required|string|max:20|unique:chart_of_accounts,code,'.$account->id,
             'name' => 'required|string|max:255',
             'type' => 'required|in:asset,liability,equity,income,expense',
             'normal_side' => 'required|in:debit,credit',
@@ -84,7 +85,7 @@ class LedgerController extends Controller
         $totalCredit = collect($validated['lines'])->sum('credit');
 
         if (abs($totalDebit - $totalCredit) > 0.01) {
-            return back()->withErrors(['lines' => 'Total debits (₦' . number_format($totalDebit, 2) . ') must equal total credits (₦' . number_format($totalCredit, 2) . ').'])
+            return back()->withErrors(['lines' => 'Total debits (₦'.number_format($totalDebit, 2).') must equal total credits (₦'.number_format($totalCredit, 2).').'])
                 ->withInput();
         }
 
@@ -130,6 +131,22 @@ class LedgerController extends Controller
             ->with('success', 'Journal entry posted successfully.');
     }
 
+    public function reverseJournal(Request $request, JournalEntry $journalEntry)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            $reversal = (new LedgerService)->reverse($journalEntry, $validated['reason']);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        return redirect()->route('ledger.journals.show', $reversal)
+            ->with('success', 'Journal entry reversed. The reversal was posted and linked to the original entry.');
+    }
+
     public function trialBalance()
     {
         $accounts = ChartOfAccount::withSum('journalLines', 'debit')
@@ -170,7 +187,7 @@ class LedgerController extends Controller
             $account = ChartOfAccount::findOrFail($accountId);
             $lines = JournalEntryLine::with('journalEntry')
                 ->where('account_id', $accountId)
-                ->whereHas('journalEntry', fn($q) => $q->where('status', 'posted'))
+                ->whereHas('journalEntry', fn ($q) => $q->where('status', 'posted'))
                 ->orderBy('id')
                 ->get();
         }

@@ -7,7 +7,6 @@ use App\Models\Company;
 use App\Models\Member;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
-use App\Services\LedgerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -33,7 +32,7 @@ class SavingsService
 
                 $txn = SavingsTransaction::create([
                     'savings_account_id' => $account->id,
-                    'reference' => 'SAV/DEP/' . strtoupper(Str::random(8)),
+                    'reference' => 'SAV/DEP/'.strtoupper(Str::random(8)),
                     'type' => 'deposit',
                     'amount' => $amount,
                     'balance_before' => $balanceBefore,
@@ -52,7 +51,7 @@ class SavingsService
                 ActivityLog::create([
                     'user_id' => null,
                     'event' => 'deposit_auto_approved',
-                    'description' => 'Auto-approved savings deposit #' . $txn->id . ' of ₦' . number_format($amount, 2),
+                    'description' => 'Auto-approved savings deposit #'.$txn->id.' of ₦'.number_format($amount, 2),
                     'ip_address' => request()?->ip(),
                     'user_agent' => request()?->userAgent(),
                     'properties' => [
@@ -67,7 +66,7 @@ class SavingsService
 
             return SavingsTransaction::create([
                 'savings_account_id' => $account->id,
-                'reference' => 'SAV/DEP/' . strtoupper(Str::random(8)),
+                'reference' => 'SAV/DEP/'.strtoupper(Str::random(8)),
                 'type' => 'deposit',
                 'amount' => $amount,
                 'balance_before' => $balanceBefore,
@@ -92,12 +91,12 @@ class SavingsService
             return false;
         }
 
-        if (!$evidencePath) {
+        if (! $evidencePath) {
             return false;
         }
 
         $member = Member::find($memberId);
-        if (!$member) {
+        if (! $member) {
             return false;
         }
 
@@ -118,7 +117,7 @@ class SavingsService
 
         return SavingsTransaction::create([
             'savings_account_id' => $account->id,
-            'reference' => 'SAV/WTH/' . strtoupper(Str::random(8)),
+            'reference' => 'SAV/WTH/'.strtoupper(Str::random(8)),
             'type' => 'withdrawal',
             'amount' => $amount,
             'balance_before' => $balanceBefore,

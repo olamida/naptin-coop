@@ -20,6 +20,7 @@ class PurchaseOrder extends Model
         'unit_price',
         'total_amount',
         'payment_type',
+        'is_society_expense',
         'monthly_repayment',
         'amount_paid',
         'status',
@@ -33,6 +34,7 @@ class PurchaseOrder extends Model
         'monthly_repayment' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'quantity' => 'integer',
+        'is_society_expense' => 'boolean',
         'collected_at' => 'date',
     ];
 

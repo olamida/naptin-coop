@@ -1,5 +1,5 @@
-const CACHE_NAME = 'naptin-coop-v6';
-const STATIC_CACHE = 'naptin-coop-static-v6';
+const CACHE_NAME = 'naptin-coop-v7';
+const STATIC_CACHE = 'naptin-coop-static-v7';
 
 const PRECACHE_URLS = [
     'offline.html',
@@ -34,18 +34,22 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(event.request.url);
 
-    // Cache static assets on first fetch
+    // Cache static assets on first fetch (stale-while-revalidate so
+    // fresh builds propagate instead of serving stale bundles forever)
     if (STATIC_EXTENSIONS.some((ext) => url.pathname.endsWith(ext))) {
         event.respondWith(
             caches.match(event.request).then((cached) => {
-                if (cached) return cached;
-                return fetch(event.request).then((response) => {
+                // Revalidate in the background
+                const network = fetch(event.request).then((response) => {
                     if (response && response.status === 200) {
                         const clone = response.clone();
                         caches.open(STATIC_CACHE).then((cache) => cache.put(event.request, clone));
                     }
                     return response;
-                });
+                }).catch(() => cached);
+
+                // Serve the cached copy immediately if we have one
+                return cached || network;
             })
         );
         return;

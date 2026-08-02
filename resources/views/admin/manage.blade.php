@@ -22,6 +22,20 @@
             @endcan
 
             @can('manage-users')
+                <a href="{{ route('admin.branding.index') }}" class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6 hover:shadow-md transition group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center group-hover:bg-violet-200 transition">
+                            <span class="material-symbols-outlined text-violet-600 text-2xl">palette</span>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-[#0F172A]">Branding</h3>
+                            <p class="text-xs text-slate-500">Logos, heroes &amp; favicon</p>
+                        </div>
+                    </div>
+                </a>
+            @endcan
+
+            @can('manage-users')
                 <a href="{{ route('admin.users.index') }}" class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6 hover:shadow-md transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition">
@@ -78,14 +92,14 @@
             @endcan
 
             @can('manage-products')
-                <a href="{{ route('admin.stock') }}" class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6 hover:shadow-md transition group">
+                <a href="{{ route('products.index') }}" class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6 hover:shadow-md transition group">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center group-hover:bg-indigo-200 transition">
                             <span class="material-symbols-outlined text-indigo-600 text-2xl">inventory_2</span>
                         </div>
                         <div>
                             <h3 class="font-semibold text-[#0F172A]">Stock Management</h3>
-                            <p class="text-xs text-slate-500">Manage product stock levels and adjustments</p>
+                            <p class="text-xs text-slate-500">Adjust product stock levels from the Products page</p>
                         </div>
                     </div>
                 </a>

@@ -66,7 +66,9 @@
         <div class="header">
             @php $company = \App\Models\Company::instance(); @endphp
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
-                @if ($company->logo_path)
+                @if ($receiptLogo = app(\App\Services\BrandingService::class)->getLogo('pdf'))
+                    <img src="{{ $receiptLogo }}" alt="Logo" style="height: 56px; width: 56px; object-fit: contain; border-radius: 8px; background: white; padding: 4px; flex-shrink: 0;">
+                @elseif ($company->logo_path)
                     <img src="{{ $company->logo_url }}" alt="Logo" style="height: 56px; width: 56px; object-fit: contain; border-radius: 8px; background: white; padding: 4px; flex-shrink: 0;">
                 @endif
                 <div>

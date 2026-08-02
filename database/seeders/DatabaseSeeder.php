@@ -66,7 +66,7 @@ class DatabaseSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
-        if (!$admin->hasRole('super-admin')) {
+        if (! $admin->hasRole('super-admin')) {
             $admin->assignRole('super-admin');
         }
 
@@ -116,7 +116,7 @@ class DatabaseSeeder extends Seeder
         $regionIds = Region::pluck('id')->toArray();
 
         foreach ($membersData as $index => $data) {
-            $staffId = 'NAPTIN/' . str_pad($index + 1, 4, '0', STR_PAD_LEFT);
+            $staffId = 'NAPTIN/'.str_pad($index + 1, 4, '0', STR_PAD_LEFT);
             $member = Member::firstOrCreate(
                 ['staff_id' => $staffId],
                 [
@@ -124,7 +124,7 @@ class DatabaseSeeder extends Seeder
                     'region_id' => $regionIds[array_rand($regionIds)],
                     'date_of_birth' => now()->subYears(30 + rand(0, 15))->subDays(rand(0, 365)),
                     'employment_date' => now()->subYears(rand(2, 10)),
-                    'grade_level' => 'GL' . rand(7, 15),
+                    'grade_level' => 'GL'.rand(7, 15),
                     'status' => 'active',
                     'address' => '123 Cooperative Road, Abuja',
                     'state_of_origin' => 'FCT',
@@ -134,7 +134,7 @@ class DatabaseSeeder extends Seeder
             SavingsAccount::firstOrCreate(
                 ['member_id' => $member->id],
                 [
-                    'account_number' => 'SAV/' . Str::upper(Str::random(2)) . '/' . str_pad($member->id, 6, '0', STR_PAD_LEFT),
+                    'account_number' => 'SAV/'.Str::upper(Str::random(2)).'/'.str_pad($member->id, 6, '0', STR_PAD_LEFT),
                     'balance' => rand(50000, 500000),
                 ]
             );
@@ -153,17 +153,17 @@ class DatabaseSeeder extends Seeder
             $memberUser = User::firstOrCreate(
                 ['email' => $userEmail],
                 [
-                    'name' => $data['first_name'] . ' ' . $data['last_name'],
+                    'name' => $data['first_name'].' '.$data['last_name'],
                     'password' => Hash::make('password'),
                     'email_verified_at' => now(),
                     'member_id' => $member->id,
                 ]
             );
-            if (!$memberUser->hasRole('member')) {
+            if (! $memberUser->hasRole('member')) {
                 $memberUser->assignRole('member');
             }
             // Link user back to member record
-            if (!$member->user_id) {
+            if (! $member->user_id) {
                 $member->update(['user_id' => $memberUser->id]);
             }
         }
@@ -249,13 +249,13 @@ class DatabaseSeeder extends Seeder
             $memberUser = User::firstOrCreate(
                 ['email' => 'member@naptin.coop'],
                 [
-                    'name' => $demoMember->first_name . ' ' . $demoMember->last_name,
+                    'name' => $demoMember->first_name.' '.$demoMember->last_name,
                     'password' => Hash::make('password'),
                     'email_verified_at' => now(),
                     'member_id' => $demoMember->id,
                 ]
             );
-            if (!$memberUser->hasRole('member')) {
+            if (! $memberUser->hasRole('member')) {
                 $memberUser->assignRole('member');
             }
         }

@@ -6,20 +6,21 @@ use App\Models\Member;
 use App\Models\Region;
 use App\Models\SavingsAccount;
 use App\Models\ShareAccount;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class RegistrationController extends Controller
 {
-    public function create(): \Illuminate\View\View
+    public function create(): View
     {
         $regions = Region::where('enabled', true)->orderBy('name')->get();
 
         return view('auth.register', compact('regions'));
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
@@ -47,7 +48,7 @@ class RegistrationController extends Controller
 
         SavingsAccount::create([
             'member_id' => $member->id,
-            'account_number' => 'SAV/' . Str::upper(Str::random(2)) . '/' . str_pad($member->id, 6, '0', STR_PAD_LEFT),
+            'account_number' => 'SAV/'.Str::upper(Str::random(2)).'/'.str_pad($member->id, 6, '0', STR_PAD_LEFT),
             'balance' => 0,
         ]);
 

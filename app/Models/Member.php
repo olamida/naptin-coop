@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Storage;
 
 class Member extends Model
 {
@@ -112,13 +111,13 @@ class Member extends Model
 
     public function getFullNameAttribute(): string
     {
-        return trim($this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name);
+        return trim($this->first_name.' '.$this->middle_name.' '.$this->last_name);
     }
 
     public function getPhotoUrlAttribute(): string
     {
         if ($this->photo_path) {
-            return asset('storage/' . $this->photo_path);
+            return asset('storage/'.$this->photo_path);
         }
 
         return '';
@@ -126,12 +125,12 @@ class Member extends Model
 
     public function getInitialsAttribute(): string
     {
-        return strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name ?? '', 0, 1));
+        return strtoupper(substr($this->first_name, 0, 1).substr($this->last_name ?? '', 0, 1));
     }
 
     public function getStaffIdDisplayAttribute(): string
     {
-        return 'NAP/' . ($this->attributes['staff_id'] ?? '');
+        return 'NAP/'.($this->attributes['staff_id'] ?? '');
     }
 
     public function healthScore(): float
@@ -147,6 +146,7 @@ class Member extends Model
     public function healthLabel(): string
     {
         $score = $this->healthScore();
+
         return match (true) {
             $score > 100 => 'Excellent',
             $score > 50 => 'Good',
@@ -158,6 +158,7 @@ class Member extends Model
     public function healthColor(): string
     {
         $score = $this->healthScore();
+
         return match (true) {
             $score > 100 => 'emerald',
             $score > 50 => 'blue',

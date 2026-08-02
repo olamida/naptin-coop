@@ -22,7 +22,7 @@ class PostDeposit extends Action
 
             $txn = SavingsTransaction::create([
                 'savings_account_id' => $account->id,
-                'reference' => 'SAV/DEP/' . strtoupper(Str::random(8)),
+                'reference' => 'SAV/DEP/'.strtoupper(Str::random(8)),
                 'type' => 'deposit',
                 'amount' => $amount,
                 'balance_before' => $balanceBefore,

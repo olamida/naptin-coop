@@ -24,22 +24,22 @@ class SharePurchasedNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $shares = $this->transaction->shares;
-        $amount = '₦' . number_format($this->transaction->amount, 2);
+        $amount = '₦'.number_format($this->transaction->amount, 2);
 
         return (new MailMessage)
             ->subject('Share Purchase Confirmed')
-            ->greeting('Hello ' . $notifiable->name . '!')
-            ->line("Your share purchase has been confirmed.")
+            ->greeting('Hello '.$notifiable->name.'!')
+            ->line('Your share purchase has been confirmed.')
             ->line("Shares purchased: {$shares}")
             ->line("Amount: {$amount}")
-            ->line("Total shares: " . $this->transaction->shareAccount->total_shares)
+            ->line('Total shares: '.$this->transaction->shareAccount->total_shares)
             ->action('View Shares', route('portal.shares'));
     }
 
     public function toArray(object $notifiable): array
     {
         $shares = $this->transaction->shares;
-        $amount = '₦' . number_format($this->transaction->amount, 2);
+        $amount = '₦'.number_format($this->transaction->amount, 2);
 
         return [
             'type' => 'share_purchased',

@@ -14,7 +14,7 @@ class CompilePayrollRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'year' => 'required|integer|min:2020|max:' . (date('Y') + 1),
+            'year' => 'required|integer|min:2020|max:'.(date('Y') + 1),
             'month_number' => 'required|integer|between:1,12',
         ];
     }

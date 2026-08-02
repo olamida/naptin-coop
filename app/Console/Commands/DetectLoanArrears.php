@@ -17,6 +17,7 @@ class DetectLoanArrears extends Command
 
         if ($overdueLoans->isEmpty()) {
             $this->info('No overdue loans found.');
+
             return self::SUCCESS;
         }
 
@@ -24,12 +25,12 @@ class DetectLoanArrears extends Command
 
         foreach ($overdueLoans as $loan) {
             $loan->update(['status' => 'defaulted']);
-            $this->line("  Loan {$loan->loan_number} — {$loan->member->first_name} {$loan->member->last_name} — ₦" . number_format($loan->outstanding, 2) . " outstanding — {$loan->daysOverdue()} days overdue");
+            $this->line("  Loan {$loan->loan_number} — {$loan->member->first_name} {$loan->member->last_name} — ₦".number_format($loan->outstanding, 2)." outstanding — {$loan->daysOverdue()} days overdue");
             $count++;
         }
 
         $totalOutstanding = $overdueLoans->sum('outstanding');
-        $this->info("Done. {$count} loan(s) marked as defaulted. Total outstanding: ₦" . number_format($totalOutstanding, 2));
+        $this->info("Done. {$count} loan(s) marked as defaulted. Total outstanding: ₦".number_format($totalOutstanding, 2));
 
         return self::SUCCESS;
     }

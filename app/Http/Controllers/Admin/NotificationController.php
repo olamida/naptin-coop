@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 class NotificationController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         $user = auth()->user();
         $notifications = $user->notifications()->latest()->paginate(20);
@@ -15,7 +17,7 @@ class NotificationController extends Controller
         return view('admin.notifications', compact('notifications', 'unreadCount'));
     }
 
-    public function markRead($notificationId): \Illuminate\Http\RedirectResponse
+    public function markRead($notificationId): RedirectResponse
     {
         $notification = auth()->user()->notifications()->findOrFail($notificationId);
         $notification->markAsRead();
@@ -23,7 +25,7 @@ class NotificationController extends Controller
         return back()->with('success', 'Notification marked as read.');
     }
 
-    public function markAllRead(): \Illuminate\Http\RedirectResponse
+    public function markAllRead(): RedirectResponse
     {
         auth()->user()->unreadNotifications()->update(['read_at' => now()]);
 

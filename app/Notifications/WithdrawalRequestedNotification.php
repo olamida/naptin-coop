@@ -23,24 +23,24 @@ class WithdrawalRequestedNotification extends Notification implements ShouldQueu
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = '₦' . number_format($this->transaction->amount, 2);
+        $amount = '₦'.number_format($this->transaction->amount, 2);
         $member = $this->transaction->savingsAccount->member ?? null;
         $memberName = $member ? "{$member->first_name} {$member->last_name}" : 'A member';
         $ref = $this->transaction->reference;
 
         return (new MailMessage)
-            ->subject('Withdrawal Request Pending Approval - ' . $ref)
-            ->greeting('Hello ' . $notifiable->name . '!')
+            ->subject('Withdrawal Request Pending Approval - '.$ref)
+            ->greeting('Hello '.$notifiable->name.'!')
             ->line("A savings withdrawal request of {$amount} has been submitted and requires your approval.")
-            ->line("Member: {$memberName}" . ($member ? " ({$member->staff_id_display})" : ''))
+            ->line("Member: {$memberName}".($member ? " ({$member->staff_id_display})" : ''))
             ->line("Reference: {$ref}")
-            ->line("Current savings balance: ₦" . number_format($this->transaction->balance_before, 2))
+            ->line('Current savings balance: ₦'.number_format($this->transaction->balance_before, 2))
             ->action('Review Request', route('savings.pending-withdrawals'));
     }
 
     public function toArray(object $notifiable): array
     {
-        $amount = '₦' . number_format($this->transaction->amount, 2);
+        $amount = '₦'.number_format($this->transaction->amount, 2);
         $member = $this->transaction->savingsAccount->member ?? null;
 
         return [

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Payroll\CompileAndLockPayroll;
 use App\Http\Controllers\PayrollController;
 use App\Models\Member;
 use App\Models\MonthlyPayroll;
@@ -22,7 +23,7 @@ class PayrollArrearTest extends TestCase
         $region = Region::create(['name' => 'R', 'code' => 'R1', 'state' => 'S', 'enabled' => true]);
         $member = Member::create([
             'region_id' => $region->id,
-            'staff_id' => 'S-' . substr(uniqid(), -6),
+            'staff_id' => 'S-'.substr(uniqid(), -6),
             'first_name' => 'Jane',
             'last_name' => 'Doe',
             'status' => 'active',
@@ -62,7 +63,7 @@ class PayrollArrearTest extends TestCase
         [$payroll, $member] = $this->makePayrollWithShortfall();
         $this->actingAsAdmin();
 
-        $request = Request::create('/payroll/' . $payroll->id . '/arrears', 'POST', [
+        $request = Request::create('/payroll/'.$payroll->id.'/arrears', 'POST', [
             'member_id' => $member->id,
             'reason' => 'Salary dept shortfall',
         ]);
@@ -86,7 +87,7 @@ class PayrollArrearTest extends TestCase
         [$payroll, $member] = $this->makePayrollWithShortfall(30000, 30000);
         $this->actingAsAdmin();
 
-        $request = Request::create('/payroll/' . $payroll->id . '/arrears', 'POST', [
+        $request = Request::create('/payroll/'.$payroll->id.'/arrears', 'POST', [
             'member_id' => $member->id,
         ]);
 
@@ -110,7 +111,7 @@ class PayrollArrearTest extends TestCase
             'status' => 'open',
         ]);
 
-        $request = Request::create('/payroll/' . $payroll->id . '/arrears', 'POST', [
+        $request = Request::create('/payroll/'.$payroll->id.'/arrears', 'POST', [
             'member_id' => $member->id,
         ]);
 
@@ -138,8 +139,8 @@ class PayrollArrearTest extends TestCase
         foreach ([10000, 20000] as $i => $actual) {
             $member = Member::create([
                 'region_id' => $region->id,
-                'staff_id' => 'S-' . substr(uniqid(), -6),
-                'first_name' => 'Member' . $i,
+                'staff_id' => 'S-'.substr(uniqid(), -6),
+                'first_name' => 'Member'.$i,
                 'last_name' => 'One',
                 'status' => 'active',
             ]);
@@ -155,7 +156,7 @@ class PayrollArrearTest extends TestCase
         }
 
         $this->actingAsAdmin();
-        $request = Request::create('/payroll/' . $payroll->id . '/arrears/bulk', 'POST');
+        $request = Request::create('/payroll/'.$payroll->id.'/arrears/bulk', 'POST');
 
         app()->call([app(PayrollController::class), 'storeAllArrears'], [
             'request' => $request,
@@ -188,7 +189,7 @@ class PayrollArrearTest extends TestCase
         $region = Region::create(['name' => 'R', 'code' => 'R1', 'state' => 'S', 'enabled' => true]);
         $member = Member::create([
             'region_id' => $region->id,
-            'staff_id' => 'S-' . substr(uniqid(), -6),
+            'staff_id' => 'S-'.substr(uniqid(), -6),
             'first_name' => 'Carry',
             'last_name' => 'Forward',
             'status' => 'active',
@@ -245,7 +246,7 @@ class PayrollArrearTest extends TestCase
         $region = Region::create(['name' => 'R', 'code' => 'R1', 'state' => 'S', 'enabled' => true]);
         $member = Member::create([
             'region_id' => $region->id,
-            'staff_id' => 'S-' . substr(uniqid(), -6),
+            'staff_id' => 'S-'.substr(uniqid(), -6),
             'first_name' => 'Locked',
             'last_name' => 'Carry',
             'status' => 'active',
@@ -281,7 +282,7 @@ class PayrollArrearTest extends TestCase
             'status' => 'open',
         ]);
 
-        $payroll = \App\Actions\Payroll\CompileAndLockPayroll::run(2026, 8);
+        $payroll = CompileAndLockPayroll::run(2026, 8);
 
         $this->assertSame('20000.00', $payroll->total_arrears);
         $deduction = $payroll->deductions()->where('member_id', $member->id)->first();

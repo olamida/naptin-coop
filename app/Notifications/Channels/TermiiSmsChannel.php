@@ -11,8 +11,7 @@ class TermiiSmsChannel
     /**
      * Send the given notification as an SMS via Termii.
      *
-     * @param mixed $notifiable
-     * @param Notification $notification
+     * @param  mixed  $notifiable
      * @return array|void
      */
     public function send($notifiable, Notification $notification)
@@ -39,9 +38,9 @@ class TermiiSmsChannel
             $response = Http::timeout(10)
                 ->acceptJson()
                 ->withHeaders([
-                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Authorization' => 'Bearer '.$apiKey,
                 ])
-                ->post(config('termii.base_url') . '/sms/send', [
+                ->post(config('termii.base_url').'/sms/send', [
                     'to' => preg_replace('/[^0-9+]/', '', $phone),
                     'from' => config('termii.sender_id', 'NAPTIN-COOP'),
                     'sms' => $message,
@@ -51,7 +50,7 @@ class TermiiSmsChannel
 
             if ($response->failed()) {
                 Log::warning('Termii SMS send failed', [
-                    'phone' => substr(preg_replace('/[^0-9]/', '', $phone), 0, -3) . '***',
+                    'phone' => substr(preg_replace('/[^0-9]/', '', $phone), 0, -3).'***',
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
@@ -59,7 +58,7 @@ class TermiiSmsChannel
 
             return $response->json();
         } catch (\Throwable $e) {
-            Log::error('Termii SMS exception: ' . $e->getMessage());
+            Log::error('Termii SMS exception: '.$e->getMessage());
         }
     }
 }

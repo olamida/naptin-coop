@@ -5,7 +5,6 @@ namespace App\Actions\Savings;
 use App\Actions\Action;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
-use App\Models\User;
 use App\Notifications\WithdrawalStatusNotification;
 use App\Services\LedgerService;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +45,8 @@ class ApproveWithdrawal extends Action
                 $transaction->savingsAccount->member->user->notify(
                     new WithdrawalStatusNotification($transaction, 'pending')
                 );
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         }
 
         return $transaction;

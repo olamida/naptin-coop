@@ -2,10 +2,10 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\TracksImportStats;
 use App\Models\Loan;
 use App\Models\LoanRepayment;
 use App\Models\Member;
-use App\Imports\Concerns\TracksImportStats;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
@@ -13,7 +13,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class LoanRepaymentImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class LoanRepaymentImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
     use TracksImportStats;
 
@@ -25,8 +25,8 @@ class LoanRepaymentImport implements ToModel, WithHeadingRow, WithValidation, Sk
     {
         $this->trackRow();
 
-        if (!empty($row['external_reference']) && LoanRepayment::where('external_reference', $row['external_reference'])->exists()) {
-            $this->markFailure('Duplicate external reference "' . $row['external_reference'] . '" — skipped');
+        if (! empty($row['external_reference']) && LoanRepayment::where('external_reference', $row['external_reference'])->exists()) {
+            $this->markFailure('Duplicate external reference "'.$row['external_reference'].'" — skipped');
 
             return null;
         }
@@ -34,7 +34,7 @@ class LoanRepaymentImport implements ToModel, WithHeadingRow, WithValidation, Sk
         $member = Member::where('staff_id', $row['staff_id'])->first();
 
         if (! $member) {
-            $this->markFailure('No member found for staff_id ' . $row['staff_id']);
+            $this->markFailure('No member found for staff_id '.$row['staff_id']);
 
             return null;
         }
@@ -44,7 +44,7 @@ class LoanRepaymentImport implements ToModel, WithHeadingRow, WithValidation, Sk
             ->first();
 
         if (! $loan) {
-            $this->markFailure('No active loan found for member ' . $row['staff_id']);
+            $this->markFailure('No active loan found for member '.$row['staff_id']);
 
             return null;
         }
@@ -52,7 +52,7 @@ class LoanRepaymentImport implements ToModel, WithHeadingRow, WithValidation, Sk
         $amount = round((float) $row['amount'], 2);
 
         if ($amount > $loan->outstanding) {
-            $this->markFailure('Amount exceeds outstanding balance for member ' . $row['staff_id']);
+            $this->markFailure('Amount exceeds outstanding balance for member '.$row['staff_id']);
 
             return null;
         }
@@ -66,7 +66,7 @@ class LoanRepaymentImport implements ToModel, WithHeadingRow, WithValidation, Sk
             LoanRepayment::create([
                 'loan_id' => $loan->id,
                 'member_id' => $member->id,
-                'reference' => 'LN/IMP/' . strtoupper(Str::random(8)),
+                'reference' => 'LN/IMP/'.strtoupper(Str::random(8)),
                 'amount' => $amount,
                 'principal_portion' => $principalPortion,
                 'interest_portion' => $interestPortion,

@@ -24,7 +24,7 @@ class AdminPasswordResetNotification extends Notification implements ShouldQueue
     {
         return (new MailMessage)
             ->subject('Your Password Has Been Reset')
-            ->greeting('Hello ' . $notifiable->name . '!')
+            ->greeting('Hello '.$notifiable->name.'!')
             ->line('An administrator has reset your password for the NAPTIN Cooperative portal.')
             ->line('Your new temporary password is:')
             ->line("**{$this->temporaryPassword}**")

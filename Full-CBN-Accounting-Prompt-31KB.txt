@@ -1,0 +1,635 @@
+# NAPTIN COOP - CBN COMPLIANT INTERNATIONAL STANDARD ACCOUNTING PROMPT
+# Version: 4.1 - Comprehensive Financial Accounting Module
+# Compliance: IFRS for SMEs, CBN Microfinance Bank Framework 2020, ISA 230, COSO, Cooperative Societies Act Nigeria
+# Purpose: Copy-paste into Claude Code / Codex / opencode to build world-class accounting
+# Stack: Laravel 13, MySQL 8, Livewire 3, Tailwind
+
+================================================================================
+AI CLI PROMPT - COPY FROM HERE - COMPREHENSIVE ACCOUNTING IMPLEMENTATION
+================================================================================
+
+You are the Lead FinTech Architect for NAPTIN Staff Thrift Cooperative Society. You are building a CBN-compliant microfinance core accounting system. The existing app v3.1 has savings, loans, shares, payroll but NO proper double-entry ledger. You must implement international standard accounting from scratch without breaking existing modules.
+
+READ THESE CONTEXT FILES FIRST: APP-GUIDE.md, USER-GUIDE.txt, NAPTIN_COOP_WORLD_CLASS_AUDIT_AND_PROMPT.txt
+
+GOAL: Transform current single-entry thrift app into double-entry, accrual-based, auditable, CBN-compliant accounting system that can produce Trial Balance, P&L, Balance Sheet, Cash Flow, Loan Loss Provisioning, and pass external audit.
+
+DO NOT ASK QUESTIONS. IMPLEMENT IN PHASES BELOW.
+
+--------------------------------------------------------------------------------
+PHASE 1: FOUNDATION - CHART OF ACCOUNTS + IMMUTABLE LEDGER
+--------------------------------------------------------------------------------
+
+STEP 1.1: Create Migrations - Run in order
+
+1. ledger_accounts migration:
+Schema::create('ledger_accounts', function (Blueprint $table) {
+  $table->id();
+  $table->string('code', 10)->unique(); // 1001, 2001 etc
+  $table->string('name');
+  $table->enum('type', ['asset','liability','equity','income','expense']);
+  $table->enum('subtype', ['current_asset','non_current_asset','current_liability','non_current_liability','capital','reserve','operating_income','non_operating_income','operating_expense','provision']);
+  $table->boolean('is_control_account')->default(false); // if true, must reconcile with sub-ledger
+  $table->string('control_module')->nullable(); // savings, loans, shares, inventory
+  $table->boolean('is_active')->default(true);
+  $table->boolean('allow_manual_entry')->default(false); // only false for auto-posted
+  $table->unsignedBigInteger('parent_id')->nullable(); // for hierarchical CoA
+  $table->text('description')->nullable();
+  $table->timestamps();
+});
+
+2. journal_entries migration - IMMUTABLE:
+Schema::create('journal_entries', function (Blueprint $table) {
+  $table->id();
+  $table->uuid('uuid')->unique();
+  $table->date('txn_date');
+  $table->string('entry_number')->unique(); // JE/2026/000001
+  $table->foreignId('debit_account_id')->constrained('ledger_accounts');
+  $table->foreignId('credit_account_id')->constrained('ledger_accounts');
+  $table->decimal('amount', 15, 2);
+  $table->string('reference_type'); // App\Models\SavingsTransaction
+  $table->unsignedBigInteger('reference_id');
+  $table->string('reference_number'); // SAV/DEP/1234 - denormalized for search
+  $table->text('narration');
+  $table->foreignId('posted_by')->constrained('users');
+  $table->foreignId('branch_id')->nullable(); // for future multi-branch
+  $table->string('period', 7); // 2026-07 for closing
+  $table->boolean('is_reversed')->default(false);
+  $table->foreignId('reversed_by_id')->nullable()->constrained('journal_entries');
+  $table->text('reversal_reason')->nullable();
+  $table->string('prev_hash', 64)->nullable(); // SHA256 chain
+  $table->string('hash', 64)->unique(); // SHA256 of this entry
+  $table->ipAddress('ip_address')->nullable();
+  $table->string('user_agent')->nullable();
+  $table->timestamp('created_at')->useCurrent(); // NO updated_at - immutable
+  // No updated_at, no soft deletes
+});
+// Add DB trigger to prevent UPDATE/DELETE - create in migration via DB::unprepared
+// CREATE TRIGGER prevent_journal_update BEFORE UPDATE ON journal_entries FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Journal entries are immutable';
+
+3. period_closes migration:
+Schema::create('period_closes', function (Blueprint $table) {
+  $table->id();
+  $table->string('period', 7)->unique(); // 2026-07
+  $table->date('closed_at');
+  $table->foreignId('closed_by')->constrained('users');
+  $table->boolean('is_closed')->default(true);
+  $table->text('notes')->nullable();
+  $table->timestamps();
+});
+
+4. approval_workflows migration:
+Schema::create('approval_workflows', function (Blueprint $table) {
+  $table->id();
+  $table->string('module'); // savings_deposit, savings_withdrawal, loan_approval, expense
+  $table->decimal('min_amount', 15,2)->default(0);
+  $table->decimal('max_amount', 15,2)->nullable();
+  $table->json('required_roles'); // ["teller","financial_secretary"] sequential
+  $table->boolean('is_active')->default(true);
+  $table->timestamps();
+});
+
+5. cash_counts migration:
+Schema::create('cash_counts', function (Blueprint $table) {
+  $table->id();
+  $table->date('count_date')->unique();
+  $table->decimal('system_balance', 15,2); // from ledger 1001
+  $table->decimal('physical_count', 15,2); // entered by treasurer
+  $table->decimal('variance', 15,2); // auto calc
+  $table->enum('status', ['balanced','shortage','excess']);
+  $table->foreignId('counted_by')->constrained('users');
+  $table->foreignId('verified_by')->nullable()->constrained('users');
+  $table->text('notes')->nullable();
+  $table->timestamps();
+});
+
+6. Add columns to existing tables:
+- savings_transactions: add journal_entry_id nullable, import_batch_id uuid nullable, external_reference varchar unique nullable, status enum pending/approved/rejected default approved
+- loan_repayments: add journal_entry_id, principal_portion decimal, interest_portion decimal, fees_portion decimal
+- Add import_batch_id, external_reference to all financial tables for idempotency
+
+STEP 1.2: Seed Chart of Accounts - CBN Compliant - Create database/seeders/LedgerAccountsSeeder.php
+
+Seed these exact accounts - Do not change codes:
+
+ASSETS 1000-1999:
+1001 Cash in Hand - HQ - Current Asset - Control: No - Manual: No
+1002 Bank - First Bank - Current Asset - Control: No
+1003 Bank - UBA - Current Asset
+1005 Cash Suspense - Shortage/Excess - Current Asset - Manual: Yes - for reconciliation variance
+1201 Loan Portfolio - Regular - Current Asset - Control: Yes - Module: loans
+1202 Loan Portfolio - Emergency - Current Asset - Control: Yes
+1203 Loan Portfolio - Educational - Current Asset - Control: Yes
+1204 Loan Portfolio - Special - Current Asset - Control: Yes
+1205 Loan Loss Provision - Contra Asset - Current Asset - Manual: No - Negative asset
+1301 Inventory - Cooperative Store - Current Asset - Control: Yes - Module: inventory
+1401 Fixed Assets - Furniture - Non-Current Asset
+1402 Accumulated Depreciation - Contra Asset
+1501 Receivable - Payroll Deductions Expected - Current Asset - Control: Yes
+
+LIABILITIES 2000-2999:
+2001 Members Savings - Regular - Current Liability - Control: Yes - Module: savings
+2002 Members Savings - Target - Current Liability - Control: Yes
+2003 Members Savings - Fixed Deposit - Current Liability - Control: Yes
+2101 Members Share Capital - Non-Current Liability - Control: Yes - Module: shares
+2201 Dividend Payable - Current Liability
+2301 Audit Fees Payable - Current Liability
+2401 Loan Collateral / Savings Lien - Current Liability
+
+EQUITY 3000-3999:
+3001 General Reserve - Statutory Reserve - Equity - 25% of profit per Cooperative Act
+3002 Education Fund - Equity - 2.5% per cooperative principle
+3003 Retained Earnings - Equity
+
+INCOME 4000-4999:
+4001 Interest Income - Regular Loans - Operating Income
+4002 Interest Income - Emergency Loans - Operating Income
+4003 Interest Income - Educational Loans
+4004 Processing Fees Income - Operating Income
+4005 Sales Margin - Store - Operating Income
+4006 Penalty Income - Late Repayment - Operating Income
+4007 Commission Income - Non-Operating
+
+EXPENSES 5000-5999:
+5001 Bank Charges - Operating Expense - Allow Manual: Yes
+5002 Audit Fees - Operating Expense
+5003 Administrative Expenses - Operating Expense
+5004 Loan Loss Expense - Provisioning - Operating Expense
+5005 Depreciation Expense
+5006 Dividend Expense - For P&L allocation
+5007 Staff Costs
+5008 Office Expenses
+
+Set is_control_account = true for 1201-1204, 1301, 1501, 2001-2003, 2101
+Set allow_manual_entry = true only for 1005, 5001-5008
+
+STEP 1.3: Create Core Services
+
+Create app/Services/LedgerService.php with methods:
+
+public function post(
+  string $debitCode, // 1001
+  string $creditCode, // 2001
+  float $amount,
+  Model $reference, // SavingsTransaction instance
+  string $narration,
+  ?User $postedBy = null,
+  ?string $txnDate = null
+): JournalEntry
+
+Logic:
+- Validate: debit != credit, amount >0, both accounts active, period not closed (check period_closes table where period = Y-m of txn_date and is_closed = true -> throw exception)
+- Prevent manual entry to control accounts unless reference is from control module
+- Generate entry_number JE/YYYY/000001 via sequence table or max+1 with lock
+- Generate uuid, calculate prev_hash = last entry hash, hash = SHA256(uuid + debit + credit + amount + prev_hash + timestamp)
+- Create journal entry in DB::transaction
+- Return entry
+
+public function reverse(JournalEntry $entry, string $reason, User $user): JournalEntry
+- Create new entry swapping debit/credit, mark original is_reversed = true, set reversed_by_id
+- Narration = "Reversal of JE/xxx Reason: $reason"
+
+public function getBalance(string $code, ?string $fromDate = null, ?string $toDate = null): float
+- Sum debits - credits for asset/expense, credits - debits for liability/equity/income based on account type
+
+public function isPeriodClosed(string $period): bool
+public function validateControlAccounts(): array - returns variances
+
+Create app/Services/ProvisioningService.php for IFRS 9:
+
+Method calculateLoanLossProvision(): void
+- Fetch all loans where status in repaying, arrears, defaulted
+- For each loan, get days past due = today - max(schedule due_date where status overdue)
+- Determine rate: 0-30 days = 1%, 31-60 = 25%, 61-90 = 50%, >90 = 100% - per CBN MFB framework
+- Provision amount = outstanding_principal * rate - existing_provision
+- Post journal: Debit 5004 Loan Loss Expense, Credit 1205 Loan Loss Provision
+- Log in loan_loss_provisions table: loan_id, rate, amount, period
+
+Create app/Traits/HasDoubleEntry.php to be used in Actions
+
+--------------------------------------------------------------------------------
+PHASE 2: REFACTOR EXISTING MODULES TO USE LEDGER - CRITICAL
+--------------------------------------------------------------------------------
+
+REFACTOR EVERY MONEY ACTION - Replace direct balance increment with LedgerService. Must be in DB::transaction with lockForUpdate:
+
+1. Savings Deposit - app/Actions/Savings/PostDeposit.php:
+DB::transaction(function() {
+  $account = SavingsAccount::where('member_id', $member->id)->lockForUpdate()->first();
+  $txn = SavingsTransaction::create([... status pending/approved per workflow ...]);
+  if approved:
+    $account->increment('balance', $amount);
+    LedgerService::post(
+      debitCode: $paymentMethod == 'cash' ? '1001' : '1002',
+      creditCode: '2001',
+      amount: $amount,
+      reference: $txn,
+      narration: "Savings deposit {$member->staff_id} Ref {$txn->reference}"
+    );
+    // Link journal_entry_id back to txn
+});
+
+Same for Withdrawal: Debit 2001, Credit 1001/1002
+
+2. Loan Disbursement - app/Actions/Loans/DisburseLoan.php:
+- Amount: principal, Fee: processing_fee
+- Post 1: Debit 1201 Loan Portfolio, Credit 1002 Bank for principal
+- Post 2: Debit 1002 Bank, Credit 4004 Processing Fees Income for fee (net disbursement = principal - fee)
+- Generate LoanRepaymentSchedule
+- If fee >0, ensure net amount transferred = principal - fee
+
+3. Loan Repayment - app/Actions/Loans/PostRepayment.php:
+- Input amount, split per schedule: principal_portion, interest_portion, fees_portion
+- Post: Debit 1001/1002, Credit 1201 for principal, Credit 4001 for interest
+- Example: Repayment 18500 = 15000 principal + 3500 interest
+  Journal 1: Debit Bank 18500, Credit Loan Portfolio 15000
+  Journal 2: Debit Bank 0 (same txn), Credit Interest Income 3500 - Actually single entry with split? Better to post two entries or one with breakdown in narration but ledger needs split. Solution: Post multiple journal entries with same reference_id but different credit accounts, or use journal_entry_lines table. For simplicity v1: create two journal entries with same reference_number.
+- Update schedule amount_paid, loan outstanding
+
+4. Share Purchase: Debit 1001/1002, Credit 2101 Share Capital
+
+5. Product Purchase: Cash sale Debit 1001 Credit 1301 Inventory + Credit 4005 Sales Margin. Hire purchase creates loan-like schedule.
+
+6. Dividend: Debit 3003 Retained Earnings, Credit 2201 Dividend Payable. On payout: Debit 2201, Credit 2001 Members Savings (capitalize) or 1002 Bank (cash payout).
+
+All Actions must check period_closes and approval_workflows.
+
+STEP 2.2: Maker-Checker Implementation
+
+Create app/Services/ApprovalService.php:
+
+Method requiresApproval(string $module, float $amount): bool
+Method getRequiredRoles(string $module, float $amount): array
+
+In each Action, before posting ledger:
+if ApprovalService requires approval -> create pending transaction, send notification to required roles, do NOT post ledger yet.
+
+Create PendingApprovals table: id, module, reference_type, reference_id, amount, requested_by, required_roles json, current_step, status pending/approved/rejected
+
+On approval: post ledger, update reference status.
+
+--------------------------------------------------------------------------------
+PHASE 3: REPORTING - CBN COMPLIANT FINANCIAL STATEMENTS
+--------------------------------------------------------------------------------
+
+Build Livewire Reports - All reports must have: Period filter, Export Excel, Export PDF with QR code, Hash for verification, Show generated by and date.
+
+Report 1: Trial Balance /finance/reports/trial-balance
+- Columns: Account Code, Account Name, Type, Debit Total, Credit Total, Balance, Balance Type Dr/Cr
+- Footer: Total Debits must equal Total Credits - Show big green Balanced or red Imbalanced
+- Query: For each ledger_account, sum debits and credits from journal_entries where period <= selected period and is_reversed = false
+- Control check: Show warning if not balanced
+
+Report 2: Profit & Loss /finance/reports/profit-loss
+- Structure:
+  INCOME:
+    4001 Interest Income Regular: xxx
+    4002 Interest Income Emergency: xxx
+    Total Income
+  EXPENSES:
+    5001 Bank Charges: xxx
+    5004 Loan Loss Expense: xxx
+    Total Expenses
+  NET PROFIT = Income - Expenses
+- Period filter: From - To
+
+Report 3: Balance Sheet /finance/reports/balance-sheet
+- ASSETS:
+  Current Assets: 1001 + 1002 + 1003 + (1201+1202+1203+1204 - 1205) + 1301
+  Non-Current: 1401 - 1402
+- LIABILITIES: 2001+2002+2003+2101+2201+2301
+- EQUITY: 3001+3002+3003 + Net Profit (from P&L)
+- Must satisfy: Assets = Liabilities + Equity
+- Show variance check
+
+Report 4: Cash Flow Statement - Direct Method - /finance/reports/cash-flow
+- Operating: Cash from members savings, loan repayments, interest received, payments for expenses
+- Investing: Fixed assets purchase
+- Financing: Share capital contributions, dividend paid
+- Use journal_entries where debit or credit is cash/bank accounts 1001,1002,1003
+
+Report 5: Loan Portfolio Aging + Provisioning - CBN Requirement - /finance/reports/loan-aging
+- Columns: Loan No, Member, Disbursed Date, Outstanding Principal, Days Past Due, Classification (Performing 0-30, Pass & Watch 31-60, Substandard 61-90, Doubtful 91-180, Lost >180), Provision Rate, Provision Amount
+- Summary: Total Portfolio, Total Provision, Provision Coverage Ratio
+- Action: Button Calculate Provisioning - calls ProvisioningService
+
+Report 6: Members Savings Control Report - /finance/reports/savings-control
+- Compare sum(savings_accounts.balance) vs ledger 2001+2002+2003 balance. Must match. Show variance per member if mismatch.
+
+Report 7: Audit Trail - /finance/reports/audit-trail
+- Enhanced activity_logs with filters: User, Action, Model, Date Range, IP
+- Show old vs new values diff, reason, hash chain verification button
+
+Report 8: Daily Cash Reconciliation - /finance/cash-count
+- Form: Date, System Balance (auto from ledger 1001), Physical Count (input), Variance (auto), Status, Notes
+- If variance !=0, create journal to 1005 Suspense: Debit/Credit 1005 vs 1001
+
+All reports must use Spatie Excel for export, DomPDF for PDF with company header, QR code containing report hash.
+
+--------------------------------------------------------------------------------
+PHASE 4: PERIOD CLOSE, CONTROLS, SECURITY
+--------------------------------------------------------------------------------
+
+1. Period Close Feature /finance/period-close:
+- List periods 2026-01 to current with status Open/Closed
+- Button Close Period - checks: Trial Balance balanced, Cash counts for all days in period balanced, No pending approvals, Control accounts reconciled
+- If checks pass, create period_closes entry is_closed = true
+- Prevent any journal with txn_date in closed period
+- Reopen requires President + Auditor approval with reason logged
+
+2. Daily Jobs - app/Console/Kernel.php:
+- daily 23:00 ReconcileControlAccounts job - checks savings control, loan control, share control - emails Auditor if variance
+- daily 06:00 CalculateProvisioning if month-end
+- daily 04:00 VerifyLedgerHashChain - verifies prev_hash chain, alerts if tampered
+- daily 02:00 Backup ledger to S3 encrypted
+
+3. Security Hardening:
+- Add middleware NoBackDating: txn_date cannot be before last closed period or future date
+- Add Rate limiting to financial routes
+- Add IP whitelist for Treasurer role
+- All financial routes require 2FA if role is treasurer, financial_secretary, president
+- Add database CHECK constraints via migration: amount >0, debit != credit
+
+4. CBN Specific Compliance:
+- Statutory Reserve: On profit calculation, auto transfer 25% of net profit to 3001 General Reserve - per CBN MFB Act
+- Education Fund: 2.5% to 3002
+- Dividend: Cannot declare dividend if provision coverage <100% or if Trial Balance not balanced
+- Loan to single borrower limit: Check member outstanding loans <= 5% of total portfolio per CBN single obligor limit - implement in LoanService eligibility
+
+--------------------------------------------------------------------------------
+CODING STANDARDS FOR THIS ACCOUNTING MODULE:
+
+- All money decimal(15,2), use bcmath for calculations to avoid float errors
+- All ledger posts in DB::transaction with lockForUpdate
+- No direct DB::table update on ledger_accounts balance - balance is always calculated from journal_entries, never stored
+- Use uuid for journal_entries, entry_number human readable
+- Use enum for AccountType, AccountSubType
+- All reports must be Livewire with filters, not controllers
+- Use Repository pattern for ledger queries
+- Write Feature tests for each Action: test double entry balances, test reversal, test period closed prevents posting
+
+CONFIRM YOU UNDERSTAND CBN COMPLIANT DOUBLE-ENTRY REQUIREMENTS THEN START PHASE 1. SHOW MIGRATIONS AND LedgerService CODE FIRST.
+
+================================================================================
+PROMPT END
+================================================================================
+
+--------------------------------------------------------------------------------
+DRAFT CODE - READY TO DROP IN - LEDGER SERVICE + MIGRATIONS
+--------------------------------------------------------------------------------
+
+File: database/migrations/2026_08_01_000001_create_ledger_accounts_table.php
+--------------------------------------------------------------------------------
+<?php
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+return new class extends Migration {
+  public function up() {
+    Schema::create('ledger_accounts', function (Blueprint $table) {
+      $table->id();
+      $table->string('code', 10)->unique();
+      $table->string('name');
+      $table->enum('type', ['asset','liability','equity','income','expense']);
+      $table->enum('subtype', ['current_asset','non_current_asset','current_liability','non_current_liability','capital','reserve','operating_income','non_operating_income','operating_expense','provision'])->nullable();
+      $table->boolean('is_control_account')->default(false);
+      $table->string('control_module')->nullable();
+      $table->boolean('is_active')->default(true);
+      $table->boolean('allow_manual_entry')->default(false);
+      $table->unsignedBigInteger('parent_id')->nullable();
+      $table->text('description')->nullable();
+      $table->timestamps();
+    });
+  }
+  public function down() { Schema::dropIfExists('ledger_accounts'); }
+};
+
+File: app/Services/LedgerService.php - CORE DOUBLE ENTRY ENGINE
+--------------------------------------------------------------------------------
+<?php
+namespace App\Services;
+
+use App\Models\JournalEntry;
+use App\Models\LedgerAccount;
+use App\Models\PeriodClose;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class LedgerService
+{
+  public static function post(
+    string $debitCode,
+    string $creditCode,
+    float $amount,
+    Model $reference,
+    string $narration,
+    ?\App\Models\User $postedBy = null,
+    ?string $txnDate = null
+  ): JournalEntry {
+    if ($amount <= 0) throw new \Exception("Amount must be >0");
+    if ($debitCode === $creditCode) throw new \Exception("Debit and Credit cannot be same");
+    
+    $txnDate = $txnDate ?? now()->toDateString();
+    $period = substr($txnDate, 0, 7); // 2026-07
+    
+    if (PeriodClose::where('period', $period)->where('is_closed', true)->exists()) {
+      throw new \Exception("Period $period is closed. Cannot post.");
+    }
+
+    return DB::transaction(function () use ($debitCode, $creditCode, $amount, $reference, $narration, $postedBy, $txnDate, $period) {
+      $debitAccount = LedgerAccount::where('code', $debitCode)->where('is_active', true)->lockForUpdate()->firstOrFail();
+      $creditAccount = LedgerAccount::where('code', $creditCode)->where('is_active', true)->lockForUpdate()->firstOrFail();
+
+      // Prevent manual entry to control accounts unless from control module
+      // Simplified check: if control account and reference not from module, block
+      // Add your module check logic here
+
+      $lastEntry = JournalEntry::orderBy('id', 'desc')->lockForUpdate()->first();
+      $prevHash = $lastEntry?->hash ?? 'GENESIS';
+      $uuid = (string) Str::uuid();
+      $entryNumber = self::generateEntryNumber();
+      $hash = hash('sha256', $uuid.$debitCode.$creditCode.$amount.$prevHash.now()->toISOString());
+
+      $entry = JournalEntry::create([
+        'uuid' => $uuid,
+        'entry_number' => $entryNumber,
+        'txn_date' => $txnDate,
+        'debit_account_id' => $debitAccount->id,
+        'credit_account_id' => $creditAccount->id,
+        'amount' => $amount,
+        'reference_type' => get_class($reference),
+        'reference_id' => $reference->id,
+        'reference_number' => $reference->reference ?? $reference->loan_number ?? $reference->id,
+        'narration' => $narration,
+        'posted_by' => $postedBy?->id ?? auth()->id(),
+        'period' => $period,
+        'prev_hash' => $prevHash,
+        'hash' => $hash,
+        'ip_address' => request()->ip(),
+        'user_agent' => request()->userAgent(),
+      ]);
+
+      return $entry;
+    });
+  }
+
+  public static function postSplit(array $entries, Model $reference, string $narration): array
+  {
+    // For loan repayment split: [['debit'=>'1002','credit'=>'1201','amount'=>15000], ['debit'=>'1002','credit'=>'4001','amount'=>3500]]
+    // All in one transaction, same reference
+    return DB::transaction(function () use ($entries, $reference, $narration) {
+      $results = [];
+      foreach ($entries as $e) {
+        $results[] = self::post($e['debit'], $e['credit'], $e['amount'], $reference, $narration." - {$e['credit']}");
+      }
+      return $results;
+    });
+  }
+
+  private static function generateEntryNumber(): string
+  {
+    $year = date('Y');
+    $count = JournalEntry::whereYear('txn_date', $year)->count() + 1;
+    return 'JE/'.$year.'/'.str_pad($count, 6, '0', STR_PAD_LEFT);
+  }
+
+  public static function reverse(JournalEntry $entry, string $reason, $user): JournalEntry
+  {
+    return DB::transaction(function () use ($entry, $reason, $user) {
+      if ($entry->is_reversed) throw new \Exception("Already reversed");
+      
+      // Create reversal entry swapping debit/credit
+      $reversal = self::post(
+        debitCode: $entry->creditAccount->code,
+        creditCode: $entry->debitAccount->code,
+        amount: $entry->amount,
+        reference: $entry->reference,
+        narration: "REVERSAL of {$entry->entry_number}: $reason",
+        postedBy: $user,
+        txnDate: now()->toDateString()
+      );
+
+      $entry->update(['is_reversed' => true, 'reversed_by_id' => $reversal->id, 'reversal_reason' => $reason]);
+      
+      return $reversal;
+    });
+  }
+}
+
+File: app/Services/ProvisioningService.php - CBN IFRS 9
+--------------------------------------------------------------------------------
+<?php
+namespace App\Services;
+use App\Models\Loan;
+use App\Models\LoanRepaymentSchedule;
+use Carbon\Carbon;
+
+class ProvisioningService
+{
+  public static function calculate(): array
+  {
+    $loans = Loan::whereIn('status', ['repaying','arrears','defaulted'])->with('schedules')->get();
+    $totalProvision = 0;
+    $results = [];
+
+    foreach ($loans as $loan) {
+      $overdueSchedules = $loan->schedules->where('status','overdue');
+      $daysPastDue = 0;
+      if ($overdueSchedules->isNotEmpty()) {
+        $oldestDue = $overdueSchedules->min('due_date');
+        $daysPastDue = Carbon::parse($oldestDue)->diffInDays(now());
+      } elseif ($loan->status === 'repaying') {
+        $daysPastDue = 0;
+      }
+
+      $rate = match(true) {
+        $daysPastDue <= 30 => 0.01, // Performing - 1%
+        $daysPastDue <= 60 => 0.25, // Pass & Watch - 25%
+        $daysPastDue <= 90 => 0.50, // Substandard - 50%
+        $daysPastDue <= 180 => 0.75, // Doubtful - 75%
+        default => 1.00, // Lost - 100%
+      };
+
+      $outstanding = $loan->principal - $loan->repayments()->sum('principal_portion');
+      $provision = $outstanding * $rate;
+      $totalProvision += $provision;
+
+      $results[] = [
+        'loan_id' => $loan->id,
+        'loan_number' => $loan->loan_number,
+        'member' => $loan->member->full_name,
+        'outstanding' => $outstanding,
+        'days_past_due' => $daysPastDue,
+        'classification' => match(true) { $daysPastDue <=30 => 'Performing', $daysPastDue <=60 => 'Pass & Watch', $daysPastDue <=90 => 'Substandard', $daysPastDue <=180 => 'Doubtful', default => 'Lost' },
+        'rate' => $rate,
+        'provision' => $provision
+      ];
+    }
+
+    // Post total provision to ledger
+    // Get existing provision balance, calculate difference, post adjustment
+    // LedgerService::post('5004','1205', $difference, $provisionBatch, "Loan Loss Provision ".now()->format('M Y"))
+
+    return ['total' => $totalProvision, 'details' => $results];
+  }
+}
+
+File: resources/views/livewire/finance/trial-balance.blade.php - WORLD CLASS UI
+--------------------------------------------------------------------------------
+<div class="min-h-screen bg-[#F8FAFC] p-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h1 class="text-xl font-semibold text-[#0F172A]">Trial Balance</h1>
+        <p class="text-xs text-slate-500">Period: {{ $period }} • Generated {{ now()->format('M d, Y h:i A') }} by {{ auth()->user()->name }}</p>
+      </div>
+      <div class="flex gap-2">
+        <input type="month" wire:model.live="period" class="border rounded-[10px] px-3 py-2 text-sm"/>
+        <button wire:click="exportExcel" class="bg-white border px-4 py-2 rounded-[10px] text-xs">Export Excel</button>
+        <button wire:click="exportPdf" class="bg-[#0F172A] text-white px-4 py-2 rounded-[10px] text-xs">PDF with QR</button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-[16px] border border-slate-200 overflow-hidden">
+      <table class="w-full text-xs">
+        <thead class="bg-slate-50 border-b">
+          <tr><th class="text-left p-3 font-medium">Code</th><th class="text-left p-3 font-medium">Account</th><th class="text-left p-3 font-medium">Type</th><th class="text-right p-3 font-medium">Debit (₦)</th><th class="text-right p-3 font-medium">Credit (₦)</th><th class="text-right p-3 font-medium">Balance</th></tr>
+        </thead>
+        <tbody>
+          @foreach($accounts as $acc)
+          <tr class="border-b hover:bg-slate-50">
+            <td class="p-3 font-mono">{{ $acc['code'] }}</td>
+            <td class="p-3">{{ $acc['name'] }} @if($acc['is_control']) <span class="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full">CONTROL</span> @endif</td>
+            <td class="p-3 text-slate-500">{{ $acc['type'] }}</td>
+            <td class="p-3 text-right font-mono">{{ number_format($acc['debit'],2) }}</td>
+            <td class="p-3 text-right font-mono">{{ number_format($acc['credit'],2) }}</td>
+            <td class="p-3 text-right font-mono font-semibold {{ $acc['balance_type']=='Dr' ? 'text-[#0F172A]' : 'text-slate-600' }}">{{ number_format(abs($acc['balance']),2) }} {{ $acc['balance_type'] }}</td>
+          </tr>
+          @endforeach
+        </tbody>
+        <tfoot class="bg-[#0F172A] text-white">
+          <tr><td colspan="3" class="p-3 font-semibold">TOTAL</td><td class="p-3 text-right font-mono font-bold">₦{{ number_format($totalDebit,2) }}</td><td class="p-3 text-right font-mono font-bold">₦{{ number_format($totalCredit,2) }}</td><td class="p-3 text-right"><span class="px-2 py-1 rounded-full text-[10px] {{ $totalDebit==$totalCredit ? 'bg-emerald-500' : 'bg-rose-500' }}">{{ $totalDebit==$totalCredit ? 'BALANCED ✔' : 'IMBALANCED ✘' }}</span></td></tr>
+        </tfoot>
+      </table>
+    </div>
+
+    @if($totalDebit != $totalCredit)
+    <div class="mt-4 bg-rose-50 border border-rose-200 rounded-[12px] p-4 text-xs text-rose-700">CRITICAL: Trial Balance not balanced. Difference: ₦{{ number_format(abs($totalDebit-$totalCredit),2) }}. System locked for new postings. Contact Auditor.</div>
+    @endif
+  </div>
+</div>
+
+--------------------------------------------------------------------------------
+END OF DRAFT CODE
+--------------------------------------------------------------------------------
+
+INSTRUCTION: Implement Phase 1 first. Do not proceed to Phase 2 until LedgerService passes tests:
+- Test post valid entry balances
+- Test period closed blocks posting
+- Test reversal creates opposite entry
+- Test hash chain verification
+- Test control account reconciliation
+
+Then Phase 2 refactor existing modules.
+

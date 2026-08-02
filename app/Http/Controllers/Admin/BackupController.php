@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Process\ExecutableFinder;
 
 class BackupController extends Controller
 {
-    public function download(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function download(): StreamedResponse
     {
-        $filename = 'naptin_coop_backup_' . date('Y-m-d_His') . '.sql';
+        $filename = 'naptin_coop_backup_'.date('Y-m-d_His').'.sql';
 
         $dumpPath = $this->dumpToTempFile($filename);
 
@@ -19,14 +20,14 @@ class BackupController extends Controller
 
         return response()->stream(function () use ($dumpPath) {
             $handle = fopen($dumpPath, 'rb');
-            while (!feof($handle)) {
+            while (! feof($handle)) {
                 echo fread($handle, 8192);
             }
             fclose($handle);
             @unlink($dumpPath);
         }, 200, [
             'Content-Type' => 'application/sql',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'Pragma' => 'no-cache',
             'Expires' => '0',
@@ -43,10 +44,10 @@ class BackupController extends Controller
 
         $command = [
             $this->resolveBinary(),
-            '--host=' . $host,
-            '--port=' . $port,
-            '--user=' . $username,
-            '--password=' . $password,
+            '--host='.$host,
+            '--port='.$port,
+            '--user='.$username,
+            '--password='.$password,
             '--single-transaction',
             '--routines',
             '--triggers',
@@ -59,7 +60,7 @@ class BackupController extends Controller
         }
 
         $process = proc_open($command, [1 => ['file', $temp, 'w'], 2 => ['pipe', 'w']], $pipes);
-        if (!is_resource($process)) {
+        if (! is_resource($process)) {
             @unlink($temp);
             abort(500, 'Unable to start the database dump process.');
         }
@@ -70,7 +71,7 @@ class BackupController extends Controller
 
         if ($exitCode !== 0) {
             @unlink($temp);
-            abort(500, 'Database dump failed: ' . trim((string) $stderr));
+            abort(500, 'Database dump failed: '.trim((string) $stderr));
         }
 
         return $temp;
@@ -99,14 +100,14 @@ class BackupController extends Controller
 
     private function mirrorToS3IfConfigured(string $dumpPath, string $filename): void
     {
-        if (!config('filesystems.disks.s3.key') || !config('filesystems.disks.s3.bucket')) {
+        if (! config('filesystems.disks.s3.key') || ! config('filesystems.disks.s3.bucket')) {
             return;
         }
 
         try {
-            Storage::disk('s3')->put('backups/' . $filename, fopen($dumpPath, 'rb'));
+            Storage::disk('s3')->put('backups/'.$filename, fopen($dumpPath, 'rb'));
         } catch (\Throwable $e) {
-            Log::warning('S3 backup upload failed: ' . $e->getMessage());
+            Log::warning('S3 backup upload failed: '.$e->getMessage());
         }
     }
 }

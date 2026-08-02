@@ -2,22 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Loan;
 use App\Models\Member;
 use App\Models\PurchaseOrder;
-use App\Models\SavingsTransaction;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class ReportController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         $members = Member::where('status', 'active')->orderBy('first_name')->get();
 
         return view('reports.index', ['members' => $members]);
     }
 
-    public function memberStatus(Request $request, Member $member): \Illuminate\View\View
+    public function memberStatus(Request $request, Member $member): View
     {
         $member->load([
             'region',

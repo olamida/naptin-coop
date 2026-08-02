@@ -4,11 +4,11 @@ namespace App\Exports\Sheets;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class OnboardingOpeningSharesSheet implements FromArray, WithHeadings, WithTitle, WithStyles
+class OnboardingOpeningSharesSheet implements FromArray, WithHeadings, WithStyles, WithTitle
 {
     public function array(): array
     {

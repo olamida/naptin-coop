@@ -32,7 +32,7 @@ class StoreMemberRequest extends FormRequest
             'grade_level' => 'nullable|string|max:20',
             'monthly_salary' => 'nullable|numeric|min:0',
             'monthly_savings' => 'nullable|numeric|min:0',
-            'status' => 'required|in:' . implode(',', array_column(MemberStatus::cases(), 'value')),
+            'status' => 'required|in:'.implode(',', array_column(MemberStatus::cases(), 'value')),
             'photo' => 'nullable|image|max:2048',
         ];
     }

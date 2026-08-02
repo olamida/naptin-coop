@@ -21,6 +21,7 @@ class RoleController extends Controller
         $permissions = Permission::orderBy('name')->get()->groupBy(function ($p) {
             $parts = explode('-', $p->name);
             array_shift($parts);
+
             return implode('-', $parts) ?: $p->name;
         });
 
@@ -39,7 +40,7 @@ class RoleController extends Controller
             'guard_name' => 'web',
         ]);
 
-        if (!empty($validated['permissions'])) {
+        if (! empty($validated['permissions'])) {
             $role->syncPermissions($validated['permissions']);
         }
 
@@ -53,6 +54,7 @@ class RoleController extends Controller
         $permissions = Permission::orderBy('name')->get()->groupBy(function ($p) {
             $parts = explode('-', $p->name);
             array_shift($parts);
+
             return implode('-', $parts) ?: $p->name;
         });
 
@@ -62,7 +64,7 @@ class RoleController extends Controller
     public function update(Request $request, Role $role)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
+            'name' => 'required|string|max:255|unique:roles,name,'.$role->id,
             'permissions' => 'array',
         ]);
 

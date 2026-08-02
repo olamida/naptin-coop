@@ -20,7 +20,7 @@ class RequestWithdrawal extends Action
 
             $txn = SavingsTransaction::create([
                 'savings_account_id' => $account->id,
-                'reference' => 'SAV/WTH/' . strtoupper(Str::random(8)),
+                'reference' => 'SAV/WTH/'.strtoupper(Str::random(8)),
                 'type' => 'withdrawal',
                 'amount' => $amount,
                 'balance_before' => $balanceBefore,
@@ -36,12 +36,13 @@ class RequestWithdrawal extends Action
         });
 
         try {
-            $approverUsers = User::whereHas('roles', fn($q) => $q->whereIn('name', ['super-admin', 'admin', 'treasurer']))
+            $approverUsers = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['super-admin', 'admin', 'treasurer']))
                 ->get();
             foreach ($approverUsers as $user) {
                 $user->notify(new WithdrawalRequestedNotification($transaction));
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return $transaction;
     }

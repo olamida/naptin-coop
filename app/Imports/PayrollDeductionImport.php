@@ -2,16 +2,16 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\TracksImportStats;
 use App\Models\Member;
 use App\Models\PayrollArrear;
 use App\Models\PayrollDeduction;
-use App\Imports\Concerns\TracksImportStats;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class PayrollDeductionImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class PayrollDeductionImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
     use TracksImportStats;
 
@@ -40,8 +40,8 @@ class PayrollDeductionImport implements ToModel, WithHeadingRow, WithValidation,
 
         $member = Member::where('staff_id', $row['staff_id'])->first();
 
-        if (!$member) {
-            $this->markFailure('No member found for staff_id ' . $row['staff_id']);
+        if (! $member) {
+            $this->markFailure('No member found for staff_id '.$row['staff_id']);
 
             return null;
         }
@@ -50,8 +50,8 @@ class PayrollDeductionImport implements ToModel, WithHeadingRow, WithValidation,
             ->where('member_id', $member->id)
             ->first();
 
-        if (!$deduction) {
-            $this->markFailure('No payroll deduction row for member ' . $row['staff_id']);
+        if (! $deduction) {
+            $this->markFailure('No payroll deduction row for member '.$row['staff_id']);
 
             return null;
         }

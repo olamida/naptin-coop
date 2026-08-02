@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Loan;
 use App\Models\ImportLog;
+use App\Models\Loan;
 use App\Models\Member;
 use App\Models\MonthlyPayroll;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\SavingsTransaction;
-use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class DataImportController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         $imports = [
             [

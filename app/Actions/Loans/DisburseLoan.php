@@ -34,7 +34,7 @@ class DisburseLoan extends Action
                 'maturity_date' => $maturityDate,
             ]);
 
-            LoanApprovalLog::record($locked->id, 'disbursed', $oldStatus, 'disbursed', 'Loan disbursed. Maturity: ' . $maturityDate);
+            LoanApprovalLog::record($locked->id, 'disbursed', $oldStatus, 'disbursed', 'Loan disbursed. Maturity: '.$maturityDate);
 
             app(LoanService::class)->generateRepaymentSchedules($locked);
 
@@ -43,7 +43,8 @@ class DisburseLoan extends Action
             if ($locked->member && $locked->member->user) {
                 try {
                     $locked->member->user->notify(new LoanStatusNotification($locked, $oldStatus, 'disbursed'));
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
 
             return $locked->fresh();

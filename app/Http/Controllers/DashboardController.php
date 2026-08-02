@@ -7,10 +7,12 @@ use App\Models\ActivityLog;
 use App\Models\Dividend;
 use App\Models\Loan;
 use App\Models\LoanGuarantor;
+use App\Models\LoanRepayment;
 use App\Models\Member;
 use App\Models\MonthlyPayroll;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
+use App\Models\Region;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
 use App\Models\ShareAccount;
@@ -19,10 +21,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         $totalMembers = Member::count();
         $activeMembers = Member::where('status', 'active')->count();
@@ -58,14 +61,14 @@ class DashboardController extends Controller
             ->whereYear('created_at', now()->year)
             ->sum('amount');
 
-        $monthlyLoanRepayments = \App\Models\LoanRepayment::whereMonth('created_at', now()->month)
+        $monthlyLoanRepayments = LoanRepayment::whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->sum('amount');
 
         $recentMembers = Member::with('region')->latest()->take(5)->get();
         $recentLoans = Loan::with('member')->latest()->take(5)->get();
 
-        $totalRegions = \App\Models\Region::count();
+        $totalRegions = Region::count();
 
         $regionStats = Member::select('region_id', DB::raw('count(*) as total'))
             ->groupBy('region_id')
@@ -106,7 +109,7 @@ class DashboardController extends Controller
                     ->whereMonth('disbursement_date', $date->month)
                     ->whereYear('disbursement_date', $date->year)
                     ->sum('amount'),
-                'loan_repayments' => (float) \App\Models\LoanRepayment::whereMonth('created_at', $date->month)
+                'loan_repayments' => (float) LoanRepayment::whereMonth('created_at', $date->month)
                     ->whereYear('created_at', $date->year)
                     ->sum('amount'),
                 'new_members' => Member::whereMonth('created_at', $date->month)
@@ -220,27 +223,59 @@ class DashboardController extends Controller
 
         if ($q === '') {
             $actions = [];
-            $addAction = function (string $label, string $url, string $icon) use (&$actions, $user) {
+            $addAction = function (string $label, string $url, string $icon) use (&$actions) {
                 $actions[] = ['name' => $label, 'sub' => 'Quick action', 'url' => $url, 'icon' => $icon];
             };
 
             $addAction('Dashboard', route('dashboard'), 'dashboard');
-            if ($user->can('view-members')) $addAction('Members', route('members.index'), 'group');
-            if ($user->can('create-members')) $addAction('Register New Member', route('members.create'), 'person_add');
-            if ($user->can('view-savings')) $addAction('Savings', route('savings.index'), 'savings');
-            if ($user->can('deposit-savings')) $addAction('Record Deposit', route('savings.deposit'), 'add_card');
-            if ($user->can('withdraw-savings')) $addAction('Request Withdrawal', route('savings.withdraw'), 'money_off');
-            if ($user->can('view-loans')) $addAction('Loans', route('loans.index'), 'account_balance');
-            if ($user->can('create-loans')) $addAction('New Loan Application', route('loans.create'), 'request_quote');
-            if ($user->can('view-shares')) $addAction('Shares', route('shares.index'), 'trending_up');
-            if ($user->can('purchase-shares')) $addAction('Purchase Shares', route('shares.purchase'), 'add_card');
-            if ($user->can('view-purchase-orders')) $addAction('Purchase Orders', route('products.orders'), 'shopping_cart');
-            if ($user->can('view-products')) $addAction('Products', route('products.index'), 'inventory_2');
-            if ($user->can('view-payroll')) $addAction('Payroll', route('payroll.index'), 'payments');
-            if ($user->can('view-payroll') && $user->can('compile-payroll')) $addAction('Compile Payroll', route('payroll.compile'), 'fact_check');
-            if ($user->can('view-dividends')) $addAction('Dividends', route('dividends.index'), 'diversity_3');
-            if ($user->can('view-reports')) $addAction('Reports', route('reports.index'), 'description');
-            if ($user->can('manage-users')) $addAction('Management', route('admin.manage'), 'settings');
+            if ($user->can('view-members')) {
+                $addAction('Members', route('members.index'), 'group');
+            }
+            if ($user->can('create-members')) {
+                $addAction('Register New Member', route('members.create'), 'person_add');
+            }
+            if ($user->can('view-savings')) {
+                $addAction('Savings', route('savings.index'), 'savings');
+            }
+            if ($user->can('deposit-savings')) {
+                $addAction('Record Deposit', route('savings.deposit'), 'add_card');
+            }
+            if ($user->can('withdraw-savings')) {
+                $addAction('Request Withdrawal', route('savings.withdraw'), 'money_off');
+            }
+            if ($user->can('view-loans')) {
+                $addAction('Loans', route('loans.index'), 'account_balance');
+            }
+            if ($user->can('create-loans')) {
+                $addAction('New Loan Application', route('loans.create'), 'request_quote');
+            }
+            if ($user->can('view-shares')) {
+                $addAction('Shares', route('shares.index'), 'trending_up');
+            }
+            if ($user->can('purchase-shares')) {
+                $addAction('Purchase Shares', route('shares.purchase'), 'add_card');
+            }
+            if ($user->can('view-purchase-orders')) {
+                $addAction('Purchase Orders', route('products.orders'), 'shopping_cart');
+            }
+            if ($user->can('view-products')) {
+                $addAction('Products', route('products.index'), 'inventory_2');
+            }
+            if ($user->can('view-payroll')) {
+                $addAction('Payroll', route('payroll.index'), 'payments');
+            }
+            if ($user->can('view-payroll') && $user->can('compile-payroll')) {
+                $addAction('Compile Payroll', route('payroll.compile'), 'fact_check');
+            }
+            if ($user->can('view-dividends')) {
+                $addAction('Dividends', route('dividends.index'), 'diversity_3');
+            }
+            if ($user->can('view-reports')) {
+                $addAction('Reports', route('reports.index'), 'description');
+            }
+            if ($user->can('manage-users')) {
+                $addAction('Management', route('admin.manage'), 'settings');
+            }
 
             return response()->json([[
                 'key' => 'actions',
@@ -285,8 +320,8 @@ class DashboardController extends Controller
                 if ($exactMember) {
                     $referenceIds[] = $exactMember->id;
                     $referenceItems[] = [
-                        'name' => $exactMember->first_name . ' ' . $exactMember->last_name,
-                        'sub' => ($exactMember->staff_id_display ?? $exactMember->staff_id) . ($exactMember->region ? ' · ' . $exactMember->region->name : ''),
+                        'name' => $exactMember->first_name.' '.$exactMember->last_name,
+                        'sub' => ($exactMember->staff_id_display ?? $exactMember->staff_id).($exactMember->region ? ' · '.$exactMember->region->name : ''),
                         'url' => route('members.show', $exactMember),
                         'icon' => 'person',
                         'matched_reference' => true,
@@ -304,16 +339,20 @@ class DashboardController extends Controller
 
             $memberItems = [];
             foreach ($members as $m) {
-                if (in_array($m->id, $referenceIds, true)) continue;
+                if (in_array($m->id, $referenceIds, true)) {
+                    continue;
+                }
                 $memberItems[] = [
-                    'name' => $m->first_name . ' ' . $m->last_name,
-                    'sub' => ($m->staff_id_display ?? $m->staff_id) . ($m->region ? ' · ' . $m->region->name : ''),
+                    'name' => $m->first_name.' '.$m->last_name,
+                    'sub' => ($m->staff_id_display ?? $m->staff_id).($m->region ? ' · '.$m->region->name : ''),
                     'url' => route('members.show', $m),
                     'icon' => 'person',
                 ];
             }
 
-            if ($referenceItems !== []) $referenceMatched = true;
+            if ($referenceItems !== []) {
+                $referenceMatched = true;
+            }
             $items = array_merge($referenceItems, $memberItems);
             if ($items !== []) {
                 $groups[] = [
@@ -334,7 +373,7 @@ class DashboardController extends Controller
                     $referenceIds[] = $exactLoan->id;
                     $referenceItems[] = [
                         'name' => $exactLoan->loan_number,
-                        'sub' => ($exactLoan->member->first_name . ' ' . $exactLoan->member->last_name) . ' · ₦' . number_format($exactLoan->amount, 2),
+                        'sub' => ($exactLoan->member->first_name.' '.$exactLoan->member->last_name).' · ₦'.number_format($exactLoan->amount, 2),
                         'url' => route('loans.show', $exactLoan),
                         'icon' => 'request_quote',
                         'matched_reference' => true,
@@ -352,16 +391,20 @@ class DashboardController extends Controller
 
             $loanItems = [];
             foreach ($loans as $l) {
-                if (in_array($l->id, $referenceIds, true)) continue;
+                if (in_array($l->id, $referenceIds, true)) {
+                    continue;
+                }
                 $loanItems[] = [
                     'name' => $l->loan_number,
-                    'sub' => ($l->member->first_name . ' ' . $l->member->last_name) . ' · ₦' . number_format($l->amount, 2),
+                    'sub' => ($l->member->first_name.' '.$l->member->last_name).' · ₦'.number_format($l->amount, 2),
                     'url' => route('loans.show', $l),
                     'icon' => 'request_quote',
                 ];
             }
 
-            if ($referenceItems !== []) $referenceMatched = true;
+            if ($referenceItems !== []) {
+                $referenceMatched = true;
+            }
             $items = array_merge($referenceItems, $loanItems);
             if ($items !== []) {
                 $groups[] = [
@@ -379,7 +422,7 @@ class DashboardController extends Controller
 
                 return [
                     'name' => $t->reference,
-                    'sub' => ($member ? $member->first_name . ' ' . $member->last_name . ' · ' : '') . '₦' . number_format($t->amount, 2) . ' · ' . ucfirst($t->status),
+                    'sub' => ($member ? $member->first_name.' '.$member->last_name.' · ' : '').'₦'.number_format($t->amount, 2).' · '.ucfirst($t->status),
                     'url' => $member ? route('members.savings-detail', $member) : route('savings.index'),
                     'icon' => 'savings',
                 ];
@@ -406,12 +449,14 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            $savingsItems = $savings->filter(fn($t) => !in_array($t->id, $referenceIds, true))
+            $savingsItems = $savings->filter(fn ($t) => ! in_array($t->id, $referenceIds, true))
                 ->map($savingsItem)
                 ->values()
                 ->all();
 
-            if ($referenceItems !== []) $referenceMatched = true;
+            if ($referenceItems !== []) {
+                $referenceMatched = true;
+            }
             $items = array_merge($referenceItems, $savingsItems);
             if ($items !== []) {
                 $groups[] = [
@@ -443,7 +488,7 @@ class DashboardController extends Controller
 
                         return [
                             'name' => $t->reference,
-                            'sub' => ($member ? $member->first_name . ' ' . $member->last_name . ' · ' : '') . number_format($t->shares) . ' shares · ₦' . number_format($t->amount, 2),
+                            'sub' => ($member ? $member->first_name.' '.$member->last_name.' · ' : '').number_format($t->shares).' shares · ₦'.number_format($t->amount, 2),
                             'url' => $member ? route('members.show', $member) : route('shares.accounts'),
                             'icon' => 'trending_up',
                         ];
@@ -456,7 +501,7 @@ class DashboardController extends Controller
             $orderItem = function ($o) {
                 return [
                     'name' => $o->order_number,
-                    'sub' => ($o->member ? $o->member->first_name . ' ' . $o->member->last_name . ' · ' : '') . ($o->product?->name ?? '') . ' · ' . ucfirst($o->status),
+                    'sub' => ($o->member ? $o->member->first_name.' '.$o->member->last_name.' · ' : '').($o->product?->name ?? '').' · '.ucfirst($o->status),
                     'url' => route('products.orders.show', $o->order_group),
                     'icon' => 'receipt_long',
                 ];
@@ -485,12 +530,14 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            $ordersItems = $orders->filter(fn($o) => !in_array($o->id, $referenceIds, true))
+            $ordersItems = $orders->filter(fn ($o) => ! in_array($o->id, $referenceIds, true))
                 ->map($orderItem)
                 ->values()
                 ->all();
 
-            if ($referenceItems !== []) $referenceMatched = true;
+            if ($referenceItems !== []) {
+                $referenceMatched = true;
+            }
             $items = array_merge($referenceItems, $ordersItems);
             if ($items !== []) {
                 $groups[] = [
@@ -503,9 +550,9 @@ class DashboardController extends Controller
         }
 
         if ($user->can('view-payroll')) {
-            $payrollItem = fn($p) => [
+            $payrollItem = fn ($p) => [
                 'name' => $p->payroll_number,
-                'sub' => $p->month . ' ' . $p->year . ' · ₦' . number_format($p->grand_total ?? 0, 2) . ' · ' . ucfirst($p->status),
+                'sub' => $p->month.' '.$p->year.' · ₦'.number_format($p->grand_total ?? 0, 2).' · '.ucfirst($p->status),
                 'url' => route('payroll.show', $p),
                 'icon' => 'receipt_long',
             ];
@@ -525,12 +572,14 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            $payrollItems = $payrolls->filter(fn($p) => !in_array($p->id, $referenceIds, true))
+            $payrollItems = $payrolls->filter(fn ($p) => ! in_array($p->id, $referenceIds, true))
                 ->map($payrollItem)
                 ->values()
                 ->all();
 
-            if ($referenceItems !== []) $referenceMatched = true;
+            if ($referenceItems !== []) {
+                $referenceMatched = true;
+            }
             $items = array_merge($referenceItems, $payrollItems);
             if ($items !== []) {
                 $groups[] = [
@@ -552,7 +601,7 @@ class DashboardController extends Controller
                     'icon' => 'diversity_3',
                     'items' => [[
                         'name' => $exactDividend->dividend_number,
-                        'sub' => $exactDividend->year . ' · ₦' . number_format($exactDividend->total_profit, 2) . ' · ' . ucfirst($exactDividend->status),
+                        'sub' => $exactDividend->year.' · ₦'.number_format($exactDividend->total_profit, 2).' · '.ucfirst($exactDividend->status),
                         'url' => route('dividends.show', $exactDividend),
                         'icon' => 'diversity_3',
                         'matched_reference' => true,
@@ -571,9 +620,9 @@ class DashboardController extends Controller
                     'key' => 'products',
                     'label' => 'Products',
                     'icon' => 'inventory_2',
-                    'items' => $products->map(fn($p) => [
+                    'items' => $products->map(fn ($p) => [
                         'name' => $p->name,
-                        'sub' => '₦' . number_format($p->unit_price, 2) . ' · ' . $p->stock_quantity . ' in stock',
+                        'sub' => '₦'.number_format($p->unit_price, 2).' · '.$p->stock_quantity.' in stock',
                         'url' => route('products.index'),
                         'icon' => 'inventory_2',
                     ])->values()->all(),

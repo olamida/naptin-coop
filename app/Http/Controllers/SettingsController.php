@@ -3,19 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
-    public function edit(): \Illuminate\View\View
+    public function edit(): View
     {
         $company = Company::instance();
 
         return view('admin.settings.edit', compact('company'));
     }
 
-    public function update(Request $request): \Illuminate\Http\RedirectResponse
+    public function update(Request $request): RedirectResponse
     {
         $company = Company::instance();
 

@@ -10,10 +10,11 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class StatisticsController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         $totalUsers = User::count();
         $totalMembers = Member::count();

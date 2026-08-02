@@ -23,15 +23,15 @@ class LoanAppliedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $amount = '₦' . number_format($this->loan->amount, 2);
+        $amount = '₦'.number_format($this->loan->amount, 2);
         $member = $this->loan->member;
         $memberName = "{$member->first_name} {$member->last_name}";
         $purpose = $this->loan->purpose ?: 'Not specified';
 
         return (new MailMessage)
-            ->subject('New Loan Application - ' . $this->loan->loan_number)
-            ->greeting('Hello ' . $notifiable->name . '!')
-            ->line("A new loan application has been submitted and requires your review.")
+            ->subject('New Loan Application - '.$this->loan->loan_number)
+            ->greeting('Hello '.$notifiable->name.'!')
+            ->line('A new loan application has been submitted and requires your review.')
             ->line("Applicant: {$memberName} ({$member->staff_id_display})")
             ->line("Loan Number: {$this->loan->loan_number}")
             ->line("Amount: {$amount}")
@@ -41,7 +41,7 @@ class LoanAppliedNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        $amount = '₦' . number_format($this->loan->amount, 2);
+        $amount = '₦'.number_format($this->loan->amount, 2);
         $member = $this->loan->member;
 
         return [

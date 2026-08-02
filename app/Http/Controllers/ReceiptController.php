@@ -7,7 +7,6 @@ use App\Models\LoanRepayment;
 use App\Models\PurchaseOrder;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
-use App\Models\ShareAccount;
 use App\Models\ShareTransaction;
 use App\Services\DocumentService;
 

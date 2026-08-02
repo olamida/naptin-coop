@@ -1,44 +1,51 @@
 <?php
 
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\BackupController;
-use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\StatisticsController;
+use App\Http\Controllers\Admin\StockController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\SessionController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\BrandingAssetController;
+use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataImportController;
 use App\Http\Controllers\DividendController;
+use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\GuaranteeController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\LoanProductController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MemberPortalController;
 use App\Http\Controllers\NextOfKinController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PurchasesController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\RegionController;
+use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SavingsController;
-use App\Http\Controllers\PurchasesController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShareController;
 use App\Http\Controllers\TwoFactorController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\DataImportController;
-use App\Http\Controllers\GuaranteeController;
-use App\Http\Controllers\LedgerController;
-use App\Http\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/health', fn() => response()->noContent())->name('health');
+Route::get('/health', fn () => response()->noContent())->name('health');
 Route::get('/guarantee/{token}', [GuaranteeController::class, 'show'])->name('guarantee.show');
 Route::post('/guarantee/{token}/respond', [GuaranteeController::class, 'respond'])->name('guarantee.respond');
-Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
-Route::get('/shop', [\App\Http\Controllers\HomeController::class, 'shop'])->name('shop');
-Route::get('/about', [\App\Http\Controllers\HomeController::class, 'about'])->name('about');
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/shop', [HomeController::class, 'shop'])->name('shop');
+Route::get('/about', [HomeController::class, 'about'])->name('about');
 
 Route::get('/health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()->timestamp]))->name('health');
 
@@ -46,13 +53,13 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [SessionController::class, 'create'])->name('login');
     Route::post('login', [SessionController::class, 'store'])->middleware('throttle:login');
 
-    Route::get('register', [\App\Http\Controllers\RegistrationController::class, 'create'])->name('register');
-    Route::post('register', [\App\Http\Controllers\RegistrationController::class, 'store'])->name('register.store');
+    Route::get('register', [RegistrationController::class, 'create'])->name('register');
+    Route::post('register', [RegistrationController::class, 'store'])->name('register.store');
 
-    Route::get('forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'create'])->name('password.request');
-    Route::post('forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'store'])->middleware('throttle:password-reset')->name('password.email');
-    Route::get('reset-password/{token}', [\App\Http\Controllers\Auth\NewPasswordController::class, 'create'])->name('password.reset');
-    Route::post('reset-password', [\App\Http\Controllers\Auth\NewPasswordController::class, 'store'])->middleware('throttle:password-reset')->name('password.update');
+    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:password-reset')->name('password.email');
+    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('reset-password', [NewPasswordController::class, 'store'])->middleware('throttle:password-reset')->name('password.update');
 });
 
 Route::match(['get', 'post'], 'logout', [SessionController::class, 'destroy'])->name('logout');
@@ -189,6 +196,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::post('/orders/{order}/approve', [ProductController::class, 'approveOrder'])->name('orders.approve');
             Route::post('/orders/{order}/collect', [ProductController::class, 'collectOrder'])->name('orders.collect');
             Route::get('/orders/group/{orderGroup}', [ProductController::class, 'showOrderGroup'])->name('orders.show');
+            Route::post('/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('adjust-stock');
         });
 
         Route::prefix('dividends')->name('dividends.')->group(function () {
@@ -225,6 +233,14 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
             Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
+            Route::prefix('branding')->name('branding.')->group(function () {
+                Route::get('/', [BrandingAssetController::class, 'index'])->name('index');
+                Route::get('/preview', [BrandingAssetController::class, 'preview'])->name('preview');
+                Route::post('/{key}/upload', [BrandingAssetController::class, 'upload'])->name('upload');
+                Route::post('/{key}/regenerate', [BrandingAssetController::class, 'regenerate'])->name('regenerate');
+                Route::delete('/{key}', [BrandingAssetController::class, 'destroy'])->name('destroy');
+            });
+
             Route::get('/users', [UserController::class, 'index'])->name('users.index');
             Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
             Route::post('/users', [UserController::class, 'store'])->name('users.store');
@@ -249,9 +265,9 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::get('/backup', [BackupController::class, 'download'])->name('backup');
             Route::get('/statistics', [StatisticsController::class, 'index'])->name('statistics');
 
-            Route::get('/broadcasts', [\App\Http\Controllers\BroadcastController::class, 'index'])->name('broadcasts.index');
-            Route::get('/broadcasts/create', [\App\Http\Controllers\BroadcastController::class, 'create'])->name('broadcasts.create');
-            Route::post('/broadcasts', [\App\Http\Controllers\BroadcastController::class, 'store'])->name('broadcasts.store');
+            Route::get('/broadcasts', [BroadcastController::class, 'index'])->name('broadcasts.index');
+            Route::get('/broadcasts/create', [BroadcastController::class, 'create'])->name('broadcasts.create');
+            Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('broadcasts.store');
 
             Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
             Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
@@ -268,8 +284,23 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::post('/journals', [LedgerController::class, 'storeJournal'])->name('journals.store');
         Route::get('/journals/{journalEntry}', [LedgerController::class, 'showJournal'])->name('journals.show');
         Route::post('/journals/{journalEntry}/post', [LedgerController::class, 'postJournal'])->name('journals.post');
+        Route::post('/journals/{journalEntry}/reverse', [LedgerController::class, 'reverseJournal'])->name('journals.reverse');
         Route::get('/trial-balance', [LedgerController::class, 'trialBalance'])->name('trial-balance');
         Route::get('/general-ledger', [LedgerController::class, 'generalLedger'])->name('general-ledger');
+    });
+
+    Route::prefix('finance')->name('finance.')->middleware('can:manage-users')->group(function () {
+        Route::get('/', [FinanceController::class, 'index'])->name('index');
+        Route::get('/period-close', [FinanceController::class, 'periodCloseIndex'])->name('period-close');
+        Route::post('/period-close', [FinanceController::class, 'periodCloseStore'])->name('period-close.store');
+        Route::post('/period-close/{period}/reopen', [FinanceController::class, 'periodCloseReopen'])->name('period-close.reopen');
+        Route::get('/profit-loss', [FinanceController::class, 'profitLoss'])->name('profit-loss');
+        Route::get('/balance-sheet', [FinanceController::class, 'balanceSheet'])->name('balance-sheet');
+        Route::get('/cash-flow', [FinanceController::class, 'cashFlow'])->name('cash-flow');
+        Route::get('/loan-aging', [FinanceController::class, 'loanAging'])->name('loan-aging');
+        Route::post('/provision/calculate', [FinanceController::class, 'calculateProvision'])->name('provision.calculate');
+        Route::get('/control-reconciliation', [FinanceController::class, 'controlReconciliation'])->name('control-reconciliation');
+        Route::get('/audit-trail', [FinanceController::class, 'auditTrail'])->name('audit-trail');
     });
 
     Route::prefix('receipts')->name('receipts.')->group(function () {

@@ -2,17 +2,17 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\TracksImportStats;
 use App\Models\Member;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
-use App\Imports\Concerns\TracksImportStats;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class PurchaseImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class PurchaseImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
     use TracksImportStats;
 
@@ -21,7 +21,7 @@ class PurchaseImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
     public function __construct(
         public ?string $batchId = null,
     ) {
-        $this->orderGroup = 'IMP/' . strtoupper(substr($batchId ?? Str::uuid(), 0, 8));
+        $this->orderGroup = 'IMP/'.strtoupper(substr($batchId ?? Str::uuid(), 0, 8));
     }
 
     public function model(array $row): ?PurchaseOrder
@@ -31,15 +31,15 @@ class PurchaseImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         $member = Member::where('staff_id', $row['staff_id'])->first();
 
         if (! $member) {
-            $this->markFailure('No member found for staff_id ' . $row['staff_id']);
+            $this->markFailure('No member found for staff_id '.$row['staff_id']);
 
             return null;
         }
 
-        $product = Product::where('name', 'like', '%' . $row['product_name'] . '%')->first();
+        $product = Product::where('name', 'like', '%'.$row['product_name'].'%')->first();
 
         if (! $product) {
-            $this->markFailure('No product found matching "' . $row['product_name'] . '"');
+            $this->markFailure('No product found matching "'.$row['product_name'].'"');
 
             return null;
         }
@@ -50,7 +50,7 @@ class PurchaseImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
 
         $year = date('Y');
         $count = PurchaseOrder::whereYear('created_at', $year)->count() + 1;
-        $orderNumber = 'PUR/' . $year . '/' . str_pad($count, 6, '0', STR_PAD_LEFT);
+        $orderNumber = 'PUR/'.$year.'/'.str_pad($count, 6, '0', STR_PAD_LEFT);
 
         $order = PurchaseOrder::create([
             'order_number' => $orderNumber,

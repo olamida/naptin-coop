@@ -6,7 +6,6 @@ use App\Models\JournalEntry;
 use App\Models\Member;
 use App\Models\Region;
 use App\Models\SavingsAccount;
-use App\Models\SavingsTransaction;
 use App\Services\SavingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -19,14 +18,14 @@ class SavingsServiceTest extends TestCase
     {
         $region = Region::create([
             'name' => 'Test Region',
-            'code' => 'TR' . strtoupper(substr(uniqid(), -4)),
+            'code' => 'TR'.strtoupper(substr(uniqid(), -4)),
             'state' => 'Test State',
             'enabled' => true,
         ]);
 
         $member = Member::create([
             'region_id' => $region->id,
-            'staff_id' => 'STAFF' . substr(uniqid(), -6),
+            'staff_id' => 'STAFF'.substr(uniqid(), -6),
             'first_name' => 'Test',
             'last_name' => 'Member',
             'email' => null,
@@ -36,7 +35,7 @@ class SavingsServiceTest extends TestCase
 
         SavingsAccount::create([
             'member_id' => $member->id,
-            'account_number' => 'SAV-' . substr(uniqid(), -8),
+            'account_number' => 'SAV-'.substr(uniqid(), -8),
             'balance' => 0,
             'status' => 'active',
         ]);

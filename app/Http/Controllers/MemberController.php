@@ -16,17 +16,19 @@ use App\Models\Member;
 use App\Models\PurchaseOrder;
 use App\Models\Region;
 use App\Models\SavingsTransaction;
-use App\Models\ShareTransaction;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MemberController extends Controller
 {
-    public function index(Request $request): \Illuminate\View\View
+    public function index(Request $request): View
     {
         $query = Member::with('region');
 
@@ -54,12 +56,12 @@ class MemberController extends Controller
         return view('members.index', compact('members', 'regions', 'statuses'));
     }
 
-    public function searchJson(Request $request): \Illuminate\Http\JsonResponse
+    public function searchJson(Request $request): JsonResponse
     {
         $search = $request->input('q');
 
         $members = Member::with('region:id,name')
-            ->when($search, fn($q) => $q->where(function ($q) use ($search) {
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('staff_id', 'like', "%{$search}%");
@@ -67,9 +69,9 @@ class MemberController extends Controller
             ->limit(10)
             ->get(['id', 'first_name', 'last_name', 'staff_id', 'photo_path', 'region_id']);
 
-        return response()->json($members->map(fn($m) => [
+        return response()->json($members->map(fn ($m) => [
             'id' => $m->id,
-            'name' => $m->first_name . ' ' . $m->last_name,
+            'name' => $m->first_name.' '.$m->last_name,
             'staff_id' => $m->staff_id_display,
             'photo_url' => $m->photo_url,
             'region' => $m->region?->name,
@@ -77,13 +79,13 @@ class MemberController extends Controller
         ]));
     }
 
-    public function formSearchJson(Request $request): \Illuminate\Http\JsonResponse
+    public function formSearchJson(Request $request): JsonResponse
     {
         $search = trim((string) $request->input('q', ''));
 
         $members = Member::with(['savingsAccount', 'shareAccount'])
             ->where('status', 'active')
-            ->when($search !== '', fn($q) => $q->where(function ($q) use ($search) {
+            ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('staff_id', 'like', "%{$search}%")
@@ -94,7 +96,7 @@ class MemberController extends Controller
             ->limit(15)
             ->get(['id', 'first_name', 'last_name', 'staff_id', 'phone', 'photo_path']);
 
-        return response()->json($members->map(fn($m) => [
+        return response()->json($members->map(fn ($m) => [
             'id' => $m->id,
             'first_name' => $m->first_name,
             'last_name' => $m->last_name,
@@ -106,14 +108,14 @@ class MemberController extends Controller
         ]));
     }
 
-    public function create(): \Illuminate\View\View
+    public function create(): View
     {
         $regions = Region::where('enabled', true)->orderBy('name')->get();
 
         return view('members.create', ['regions' => $regions]);
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'region_id' => 'required|exists:regions,id',
@@ -133,7 +135,7 @@ class MemberController extends Controller
             'grade_level' => 'nullable|string|max:20',
             'monthly_salary' => 'nullable|numeric|min:0',
             'monthly_savings' => 'nullable|numeric|min:0',
-            'status' => 'required|in:' . implode(',', array_column(MemberStatus::cases(), 'value')),
+            'status' => 'required|in:'.implode(',', array_column(MemberStatus::cases(), 'value')),
             'photo' => 'nullable|image|max:2048',
         ]);
 
@@ -147,10 +149,10 @@ class MemberController extends Controller
         $member = CreateMember::run(array_merge($validated, ['photo_path' => $photoPath]));
 
         return redirect()->route('members.show', $member)
-            ->with('success', 'Member created successfully with savings and share accounts.' . (!empty($validated['email']) ? ' Login credentials sent to their email.' : ''));
+            ->with('success', 'Member created successfully with savings and share accounts.'.(! empty($validated['email']) ? ' Login credentials sent to their email.' : ''));
     }
 
-    public function show(Member $member): \Illuminate\View\View
+    public function show(Member $member): View
     {
         $member->load([
             'region',
@@ -191,7 +193,7 @@ class MemberController extends Controller
                     'date_iso' => $t->created_at->toDateString(),
                     'date_display' => $t->created_at->format('d M Y'),
                     'type_label' => $t->type === 'deposit' ? 'Savings Deposit' : 'Savings Withdrawal',
-                    'reference' => $t->reference ?? 'SAV/' . $t->id,
+                    'reference' => $t->reference ?? 'SAV/'.$t->id,
                     'amount' => $t->type === 'deposit' ? $t->amount : -$t->amount,
                     'category' => 'savings',
                     'balance_after' => $t->balance_after,
@@ -220,8 +222,8 @@ class MemberController extends Controller
                     'date' => $t->created_at,
                     'date_iso' => $t->created_at->toDateString(),
                     'date_display' => $t->created_at->format('d M Y'),
-                    'type_label' => 'Share ' . ucfirst($t->type),
-                    'reference' => 'SH/' . $t->id,
+                    'type_label' => 'Share '.ucfirst($t->type),
+                    'reference' => 'SH/'.$t->id,
                     'amount' => $t->type === 'purchase' ? -$t->amount : $t->amount,
                     'category' => 'shares',
                     'balance_after' => null,
@@ -236,8 +238,8 @@ class MemberController extends Controller
                 'date' => $p->created_at,
                 'date_iso' => $p->created_at->toDateString(),
                 'date_display' => $p->created_at->format('d M Y'),
-                'type_label' => 'Purchase: ' . ($p->product?->name ?? 'N/A'),
-                'reference' => $p->order_number ?? 'ORD/' . $p->id,
+                'type_label' => 'Purchase: '.($p->product?->name ?? 'N/A'),
+                'reference' => $p->order_number ?? 'ORD/'.$p->id,
                 'amount' => -$p->total_amount,
                 'category' => 'purchase',
                 'balance_after' => null,
@@ -248,7 +250,7 @@ class MemberController extends Controller
 
         // Guarantor risk: members this member guarantees
         $guarantorRisk = LoanGuarantor::where('member_id', $member->id)
-            ->whereHas('loan', fn($q) => $q->whereIn('status', ['approved', 'disbursed', 'repaying']))
+            ->whereHas('loan', fn ($q) => $q->whereIn('status', ['approved', 'disbursed', 'repaying']))
             ->with(['loan.member', 'loan.loanProduct'])
             ->get();
 
@@ -283,22 +285,22 @@ class MemberController extends Controller
         ));
     }
 
-    public function edit(Member $member): \Illuminate\View\View
+    public function edit(Member $member): View
     {
         $regions = Region::where('enabled', true)->orderBy('name')->get();
 
         return view('members.edit', ['member' => $member, 'regions' => $regions]);
     }
 
-    public function update(Request $request, Member $member): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, Member $member): RedirectResponse
     {
         $validated = $request->validate([
             'region_id' => 'required|exists:regions,id',
-            'staff_id' => 'required|numeric|unique:members,staff_id,' . $member->id,
+            'staff_id' => 'required|numeric|unique:members,staff_id,'.$member->id,
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
-            'email' => 'nullable|email|unique:members,email,' . $member->id,
+            'email' => 'nullable|email|unique:members,email,'.$member->id,
             'phone' => 'nullable|string|max:20',
             'gender' => 'nullable|in:male,female',
             'date_of_birth' => 'nullable|date',
@@ -306,11 +308,11 @@ class MemberController extends Controller
             'retirement_date' => 'nullable|date',
             'address' => 'nullable|string',
             'state_of_origin' => 'nullable|string|max:100',
-            'nin' => 'nullable|string|unique:members,nin,' . $member->id,
+            'nin' => 'nullable|string|unique:members,nin,'.$member->id,
             'grade_level' => 'nullable|string|max:20',
             'monthly_salary' => 'nullable|numeric|min:0',
             'monthly_savings' => 'nullable|numeric|min:0',
-            'status' => 'required|in:' . implode(',', array_column(MemberStatus::cases(), 'value')),
+            'status' => 'required|in:'.implode(',', array_column(MemberStatus::cases(), 'value')),
             'is_exco' => 'boolean',
             'photo' => 'nullable|image|max:2048',
             'remove_photo' => 'boolean',
@@ -336,7 +338,7 @@ class MemberController extends Controller
             ->with('success', 'Member updated successfully.');
     }
 
-    public function destroy(Member $member): \Illuminate\Http\RedirectResponse
+    public function destroy(Member $member): RedirectResponse
     {
         $hasRelatedData = $member->savingsAccount
             || $member->shareAccount
@@ -366,12 +368,12 @@ class MemberController extends Controller
             ->with('success', 'Member deleted successfully.');
     }
 
-    public function import(): \Illuminate\View\View
+    public function import(): View
     {
         return view('members.import');
     }
 
-    public function importStore(Request $request): \Illuminate\Http\RedirectResponse
+    public function importStore(Request $request): RedirectResponse
     {
         $request->validate([
             'import_file' => 'required|mimes:xlsx,xls,csv|max:10240',
@@ -387,15 +389,15 @@ class MemberController extends Controller
             ImportLog::record($batchId, 'members', $fileName, $import->importStats());
 
             return redirect()->route('members.index')
-                ->with('success', 'Members imported successfully. Batch: ' . substr($batchId, 0, 8) . '…');
+                ->with('success', 'Members imported successfully. Batch: '.substr($batchId, 0, 8).'…');
         } catch (\Exception $e) {
             ImportLog::record($batchId, 'members', $fileName, $import->importStats(), 'failed', $e->getMessage());
 
-            return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
+            return back()->withErrors(['import_file' => 'Import failed: '.$e->getMessage()])->withInput();
         }
     }
 
-    public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function downloadTemplate(): StreamedResponse
     {
         $headers = [
             'Content-Type' => 'text/csv',
@@ -427,10 +429,10 @@ class MemberController extends Controller
 
     public function exportMembers()
     {
-        return Excel::download(new MembersExport, 'members_export_' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download(new MembersExport, 'members_export_'.now()->format('Y-m-d').'.xlsx');
     }
 
-    public function savingsDetail(Member $member): \Illuminate\View\View
+    public function savingsDetail(Member $member): View
     {
         $transactions = $member->savingsAccount
             ? $member->savingsAccount->transactions()->latest('transaction_date')->paginate(20)
@@ -446,34 +448,34 @@ class MemberController extends Controller
         return view('members.savings-detail', compact('member', 'transactions', 'totalDeposits', 'totalWithdrawals'));
     }
 
-    public function loansDetail(Member $member): \Illuminate\View\View
+    public function loansDetail(Member $member): View
     {
         $loans = $member->loans()->latest()->paginate(20);
 
         return view('members.loans-detail', compact('member', 'loans'));
     }
 
-    public function purchasesDetail(Member $member): \Illuminate\View\View
+    public function purchasesDetail(Member $member): View
     {
         $orders = $member->purchaseOrders()->with('product')->latest()->paginate(20);
 
         return view('members.purchases-detail', compact('member', 'orders'));
     }
 
-    public function bulkUpdateStatus(Request $request): \Illuminate\Http\RedirectResponse
+    public function bulkUpdateStatus(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'member_ids' => 'required|array|min:1',
             'member_ids.*' => 'exists:members,id',
-            'status' => 'required|in:' . implode(',', array_column(MemberStatus::cases(), 'value')),
+            'status' => 'required|in:'.implode(',', array_column(MemberStatus::cases(), 'value')),
         ]);
 
         $count = BulkUpdateStatus::run($validated['member_ids'], $validated['status']);
 
-        return back()->with('success', "Successfully updated {$count} member(s) to " . ucfirst($validated['status']) . " status.");
+        return back()->with('success', "Successfully updated {$count} member(s) to ".ucfirst($validated['status']).' status.');
     }
 
-    public function approve(Member $member): \Illuminate\Http\RedirectResponse
+    public function approve(Member $member): RedirectResponse
     {
         try {
             ApproveMemberApplication::run($member);
@@ -481,10 +483,10 @@ class MemberController extends Controller
             return back()->withErrors(['error' => $e->getMessage()]);
         }
 
-        return back()->with('success', 'Member approved successfully. ' . (!empty($member->email) ? 'Welcome email sent.' : ''));
+        return back()->with('success', 'Member approved successfully. '.(! empty($member->email) ? 'Welcome email sent.' : ''));
     }
 
-    public function reject(Member $member): \Illuminate\Http\RedirectResponse
+    public function reject(Member $member): RedirectResponse
     {
         try {
             RejectMemberApplication::run($member);

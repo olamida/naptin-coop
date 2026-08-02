@@ -24,7 +24,9 @@
         <div class="print-area bg-white rounded-xl shadow-lg w-full p-8">
         @php $company = \App\Models\Company::instance(); @endphp
         <div class="text-center border-b border-gray-200 pb-6 mb-6">
-            @if ($company->logo_path)
+            @if ($receiptLogo = app(\App\Services\BrandingService::class)->getLogo('pdf'))
+                <img src="{{ $receiptLogo }}" alt="Logo" class="h-14 w-14 mx-auto mb-3 object-contain rounded-lg p-1 border border-gray-100">
+            @elseif ($company->logo_path)
                 <img src="{{ $company->logo_url }}" alt="Logo" class="h-14 w-14 mx-auto mb-3 object-contain rounded-lg p-1 border border-gray-100">
             @endif
             <h1 class="text-xl font-bold text-gray-900">{{ $company->name }}</h1>

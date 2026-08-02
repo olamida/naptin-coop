@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.1
+> **Version:** 3.2
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -48,7 +48,7 @@ naptin-coop/
 │   │   ├── SavingsExport.php
 │   │   └── SharesExport.php
 │   │
-│   ├── Http/Controllers/               # 22 controllers
+│   ├── Http/Controllers/               # 23 controllers
 │   │   ├── Auth/
 │   │   │   ├── SessionController.php           # Login / Logout
 │   │   │   ├── PasswordResetLinkController.php # Forgot password email
@@ -58,6 +58,7 @@ naptin-coop/
 │   │   ├── DashboardController.php     # Dashboard stats + charts + trends
 │   │   ├── DataImportController.php    # Central import hub
 │   │   ├── DividendController.php      # Declare → calculate → approve → distribute
+│   │   ├── FinanceController.php       # Period close, P&L, balance sheet, cash flow, provisioning, audit trail
 │   │   ├── InvoiceController.php       # Printable purchase invoice
 │   │   ├── LoanController.php          # Loan CRUD + approve + reject + disburse + repayment + import/export
 │   │   ├── LoanProductController.php   # Loan product CRUD (admin)
@@ -65,7 +66,7 @@ naptin-coop/
 │   │   ├── MemberPortalController.php  # Member self-service portal
 │   │   ├── NextOfKinController.php     # Add/remove next of kin
 │   │   ├── PayrollController.php       # Compile + upload + export + 5 sub-reports
-│   │   ├── ProductController.php       # Product CRUD + purchase orders
+│   │   ├── ProductController.php       # Product CRUD + purchase orders + stock adjustment
 │   │   ├── ProfileController.php       # User profile + password + photo (layout switches by role)
 │   │   ├── PurchasesController.php     # Purchase order management + import
 │   │   ├── ReceiptController.php       # 8 printable receipt/statement types
@@ -95,14 +96,18 @@ naptin-coop/
 │   │   ├── PurchaseImport.php
 │   │   └── SavingsImport.php
 │   │
-│   ├── Models/                         # 24 Eloquent models
+│   ├── Models/                         # 26 Eloquent models
 │   │   ├── ActivityLog.php
+│   │   ├── ChartOfAccount.php
 │   │   ├── Company.php
 │   │   ├── Dividend.php
 │   │   ├── DividendDistribution.php
+│   │   ├── JournalEntry.php            # hash-chained, immutable when posted
+│   │   ├── JournalEntryLine.php
 │   │   ├── Loan.php
 │   │   ├── LoanApprovalLog.php
 │   │   ├── LoanGuarantor.php
+│   │   ├── LoanLossProvision.php
 │   │   ├── LoanProduct.php
 │   │   ├── LoanRepayment.php
 │   │   ├── LoanRepaymentSchedule.php
@@ -111,6 +116,7 @@ naptin-coop/
 │   │   ├── MonthlyPayroll.php
 │   │   ├── NextOfKin.php
 │   │   ├── PayrollDeduction.php
+│   │   ├── PeriodClose.php
 │   │   ├── Position.php
 │   │   ├── Product.php
 │   │   ├── PurchaseOrder.php
@@ -136,11 +142,13 @@ naptin-coop/
 │   │
 │   └── Services/                       # Business logic layer (fat models → thin)
 │       ├── CartService.php             # Cart resolution, checkout processing, order numbers
+│       ├── LedgerService.php           # Double-entry posting, hash-chained immutability, reversal, reconciliation
 │       ├── LoanService.php             # Interest calculation, loan number generation, product validation
+│       ├── ProvisioningService.php     # IFRS 9 / CBN loan loss provisioning buckets
 │       └── SavingsService.php          # Atomic deposit/withdrawal with row locking
 │
 ├── database/
-│   ├── migrations/                     # 41 migration files
+│   ├── migrations/                     # 44 migration files
 │   └── seeders/
 │       ├── DatabaseSeeder.php          # Main seeder: regions, positions, roles, admin, 5 members, loan products, products
 │       ├── PermissionsSeeder.php        # 35 permissions across 12 groups, 7 roles
@@ -170,6 +178,7 @@ naptin-coop/
 │   ├── dashboard/index.blade.php             # Stats cards + Chart.js bar/doughnut
 │   ├── dividends/                            # index, create, show
 │   ├── emails/welcome.blade.php              # Welcome email template
+│   ├── finance/                              # index, period-close, profit-loss, balance-sheet, cash-flow, loan-aging, control-reconciliation, audit-trail
 │   ├── invoices/purchase.blade.php           # Printable purchase invoice
 │   ├── loans/                                # index, create, show, repayment, import
 │   ├── members/                              # index, create, show, edit, import, savings-detail, loans-detail, purchases-detail
@@ -221,6 +230,8 @@ naptin-coop/
 │ Dividends               │
 │ Payroll                 │
 │ Reports                 │
+│ Ledger                  │  (if can manage-users)
+│ Finance                 │  (if can manage-users)
 ├─────────────────────────┤
 │ Member Portal           │  (if user has linked member)
 │ My Account              │
@@ -247,7 +258,7 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 
 ## 2. Database Schema
 
-### Core Tables (25 tables)
+### Core Tables (28 tables)
 
 #### Membership Domain
 | Table | Purpose | Key Columns |
@@ -297,6 +308,15 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 |-------|---------|-------------|
 | `monthly_payrolls` | Monthly payroll run | payroll_number, month, year, grand_total, status |
 | `payroll_deductions` | Per-member deduction | monthly_payroll_id, member_id, expected_*, actual_*, total_expected, total_actual |
+
+#### Finance & Ledger Domain
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `chart_of_accounts` | Chart of accounts (parent-child) | code, name, type (asset/liability/equity/income/expense), normal_side, is_active, parent_id |
+| `journal_entries` | Double-entry headers, **hash-chained + immutable** | entry_number, entry_date, period, description, reference_type/id, status (draft/posted), uuid, prev_hash, hash, reversal_of_id, reversal_reason, ip_address, user_agent |
+| `journal_entry_lines` | Debit/credit lines per entry | journal_entry_id, account_id, debit, credit, description |
+| `period_closes` | Financial period lock/unlock | period (Y-m), is_closed, closed_at/by, reopened_at/by, reopen_reason, notes |
+| `loan_loss_provisions` | Per-loan IFRS 9 provision snapshot | loan_id, period, outstanding, days_past_due, classification, rate, provision_amount, journal_entry_id (unique loan_id+period) |
 
 #### System
 | Table | Purpose |
@@ -595,6 +615,53 @@ compiled → deducted → completed
 
 ---
 
+### Module I: Finance & Compliance
+
+**Purpose:** CBN / IFRS-for-SME financial statements, period closing, loan loss provisioning, control reconciliation, and tamper-evident audit trail. All routes are gated by the `manage-users` permission (admin sidebar item: **Finance**).
+
+| Route | Method | Action |
+|-------|--------|--------|
+| `/finance` | GET | Finance hub (7 tiles: Period Close, P&L, Balance Sheet, Cash Flow, Loan Aging, Control Reconciliation, Audit Trail) |
+| `/finance/period-close` | GET | 12-month period grid with close/reopen buttons |
+| `/finance/period-close` | POST | Close a period (pre-checks: no unbalanced posted entries, no pending savings transactions) |
+| `/finance/period-close/{period}/reopen` | POST | Reopen a closed period (reason required) |
+| `/finance/profit-loss` | GET | Income statement (income/expense accounts, net profit, date-range filter) |
+| `/finance/balance-sheet` | GET | Balance sheet as of a date (Assets = Liabilities + Equity variance check; contra-asset provision nets against assets) |
+| `/finance/cash-flow` | GET | Direct-method cash flow (inflows/outflows on cash & bank accounts) |
+| `/finance/loan-aging` | GET | Loan aging report with IFRS 9 buckets and provision coverage |
+| `/finance/provision/calculate` | POST | Calculate & post the loan loss provision movement to the ledger |
+| `/finance/control-reconciliation` | GET | Ledger control accounts vs sub-ledger totals (variance badges) |
+| `/finance/audit-trail` | GET | Filterable activity logs + ledger hash-chain integrity verification |
+
+**Ledger Immutability (hash chain):**
+- Every posted `journal_entries` row carries a `uuid`, `period`, `prev_hash` (previous entry's hash or `GENESIS`) and `hash = SHA-256(uuid|entry_number|period|prev_hash|id)`.
+- MySQL triggers `prevent_journal_entry_update` / `prevent_journal_entry_delete` reject any UPDATE/DELETE of posted rows at the database level.
+- **Reversal** never mutates the original: it posts an opposite entry that links to the original via `reversal_of_id`. Reversals cannot themselves be reversed.
+- The Audit Trail page recomputes every hash and flags any tampered entry.
+
+**Loan Loss Provisioning (CBN MFB framework / IFRS 9):**
+| Bucket | Days Past Due | Rate |
+|--------|---------------|------|
+| Performing | 0–30 | 1% |
+| Pass & Watch | 31–60 | 25% |
+| Substandard | 61–90 | 50% |
+| Doubtful | 91–180 | 75% |
+| Lost | > 180 | 100% |
+
+The provisioning run posts the **net movement** (not the gross total) so repeated runs converge without double-counting:
+- Increase: Debit `Loan Loss Expense` (5004) / Credit `Loan Loss Provision` (1205)
+- Decrease (release): the reverse
+
+**Period Close:**
+```
+Close → pre-checks pass (balanced entries + no pending savings)
+     → PeriodClose row (is_closed = true, closed_at/by)
+     → New postings to that period are rejected
+Reopen → reason required → is_closed = false, reopened_at/by, reopen_reason
+```
+
+---
+
 ## 4. Workflows & Processes
 
 ### 4.1 Member Registration
@@ -735,6 +802,28 @@ STEP 5: UPLOAD ACTUALS
 1. DECLARE → 2. CALCULATE → 3. APPROVE → 4. DISTRIBUTE
 ```
 
+### 4.7 Period Close & Loan Loss Provisioning
+
+```
+PERIOD CLOSE (Finance → Period Close, on/after month-end):
+1. Admin reviews the period grid (12 rolling months)
+2. System pre-checks before closing:
+   → No unbalanced posted journal entries in the period
+   → No pending savings transactions in the period
+3. Admin clicks Close → PeriodClose row created (is_closed = true)
+4. All new ledger postings to that period are now rejected
+5. If an error is found: Admin reopens with a reason (logged to activity trail)
+
+LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
+1. System ages every outstanding loan into an IFRS 9 bucket (0–30 / 31–60 / 61–90 / 91–180 / >180 days)
+2. Required provision = Σ outstanding × bucket rate
+3. System posts the NET movement to the ledger:
+   Increase → Debit Loan Loss Expense (5004) / Credit Loan Loss Provision (1205)
+   Decrease (release) → the reverse
+4. Per-loan snapshot rows are saved for the period (unique loan_id + period)
+5. Re-running converges to the same total without double-counting
+```
+
 ---
 
 ## 5. Permissions & Roles
@@ -768,6 +857,8 @@ STEP 5: UPLOAD ACTUALS
 | **teller** | Savings CRUD + shares |
 | **member** | Self-service portal only |
 
+**Finance & Ledger access:** All `/ledger` and `/finance` routes (Chart of Accounts, journals, trial balance, general ledger, period close, statements, provisioning, audit trail) are gated by the `manage-users` permission and are therefore only visible to **super-admin** and **admin** roles.
+
 ---
 
 ## 6. User Guide by Role
@@ -799,6 +890,14 @@ STEP 5: UPLOAD ACTUALS
 | Declare Dividend | Dividends → "+ New Dividend" → enter year + profit |
 | Calculate/Approve/Distribute | Dividends → click dividend → Calculate → Approve → Distribute |
 | Generate Member Report | Reports → select member → printable report → print |
+| View Period Grid | Finance → Period Close → close/reopen periods |
+| Review P&L | Finance → Profit & Loss → filter date range |
+| Review Balance Sheet | Finance → Balance Sheet → as-of date |
+| Review Cash Flow | Finance → Cash Flow → direct method |
+| View Loan Aging | Finance → Loan Aging → IFRS 9 buckets |
+| Calculate Provision | Finance → Loan Aging → "Calculate Provision" (posts net ledger movement) |
+| Reconcile Controls | Finance → Control Reconciliation → ledger vs sub-ledger variance |
+| Audit Trail | Finance → Audit Trail → activity logs + hash-chain verification |
 | Manage Users | Management → User Management |
 | Manage Roles | Management → Roles & Permissions |
 | Manage Regions | Management → Regional Centers |
@@ -1013,6 +1112,8 @@ When a member is created with an email address, a `WelcomeEmail` is sent contain
 | Receipts | 8 | `/receipts` |
 | Invoices | 1 | `/invoices/purchase/{id}` |
 | Reports | 2 | `/reports` |
+| Ledger | 10 | `/ledger` |
+| Finance | 11 | `/finance` |
 | Admin (Users) | 7 | `/admin/users` |
 | Admin (Loan Products) | 6 | `/admin/loan-products` |
 | Admin (Roles) | 5 | `/admin/roles` |

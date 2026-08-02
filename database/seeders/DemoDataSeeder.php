@@ -65,7 +65,7 @@ class DemoDataSeeder extends Seeder
         $statuses = ['active', 'active', 'active', 'active', 'active', 'active', 'active', 'active', 'active', 'active', 'active', 'active', 'active', 'inactive', 'active'];
 
         foreach ($membersData as $index => $data) {
-            $staffId = 'NAPTIN/' . str_pad(6 + $index, 4, '0', STR_PAD_LEFT);
+            $staffId = 'NAPTIN/'.str_pad(6 + $index, 4, '0', STR_PAD_LEFT);
             $member = Member::firstOrCreate(
                 ['staff_id' => $staffId],
                 [
@@ -73,9 +73,9 @@ class DemoDataSeeder extends Seeder
                     'region_id' => $regionIds[array_rand($regionIds)],
                     'date_of_birth' => now()->subYears(28 + rand(0, 18))->subDays(rand(0, 365)),
                     'employment_date' => now()->subYears(rand(1, 12)),
-                    'grade_level' => 'GL' . rand(7, 15),
+                    'grade_level' => 'GL'.rand(7, 15),
                     'status' => $statuses[$index] ?? 'active',
-                    'address' => (100 + $index) . ' Cooperative Avenue, Abuja',
+                    'address' => (100 + $index).' Cooperative Avenue, Abuja',
                     'state_of_origin' => ['FCT', 'Lagos', 'Rivers', 'Kano', 'Enugu', 'Oyo', 'Kaduna', 'Plateau'][array_rand(['FCT', 'Lagos', 'Rivers', 'Kano', 'Enugu', 'Oyo', 'Kaduna', 'Plateau'])],
                 ]
             );
@@ -83,7 +83,7 @@ class DemoDataSeeder extends Seeder
             SavingsAccount::firstOrCreate(
                 ['member_id' => $member->id],
                 [
-                    'account_number' => 'SAV/' . strtoupper(Str::random(2)) . '/' . str_pad($member->id, 6, '0', STR_PAD_LEFT),
+                    'account_number' => 'SAV/'.strtoupper(Str::random(2)).'/'.str_pad($member->id, 6, '0', STR_PAD_LEFT),
                     'balance' => rand(50000, 600000),
                 ]
             );
@@ -101,14 +101,14 @@ class DemoDataSeeder extends Seeder
             User::firstOrCreate(
                 ['email' => $data['email']],
                 [
-                    'name' => $data['first_name'] . ' ' . $data['last_name'],
+                    'name' => $data['first_name'].' '.$data['last_name'],
                     'password' => Hash::make('password'),
                     'email_verified_at' => now(),
                     'member_id' => $member->id,
                 ]
             )->assignRole('member');
 
-            if (!$member->user_id) {
+            if (! $member->user_id) {
                 $member->update(['user_id' => User::where('email', $data['email'])->first()->id]);
             }
 
@@ -143,7 +143,7 @@ class DemoDataSeeder extends Seeder
 
         foreach ($loanConfigs as $i => $config) {
             $memberId = $memberIds[$i % count($memberIds)];
-            $loanNumber = 'REG/2026/' . str_pad($i + 1, 6, '0', STR_PAD_LEFT);
+            $loanNumber = 'REG/2026/'.str_pad($i + 1, 6, '0', STR_PAD_LEFT);
 
             if (Loan::where('loan_number', $loanNumber)->exists()) {
                 continue;
@@ -196,7 +196,7 @@ class DemoDataSeeder extends Seeder
                     LoanRepayment::create([
                         'loan_id' => $loan->id,
                         'member_id' => $memberId,
-                        'reference' => 'LPY/' . strtoupper(Str::random(2)) . '/' . str_pad($r + 1, 4, '0', STR_PAD_LEFT),
+                        'reference' => 'LPY/'.strtoupper(Str::random(2)).'/'.str_pad($r + 1, 4, '0', STR_PAD_LEFT),
                         'amount' => $paymentAmount,
                         'principal_portion' => $principalPortion,
                         'interest_portion' => $interestPortion,
@@ -300,7 +300,7 @@ class DemoDataSeeder extends Seeder
 
                 SavingsTransaction::create([
                     'savings_account_id' => $account->id,
-                    'reference' => ($isDeposit ? 'SAV/DEP/' : 'SAV/WTH/') . strtoupper(Str::random(2)) . '/' . str_pad(++$txnCount, 4, '0', STR_PAD_LEFT),
+                    'reference' => ($isDeposit ? 'SAV/DEP/' : 'SAV/WTH/').strtoupper(Str::random(2)).'/'.str_pad(++$txnCount, 4, '0', STR_PAD_LEFT),
                     'type' => $type,
                     'amount' => $amount,
                     'balance_before' => $balanceBefore,
@@ -332,7 +332,7 @@ class DemoDataSeeder extends Seeder
 
                 ShareTransaction::create([
                     'share_account_id' => $account->id,
-                    'reference' => 'SHR/PUR/' . strtoupper(Str::random(2)) . '/' . str_pad(++$shTxnCount, 4, '0', STR_PAD_LEFT),
+                    'reference' => 'SHR/PUR/'.strtoupper(Str::random(2)).'/'.str_pad(++$shTxnCount, 4, '0', STR_PAD_LEFT),
                     'type' => 'purchase',
                     'shares' => $shares,
                     'amount' => $amount,
@@ -362,7 +362,7 @@ class DemoDataSeeder extends Seeder
 
             $totalAmount = $product->unit_price * $qty;
             PurchaseOrder::create([
-                'order_number' => 'PO/2026/' . str_pad($orderNumber++, 6, '0', STR_PAD_LEFT),
+                'order_number' => 'PO/2026/'.str_pad($orderNumber++, 6, '0', STR_PAD_LEFT),
                 'order_group' => (string) Str::uuid(),
                 'member_id' => $member->id,
                 'product_id' => $product->id,
@@ -379,10 +379,10 @@ class DemoDataSeeder extends Seeder
         }
 
         $totalSharesAll = ShareAccount::sum('total_shares');
-        if ($totalSharesAll > 0 && !Dividend::where('year', 2025)->exists()) {
+        if ($totalSharesAll > 0 && ! Dividend::where('year', 2025)->exists()) {
             $totalProfit = 5000000;
             $dividend = Dividend::create([
-                'dividend_number' => 'DIV/2025/' . str_pad(1, 4, '0', STR_PAD_LEFT),
+                'dividend_number' => 'DIV/2025/'.str_pad(1, 4, '0', STR_PAD_LEFT),
                 'year' => 2025,
                 'total_profit' => $totalProfit,
                 'total_distributed' => $totalProfit,
@@ -404,8 +404,8 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        if (!MonthlyPayroll::where('year', 2026)->where('month_number', 6)->exists()) {
-            $activeMembers = Member::where('status', 'active')->with(['savingsAccount', 'loans' => fn($q) => $q->whereIn('status', ['disbursed', 'repaying'])->limit(1)])->get();
+        if (! MonthlyPayroll::where('year', 2026)->where('month_number', 6)->exists()) {
+            $activeMembers = Member::where('status', 'active')->with(['savingsAccount', 'loans' => fn ($q) => $q->whereIn('status', ['disbursed', 'repaying'])->limit(1)])->get();
             $totalSavings = 0;
             $totalLoans = 0;
             $totalShares = 0;

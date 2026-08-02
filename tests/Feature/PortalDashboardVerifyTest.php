@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Member;
 use App\Models\Region;
-use App\Models\ShareAccount;
 use App\Models\SavingsAccount;
+use App\Models\ShareAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -20,7 +20,7 @@ class PortalDashboardVerifyTest extends TestCase
         $region = Region::create(['name' => 'R', 'code' => 'R1', 'state' => 'S', 'enabled' => true]);
         $member = Member::create([
             'region_id' => $region->id,
-            'staff_id' => 'V-' . substr(uniqid(), -6),
+            'staff_id' => 'V-'.substr(uniqid(), -6),
             'first_name' => 'Portal',
             'last_name' => 'User',
             'status' => 'active',
@@ -34,7 +34,7 @@ class PortalDashboardVerifyTest extends TestCase
         ]);
         SavingsAccount::create([
             'member_id' => $member->id,
-            'account_number' => 'SAV/V/' . substr(uniqid(), -6),
+            'account_number' => 'SAV/V/'.substr(uniqid(), -6),
             'balance' => 0,
         ]);
         ShareAccount::create([
@@ -44,7 +44,7 @@ class PortalDashboardVerifyTest extends TestCase
             'share_price' => 100,
         ]);
 
-        $token = 'test-session-' . uniqid();
+        $token = 'test-session-'.uniqid();
         $user->forceFill(['active_session_token' => $token])->save();
 
         $response = $this
@@ -53,7 +53,7 @@ class PortalDashboardVerifyTest extends TestCase
             ->get('/my');
 
         if ($response->getStatusCode() !== 200) {
-            fwrite(STDERR, "REDIRECT TO: " . $response->headers->get('Location') . "\n");
+            fwrite(STDERR, 'REDIRECT TO: '.$response->headers->get('Location')."\n");
         }
 
         $response->assertStatus(200);

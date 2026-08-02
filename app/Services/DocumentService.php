@@ -25,6 +25,7 @@ class DocumentService
     {
         $transaction->load(['savingsAccount.member.region']);
         $this->authorizeMemberAccess($transaction->savingsAccount->member_id);
+
         return view('receipts.savings-deposit', ['transaction' => $transaction]);
     }
 
@@ -32,6 +33,7 @@ class DocumentService
     {
         $repayment->load(['loan.member.region']);
         $this->authorizeMemberAccess($repayment->loan->member_id);
+
         return view('receipts.loan-repayment', ['repayment' => $repayment]);
     }
 
@@ -39,6 +41,7 @@ class DocumentService
     {
         $order->load(['member.region', 'product', 'approvedBy']);
         $this->authorizeMemberAccess($order->member_id);
+
         return view('receipts.purchase-order', ['order' => $order]);
     }
 
@@ -46,6 +49,7 @@ class DocumentService
     {
         $order->load(['member.region', 'product', 'approvedBy']);
         $this->authorizeMemberAccess($order->member_id);
+
         return view('invoices.purchase', ['order' => $order]);
     }
 
@@ -53,6 +57,7 @@ class DocumentService
     {
         $transaction->load(['shareAccount.member.region']);
         $this->authorizeMemberAccess($transaction->shareAccount->member_id);
+
         return view('receipts.share-purchase', ['transaction' => $transaction]);
     }
 
@@ -60,6 +65,7 @@ class DocumentService
     {
         $loan->load(['member.region', 'loanProduct']);
         $this->authorizeMemberAccess($loan->member_id);
+
         return view('receipts.loan-disbursement', ['loan' => $loan]);
     }
 
@@ -74,6 +80,7 @@ class DocumentService
             'guarantors.member',
         ]);
         $this->authorizeMemberAccess($loan->member_id);
+
         return view('receipts.loan-statement', ['loan' => $loan]);
     }
 
@@ -81,6 +88,7 @@ class DocumentService
     {
         $account->load(['member.region', 'transactions']);
         $this->authorizeMemberAccess($account->member_id);
+
         return view('receipts.savings-statement', ['account' => $account]);
     }
 

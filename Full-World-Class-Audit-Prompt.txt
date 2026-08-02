@@ -1,0 +1,325 @@
+# NAPTIN STAFF THRIFT COOPERATIVE SOCIETY - WORLD CLASS AUDIT & AI CLI PROMPT
+# Version: 4.0 Audit
+# Date: 2026-07-30
+# Platform: Laravel 13 + Tailwind CSS + MySQL 8 + Livewire 3
+# Purpose: Copy-paste this entire file into Claude Code / Codex / opencode / Cursor to execute world-class transformation
+
+================================================================================
+PROMPT START - COPY FROM HERE
+================================================================================
+
+You are now the Principal Engineer + Product Designer for NAPTIN Coop v4.0. You are tasked to transform a functional v3.1 admin panel into an award-winning, internationally recognized cooperative banking product inspired by Stripe Dashboard, Linear, and Revolut.
+
+CONTEXT - WHAT EXISTS TODAY - READ APP-GUIDE.md AND USER-GUIDE.txt:
+- 24 Models, 41 Migrations, 22 Controllers, 8 Enums, 100+ routes, 6 Imports, 6 Exports, 7 Notifications
+- Modules: Members, Savings (with payment_evidence_path), Loans (with guarantors, repayment schedules), Shares, Products & Purchases (AJAX cart), Dividends, Payroll (compile/upload/export), Receipts (8 types), Reports, Admin (Users, Roles, Regions, Loan Products, Stock, Backup)
+- Member Portal: /my/* with savings deposit/withdrawal request (pending approval), loan apply with guarantors, AJAX shop, guarantor accept/decline, notifications
+- Enums: GuarantorStatus (pending, accepted, declined), LoanStatus (pending, approved, disbursed, repaying, completed, rejected, defaulted), LoanType, MemberStatus, PaymentMethod, PayrollStatus (draft, compiled, deducted, completed), SavingsTransactionType, ShareTransactionType
+- Services: CartService, LoanService, SavingsService with row locking
+- Current URL: http://localhost/dev-angle/Starter-folder/naptin-coop/public - Login admin@naptin.coop / password
+
+STRENGTHS TO PRESERVE - DO NOT BREAK:
+1. Domain coverage 90% - Savings ledger, guarantor workflow, payroll engine, dividend engine are correct. Keep them.
+2. Enums eliminate magic strings. Keep and extend.
+3. Central Import Hub + Exports - critical for Nigerian reality. Keep.
+4. Reference numbers REG/YYYY/XXXXXX, SAV/DEP/XXXX - keep format.
+5. ActivityLog, LoanApprovalLog - keep and enhance.
+
+CRITICAL FLAWS TO FIX - EXECUTE IN ORDER:
+
+FLAW 1: GOD CONTROLLERS - ARCHITECTURE DEBT
+Problem: AdminController = Users + Stock + Backup + Statistics. LoanController = CRUD + Approve + Reject + Disburse + Repayment + Import/Export. ReceiptController = 8 types. Avg 800+ lines. Violates SRP. Race conditions under concurrent teller deposits.
+Action:
+- Create app/Actions/ directory with subfolders: Membership, Savings, Loans, Payroll, Dividends, Purchases
+- Extract every business operation to Action class with single handle() method. Example: app/Actions/Loans/ApproveLoan.php, DisburseLoan.php, CalculateEligibility.php, app/Actions/Savings/PostDeposit.php
+- Controllers become thin: return Action::run($validated, $user). Wrap in DB::transaction().
+- Create app/Services/DocumentService.php - single service for all 8 receipt types using blade templates: documents.savings.deposit, documents.loan.schedule etc.
+- Delete AdminController, split to UserController, StockController, BackupController, StatisticsController
+
+FLAW 2: LOAN STATUS STATE MACHINE INCOMPLETE
+Problem: Current LoanStatus missing guarantor_pending, eligible, arrears. Cannot track where loan is stuck. PayrollStatus missing reconciled, variance.
+Action:
+- Update app/Enums/LoanStatus.php to: enum LoanStatus: string { case DRAFT = 'draft'; case SUBMITTED = 'submitted'; case ELIGIBLE = 'eligible'; case GUARANTOR_PENDING = 'guarantor_pending'; case COMMITTEE_REVIEW = 'committee_review'; case APPROVED = 'approved'; case DISBURSED = 'disbursed'; case REPAYING = 'repaying'; case ARREARS = 'arrears'; case COMPLETED = 'completed'; case REJECTED = 'rejected'; case DEFAULTED = 'defaulted'; public function label(): string { match... } public function color(): string { return match($this) { self::APPROVED, self::DISBURSED => 'success', self::ARREARS => 'warning', self::DEFAULTED, self::REJECTED => 'danger', default => 'gray' }; } }
+- Update PayrollStatus: add RECONCILED, VARIANCE
+- Add migration to alter enums in DB
+- Update LoanPolicy: guarantor_pending cannot be approved
+
+FLAW 3: PROCESS WASTE - 7 REPETITIVE TASKS TO AUTOMATE
+For each, implement:
+
+WASTE 1: Deposit Request -> Pending -> Manual Approve for every 1000 naira with evidence.
+Fix: Add rule engine in SavingsService. If savings_transactions.payment_evidence_path exists AND amount <= 200000 AND member has no fraud flag, auto-approve. Add settings: auto_approve_deposit_limit = 200000. Log auto-approval with actor = system.
+
+WASTE 2: Compile Payroll -> Export Excel -> Upload Deductions -> Mark Completed.
+Fix: New single action CompileAndLockPayroll. Route POST /payroll/{id}/compile-and-lock. It calculates expected deductions from Savings (monthly contribution) + LoanRepaymentSchedule where due_date in payroll month. Creates PayrollDeduction rows. Status = compiled. Remove export/upload steps. Keep export for audit only.
+
+WASTE 3: Separate Imports for Members, Savings, Repayments, Products.
+Fix: Create Unified Onboarding Wizard: /admin/onboarding - Upload single Excel with sheets: members, opening_savings, shares. Use Maatwebsite with WithMultipleSheets. All in one DB::transaction(). Add import_batch_id uuid to every imported row.
+
+WASTE 4: Two Cart Systems (Admin Cart session + Member Cart).
+Fix: Single CartService with polymorphic actor. Table carts: id, user_id, member_id, actor_type (member, admin), items json, expires_at. Remove CartController session logic.
+
+WASTE 5: 8 Receipt Methods.
+Fix: Already in Flaw 1 DocumentService.
+
+WASTE 6: Guarantor must login to accept.
+Fix: Add LoanGuarantor table column accept_token varchar 64 unique. On loan application, generate token, create signed URL /guarantee/accept/{token} valid 72h. No login required, but log IP and device. Add job ExpireGuarantorInvites daily.
+
+WASTE 7: No idempotency on imports.
+Fix: Add columns: import_batch_id uuid, external_reference varchar unique nullable to savings_transactions, loan_repayments, members. In Import classes, check external_reference exists -> skip. Add import_logs table: batch_id, type, total_rows, success, failed, errors json.
+
+FLAW 4: DATA INTEGRITY & SECURITY
+Problem: No double-entry enforcement, default password, no 2FA, no rate limiting, no IP logging on approvals.
+Action:
+- Add ledger_accounts and journal_entries tables if missing: ledger_accounts code unique, name, type asset/liability/equity/income/expense. journal_entries txn_date, debit_account_id, credit_account_id, amount decimal 15,2, reference_type, reference_id, narration, posted_by.
+- Every financial Action must create journal entries in same transaction.
+- Force password change: users table add must_change_password bool default true for seeded users. Middleware MustChangePassword.
+- Add 2FA for roles president, treasurer, financial_secretary using laravel/fortify 2FA or custom TOTP.
+- Add rate limiting to login: 5 attempts per minute.
+- Log every approval with ip, user_agent in loan_approval_logs.
+- Add database transactions to all Services with pessimistic locking: Member::lockForUpdate(), SavingsAccount::lockForUpdate()
+
+FLAW 5: UI IS ADMIN PANEL, NOT PRODUCT
+Current: Sidebar + Table + Form. No command palette, no actionable dashboard, no mobile-first member portal.
+Action: Implement world-class design system below.
+
+DESIGN SYSTEM: NAPTIN DESIGN LANGUAGE v4.0
+Colors: Deep Navy #0F172A primary, Electric Mint #10B981 for positive money, Amber #F59E0B for arrears/warning, Rose #F43F5E for danger, Slate 50-900 for neutrals. Background #F8FAFC.
+Typography: Headings: Instrument Sans or General Sans 600. Body: Inter. Money/IDs: JetBrains Mono 500. Never use Inter for money.
+Spacing: 8pt grid. Cards radius 16px. Buttons radius 10px. Shadows: soft 0 1px 2px rgba(0,0,0,0.05).
+Badges: Use Enums color() mapping. All statuses have dot + label.
+Icons: Lucide or Heroicons outline only.
+Principles: Every screen answers in 2 seconds: What is status? What is next action? What is risk? No table without search + filter + export.
+
+WORLD-CLASS SCREENS TO BUILD - CODE DRAFTS BELOW AFTER THIS PROMPT:
+
+SCREEN 1: DASHBOARD COMMAND CENTER /dashboard
+Layout:
+- Top: Global Search bar with cmd+K shortcut - search members by name/staff_id, loans by number, transactions by reference. Use Livewire + Alpine.
+- Row 1: 4 KPI Cards: Total Savings Today vs Yesterday with sparkline, Loans in Arrears count + amount, Pending Approvals count, Payroll Due In (countdown). Each card clickable.
+- Row 2: Action Queue - Not tables but actionable cards: "3 Deposit Requests with Evidence - Review Now", "2 Guarantor Invites Expired - Notify Members", "Payroll March 2026 Variance - ₦15,000". Each card has primary CTA button.
+- Row 3: Two columns: Left: Recent Activity Feed (ActivityLog with avatar, action, time ago). Right: Cash Flow Chart (Chart.js - inflow vs outflow last 6 months).
+- Bottom: Quick Actions FAB: New Member, Post Deposit, Approve Loan
+
+SCREEN 2: MEMBER 360 CANVAS /members/{id}
+Header: Photo, Name, Member No, Region badge, MemberStatus badge, Health Score circle (calculate: savings_balance / (active_loan_outstanding + 1) * 100). Score >100 green, 50-100 amber, <50 red. Buttons: Contact (tel), Statement PDF, Actions dropdown.
+Tabs with Livewire:
+- Overview: 2 col: Left Savings balance chart (last 12 months), Right Loan timeline vertical: Applied date, Approved by, Disbursed date, Repaying progress bar 4/12, Next due. Below: Risk summary: Total exposure as guarantor.
+- Transactions: Unified ledger: Merge SavingsTransaction + LoanRepayment + ShareTransaction + PurchaseOrder into one chronological feed with filters: Type, Date Range, Search reference. Each row shows icon, reference, amount with color, balance_after.
+- Guarantor Risk: Table: Who they guarantee, loan amount, outstanding, risk percentage.
+- Documents: List payment_evidence_path, KYC docs, with preview.
+- Next of Kin: Existing.
+
+SCREEN 3: SMART LOAN WIZARD /loans/apply
+Step 1: Amount slider with max eligible live: "Based on 3x savings ₦600k, you have ₦200k savings. Max eligible ₦600k". Show formula tooltip.
+Step 2: Guarantor search with exposure: Show each member's current guaranteed amount / limit. Prevent > 500k exposure.
+Step 3: Repayment Preview: Interactive amortization table + chart.js line of balance. Drag tenure 6-24 months -> monthly payment updates live.
+Step 4: Review + Submit. Show all fees.
+
+SCREEN 4: PAYROLL RECONCILIATION HUB /payroll/{id}
+3-column comparison: Expected Deductions (system calc) | Actual Deduction (upload bank statement) | Variance (auto calc). Red rows if variance !=0. Button Create Arrears Entry for short deductions.
+
+SCREEN 5: MEMBER PORTAL /my - MOBILE FIRST PWA
+Bottom nav: Home, Savings, Loans, Shop, Me.
+Home: Big balance card with gradient Navy->Mint, "₦245,000.00 Available", eye to hide. Next due card: "Loan repayment ₦15k due in 3 days - Pay Now". Quick Actions grid 2x2: Request Withdrawal, Apply Loan, Buy Product, My Guarantor Requests.
+Gamification: Progress bar "Save ₦5k more to unlock ₦100k emergency loan".
+
+ADDITIONAL WORLD-CLASS SIGNATURES TO IMPLEMENT:
+- Reference Search Everywhere - global search parses REG/, SAV/, LOAN/, PAY/
+- Timeline over Tables for loan lifecycle with avatars
+- Empty States with Illustration + CTA + Education text
+- Keyboard shortcuts: A approve, R reject, N new member, / search
+- Dark Mode + Print Mode: @media print hides sidebar, forces white
+- Make /my PWA: manifest.json + service worker for offline view of last statement
+
+TECHNICAL IMPLEMENTATION ORDER - 14 DAY SPRINT:
+Day1-2: Refactor God Controllers to Actions. Create DocumentService.
+Day3-4: Fix LoanStatus enum + add guarantor_pending, arrears + add ledger tables + import_batch_id + accept_token columns via migrations
+Day5-6: Build Unified Ledger + Member Health Score + Global Search
+Day7-9: Rebuild Dashboard Command Center + cmd+K
+Day10-11: Rebuild Member 360 Canvas + Smart Loan Wizard
+Day12-13: Rebuild Member Portal /my as PWA bottom nav + Payroll Reconciliation Hub
+Day14: Add queues for notifications (ShouldQueue), add Termii SMS channel, add 2FA, add MustChangePassword middleware, add backup to S3, write tests for SavingsService
+
+CODING STANDARDS FOR THIS TASK:
+- Use Livewire 3 with Volt where possible, Tailwind CSS, Alpine.js
+- All money decimal(15,2), use number_format with JetBrains Mono
+- All status via Enums with label() and color()
+- All financial operations in DB::transaction() with lockForUpdate()
+- Use spatie/laravel-permission authorize() in every controller/livewire
+- Use Form Requests for validation
+- No logic in Blade, only in Actions/Services
+- Add try/catch for notifications so failure does not block transaction
+
+CONFIRM YOU UNDERSTAND THEN START WITH DAY1-2 REFACTOR. SHOW FILE LIST CREATED.
+
+================================================================================
+PROMPT END
+================================================================================
+
+--------------------------------------------------------------------------------
+DRAFT CODE - FIGMA-READY TAILWIND - DASHBOARD COMMAND CENTER
+File: resources/views/livewire/dashboard-command-center.blade.php
+--------------------------------------------------------------------------------
+
+<div class="min-h-screen bg-[#F8FAFC] p-6" x-data="{ cmdOpen: false }" @keydown.meta.k.window="cmdOpen = true">
+  <!-- Global Search -->
+  <div class="max-w-7xl mx-auto mb-8">
+    <button @click="cmdOpen = true" class="w-full flex items-center justify-between bg-white border border-slate-200 rounded-[12px] px-4 py-3 text-sm text-slate-500 hover:border-slate-300 transition">
+      <span class="flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor"><path d="M21 21l-4.3-4.3"/><circle cx="11" cy="11" r="6"/></svg> Search members, loans, references... (REG/2026/001)</span>
+      <kbd class="bg-slate-100 px-2 py-1 rounded text-xs">⌘K</kbd>
+    </button>
+  </div>
+
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 tracking-wider uppercase">Total Savings Today</p>
+        <p class="mt-2 text-2xl font-mono font-semibold text-[#0F172A]">₦42.5M</p>
+        <p class="text-xs text-emerald-600 mt-1 flex items-center gap-1">↑ 12% vs yesterday <span class="w-12 h-6 bg-emerald-50 rounded inline-block"></span></p>
+      </div>
+      <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 uppercase">Loans in Arrears</p>
+        <p class="mt-2 text-2xl font-mono font-semibold text-amber-600">7 • ₦1.2M</p>
+        <p class="text-xs text-slate-500 mt-1">2 due >30 days</p>
+      </div>
+      <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 uppercase">Pending Approvals</p>
+        <p class="mt-2 text-2xl font-mono font-semibold text-[#0F172A]">11</p>
+        <p class="text-xs text-slate-500 mt-1">3 deposits • 8 loans</p>
+      </div>
+      <div class="bg-white rounded-[16px] p-5 border border-slate-200 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 uppercase">Payroll Due</p>
+        <p class="mt-2 text-2xl font-mono font-semibold">In 3 days</p>
+        <p class="text-xs text-slate-500 mt-1">March 2026 • ₦3.4M expected</p>
+      </div>
+    </div>
+
+    <!-- Action Queue -->
+    <div>
+      <h3 class="text-sm font-semibold text-[#0F172A] mb-3">Needs Your Attention</h3>
+      <div class="grid md:grid-cols-3 gap-3">
+        <div class="bg-white border border-amber-200 rounded-[16px] p-4 flex justify-between items-center">
+          <div><p class="text-sm font-medium">3 Deposit Requests with Evidence</p><p class="text-xs text-slate-500">₦145k total • Oldest 2h ago</p></div>
+          <a href="/savings?filter=pending" class="bg-[#0F172A] text-white text-xs px-3 py-2 rounded-[10px]">Review</a>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-[16px] p-4 flex justify-between items-center">
+          <div><p class="text-sm font-medium">2 Guarantor Invites Expired</p><p class="text-xs text-slate-500">Loan REG/2026/0045</p></div>
+          <button class="bg-white border text-xs px-3 py-2 rounded-[10px]">Notify</button>
+        </div>
+        <div class="bg-white border border-rose-200 rounded-[16px] p-4 flex justify-between items-center">
+          <div><p class="text-sm font-medium">Payroll Variance ₦15k</p><p class="text-xs text-slate-500">March • 2 members short</p></div>
+          <a href="/payroll/1" class="bg-rose-600 text-white text-xs px-3 py-2 rounded-[10px]">Reconcile</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity + Chart -->
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="md:col-span-2 bg-white rounded-[16px] border border-slate-200 p-5">
+        <h4 class="text-sm font-semibold mb-4">Cash Flow • Last 6 Months</h4>
+        <div class="h-64 bg-slate-50 rounded flex items-center justify-center text-xs text-slate-400">[Chart.js: inflow emerald vs outflow slate]</div>
+      </div>
+      <div class="bg-white rounded-[16px] border border-slate-200 p-5">
+        <h4 class="text-sm font-semibold mb-4">Recent Activity</h4>
+        <div class="space-y-3">
+          <div class="flex gap-3 text-xs"><img src="https://i.pravatar.cc/24?u=1" class="w-6 h-6 rounded-full"/><div><p><span class="font-medium">Fin Sec</span> posted ₦50k for <span class="font-medium">John A.</span></p><p class="text-slate-400">2m ago • 192.168.1.5</p></div></div>
+          <div class="flex gap-3 text-xs"><img src="https://i.pravatar.cc/24?u=2" class="w-6 h-6 rounded-full"/><div><p><span class="font-medium">President</span> approved loan REG/2026/0042</p><p class="text-slate-400">1h ago</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+--------------------------------------------------------------------------------
+DRAFT CODE - MEMBER 360 CANVAS
+File: resources/views/members/show-canvas.blade.php
+--------------------------------------------------------------------------------
+
+<div class="min-h-screen bg-[#F8FAFC]">
+  <!-- Header -->
+  <div class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-6 py-6 flex justify-between items-start">
+      <div class="flex gap-4">
+        <img src="{{ $member->photo_url }}" class="w-16 h-16 rounded-[16px] object-cover border"/>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-semibold text-[#0F172A]">{{ $member->full_name }}</h1>
+            <span class="text-[10px] px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{{ $member->status->label() }}</span>
+            <span class="text-[10px] font-mono px-2 py-1 rounded-full bg-slate-100 border">{{ $member->member_no }}</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">{{ $member->department }} • {{ $member->staff_id }} • {{ $member->region->name }}</p>
+          <div class="flex gap-2 mt-3">
+            <a href="tel:{{ $member->phone }}" class="text-xs bg-[#0F172A] text-white px-3 py-1.5 rounded-[10px]">Contact</a>
+            <a href="/receipts/member/{{ $member->id }}/statement" class="text-xs bg-white border px-3 py-1.5 rounded-[10px]">Statement PDF</a>
+          </div>
+        </div>
+      </div>
+      <!-- Health Score -->
+      <div class="text-center">
+        <div class="w-20 h-20 rounded-full border-4 {{ $healthScore > 100 ? 'border-emerald-500' : ($healthScore > 50 ? 'border-amber-400' : 'border-rose-500') }} flex items-center justify-center">
+          <span class="text-lg font-mono font-bold">{{ $healthScore }}</span>
+        </div>
+        <p class="text-[10px] uppercase tracking-wider text-slate-500 mt-1">Health Score</p>
+        <p class="text-[10px] text-slate-400">{{ $healthScore > 100 ? 'Excellent' : 'At Risk' }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-6 py-6">
+    <div class="flex gap-2 mb-6">
+      <button class="text-xs px-4 py-2 rounded-full bg-[#0F172A] text-white">Overview</button>
+      <button class="text-xs px-4 py-2 rounded-full bg-white border">Transactions</button>
+      <button class="text-xs px-4 py-2 rounded-full bg-white border">Guarantor Risk</button>
+      <button class="text-xs px-4 py-2 rounded-full bg-white border">Documents</button>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="md:col-span-2 space-y-6">
+        <!-- Savings Chart -->
+        <div class="bg-white rounded-[16px] border p-5">
+          <h4 class="text-sm font-semibold mb-3">Savings Growth • 12 Months</h4>
+          <div class="h-48 bg-slate-50 rounded flex items-center justify-center text-xs text-slate-400">[Chart.js area chart - emerald]</div>
+          <div class="flex gap-6 mt-4 text-xs">
+            <div><p class="text-slate-500">Current Balance</p><p class="font-mono font-semibold">₦{{ number_format($savingsBalance,2) }}</p></div>
+            <div><p class="text-slate-500">Total Deposits</p><p class="font-mono">₦{{ number_format($totalDeposits,2) }}</p></div>
+            <div><p class="text-slate-500">Interest Earned</p><p class="font-mono text-emerald-600">₦{{ number_format($interest,2) }}</p></div>
+          </div>
+        </div>
+        <!-- Loan Timeline -->
+        <div class="bg-white rounded-[16px] border p-5">
+          <h4 class="text-sm font-semibold mb-4">Loan Timeline</h4>
+          <div class="relative border-l border-slate-200 ml-2 pl-6 space-y-6">
+            <div class="relative"><span class="absolute -left-[29px] w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></span><p class="text-xs font-medium">Applied REG/2026/0042 • ₦200k • 12mo</p><p class="text-[11px] text-slate-500">Jan 10 • by Member</p></div>
+            <div class="relative"><span class="absolute -left-[29px] w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></span><p class="text-xs font-medium">Guarantors Accepted (2/2)</p><p class="text-[11px] text-slate-500">Jan 11 • Adebayo, Musa</p></div>
+            <div class="relative"><span class="absolute -left-[29px] w-3 h-3 bg-[#0F172A] rounded-full border-2 border-white"></span><p class="text-xs font-medium">Approved by President</p><p class="text-[11px] text-slate-500">Jan 12 • 10:32 AM • IP 192.168.1.5</p></div>
+            <div class="relative"><span class="absolute -left-[29px] w-3 h-3 bg-amber-400 rounded-full border-2 border-white animate-pulse"></span><p class="text-xs font-medium">Repaying 4/12 • Next due Feb 15 • ₦18,500</p><div class="w-full bg-slate-100 h-1.5 rounded-full mt-2"><div class="bg-[#0F172A] h-1.5 rounded-full" style="width:33%"></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="space-y-6">
+        <!-- Risk -->
+        <div class="bg-white rounded-[16px] border p-5">
+          <h4 class="text-sm font-semibold mb-3">Exposure</h4>
+          <p class="text-xs text-slate-500">As Borrower</p><p class="font-mono text-sm">₦{{ number_format($outstanding,2) }} outstanding</p>
+          <p class="text-xs text-slate-500 mt-3">As Guarantor</p><p class="font-mono text-sm">₦120k for 2 members • 40% of limit</p>
+        </div>
+        <div class="bg-white rounded-[16px] border p-5">
+          <h4 class="text-sm font-semibold mb-3">Unified Ledger Feed</h4>
+          <div class="space-y-3 text-xs">
+            <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-6 h-6 bg-emerald-50 rounded-full flex items-center justify-center">↓</span>SAV/DEP/1234</span><span class="font-mono text-emerald-600">+₦10k</span></div>
+            <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center">↑</span>LOAN/REP/5678</span><span class="font-mono">-₦18.5k</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+--------------------------------------------------------------------------------
+END OF DRAFT CODE
+--------------------------------------------------------------------------------
+
+INSTRUCTION TO AI CLI: Implement Dashboard Command Center first as Livewire component DashboardCommandCenter.php + view, replace existing DashboardController. Then implement Member 360 Canvas as Livewire component MemberCanvas.php. Use Tailwind, Alpine, Chart.js via CDN. No external UI libraries. Keep JetBrains Mono for money.
+

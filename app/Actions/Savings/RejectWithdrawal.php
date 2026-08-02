@@ -26,7 +26,8 @@ class RejectWithdrawal extends Action
                 $transaction->savingsAccount->member->user->notify(
                     new WithdrawalStatusNotification($transaction, 'pending')
                 );
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         }
 
         return $transaction->fresh();

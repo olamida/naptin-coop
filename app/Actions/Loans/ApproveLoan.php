@@ -60,7 +60,8 @@ class ApproveLoan extends Action
             if ($locked->member && $locked->member->user) {
                 try {
                     $locked->member->user->notify(new LoanStatusNotification($locked, $oldStatus, 'approved'));
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
 
             return $locked->fresh();

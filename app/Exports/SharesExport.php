@@ -43,7 +43,7 @@ class SharesExport implements FromCollection, WithHeadings, WithMapping, WithSty
             $txn->transaction_date?->format('Y-m-d') ?? '',
             $txn->reference,
             $txn->shareAccount->member->staff_id ?? '',
-            ($txn->shareAccount->member->first_name ?? '') . ' ' . ($txn->shareAccount->member->last_name ?? ''),
+            ($txn->shareAccount->member->first_name ?? '').' '.($txn->shareAccount->member->last_name ?? ''),
             ucfirst($txn->type),
             $txn->shares,
             $txn->amount,

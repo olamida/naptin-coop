@@ -7,7 +7,6 @@ use App\Models\LoanProduct;
 use App\Models\LoanRepaymentSchedule;
 use App\Models\Member;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class LoanService
 {
@@ -28,18 +27,18 @@ class LoanService
     public function generateLoanNumber(): string
     {
         $year = date('Y');
-        $prefix = 'REG/' . $year . '/';
+        $prefix = 'REG/'.$year.'/';
 
         return DB::transaction(function () use ($prefix) {
             $last = Loan::withTrashed()
-                ->where('loan_number', 'like', $prefix . '%')
+                ->where('loan_number', 'like', $prefix.'%')
                 ->lockForUpdate()
                 ->orderByRaw('CAST(SUBSTRING(loan_number, -6) AS UNSIGNED) DESC')
                 ->value('loan_number');
 
             $next = $last ? ((int) substr($last, -6)) + 1 : 1;
 
-            return $prefix . str_pad($next, 6, '0', STR_PAD_LEFT);
+            return $prefix.str_pad($next, 6, '0', STR_PAD_LEFT);
         });
     }
 
@@ -70,18 +69,18 @@ class LoanService
             if ($newTotal > $product->max_total_amount_per_member) {
                 $remaining = max(0, $product->max_total_amount_per_member - $totalOutstanding);
 
-                return "This member's total outstanding for {$product->name} would be ₦" . number_format($newTotal, 2)
-                    . ". Maximum allowed: ₦" . number_format($product->max_total_amount_per_member, 2)
-                    . ". Remaining capacity: ₦" . number_format($remaining, 2) . ".";
+                return "This member's total outstanding for {$product->name} would be ₦".number_format($newTotal, 2)
+                    .'. Maximum allowed: ₦'.number_format($product->max_total_amount_per_member, 2)
+                    .'. Remaining capacity: ₦'.number_format($remaining, 2).'.';
             }
         }
 
         if ($amount > $product->max_amount) {
-            return "Amount exceeds the maximum of ₦" . number_format($product->max_amount, 2) . " for {$product->name}.";
+            return 'Amount exceeds the maximum of ₦'.number_format($product->max_amount, 2)." for {$product->name}.";
         }
 
         if ($amount < $product->min_amount) {
-            return "Amount is below the minimum of ₦" . number_format($product->min_amount, 2) . " for {$product->name}.";
+            return 'Amount is below the minimum of ₦'.number_format($product->min_amount, 2)." for {$product->name}.";
         }
 
         if ($tenureMonths > $product->max_term_months) {

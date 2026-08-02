@@ -35,7 +35,7 @@ class PurchaseShares extends Action
 
             $shareTxn = ShareTransaction::create([
                 'share_account_id' => $account->id,
-                'reference' => 'SHR/PUR/' . strtoupper(Str::random(8)),
+                'reference' => 'SHR/PUR/'.strtoupper(Str::random(8)),
                 'type' => 'purchase',
                 'shares' => $shares,
                 'amount' => $amount,

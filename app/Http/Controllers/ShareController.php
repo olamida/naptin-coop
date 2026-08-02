@@ -7,13 +7,16 @@ use App\Exports\SharesExport;
 use App\Models\Member;
 use App\Models\ShareAccount;
 use App\Models\ShareTransaction;
+use App\Notifications\SharePurchasedNotification;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ShareController extends Controller
 {
-    public function index(Request $request): \Illuminate\View\View
+    public function index(Request $request): View
     {
         $query = ShareTransaction::with('shareAccount.member');
 
@@ -33,11 +36,11 @@ class ShareController extends Controller
         $transactions = $query->latest('transaction_date')->paginate($perPage === 'all' ? 1000 : 15)->withQueryString();
 
         $stats = [
-            'total_shares' => \App\Models\ShareAccount::sum('total_shares'),
-            'total_value' => \App\Models\ShareAccount::sum('total_value'),
+            'total_shares' => ShareAccount::sum('total_shares'),
+            'total_value' => ShareAccount::sum('total_value'),
             'total_transactions' => ShareTransaction::count(),
             'this_month' => ShareTransaction::where('transaction_date', '>=', now()->startOfMonth())->sum('amount'),
-            'members_with_shares' => \App\Models\ShareAccount::where('total_shares', '>', 0)->count(),
+            'members_with_shares' => ShareAccount::where('total_shares', '>', 0)->count(),
         ];
 
         return view('shares.index', ['transactions' => $transactions, 'stats' => $stats]);
@@ -45,10 +48,10 @@ class ShareController extends Controller
 
     public function exportShares()
     {
-        return Excel::download(new SharesExport, 'shares_export_' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download(new SharesExport, 'shares_export_'.now()->format('Y-m-d').'.xlsx');
     }
 
-    public function accounts(Request $request): \Illuminate\View\View
+    public function accounts(Request $request): View
     {
         $query = ShareAccount::with('member');
 
@@ -76,7 +79,7 @@ class ShareController extends Controller
         return view('shares.accounts', compact('accounts', 'totalShares', 'totalValue'));
     }
 
-    public function purchase(): \Illuminate\View\View
+    public function purchase(): View
     {
         $members = Member::where('status', 'active')
             ->with('shareAccount')
@@ -86,7 +89,7 @@ class ShareController extends Controller
         return view('shares.purchase', compact('members'));
     }
 
-    public function storePurchase(Request $request): \Illuminate\Http\RedirectResponse
+    public function storePurchase(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'member_id' => 'required|exists:members,id',
@@ -101,7 +104,7 @@ class ShareController extends Controller
                 $validated['notes'] ?? null,
             );
         } catch (\Throwable $e) {
-            Log::error('Share purchase failed: ' . $e->getMessage());
+            Log::error('Share purchase failed: '.$e->getMessage());
 
             return back()->withErrors(['error' => 'Could not record share purchase. Please try again.'])->withInput();
         }
@@ -109,13 +112,13 @@ class ShareController extends Controller
         // Notify the member
         if ($shareTxn->shareAccount->member && $shareTxn->shareAccount->member->user) {
             try {
-                $shareTxn->shareAccount->member->user->notify(new \App\Notifications\SharePurchasedNotification($shareTxn));
+                $shareTxn->shareAccount->member->user->notify(new SharePurchasedNotification($shareTxn));
             } catch (\Exception $e) {
-                Log::error('Share notification failed: ' . $e->getMessage());
+                Log::error('Share notification failed: '.$e->getMessage());
             }
         }
 
         return redirect()->route('shares.accounts')
-            ->with('success', "Purchase of {$shareTxn->shares} share(s) for ₦" . number_format($shareTxn->amount, 2) . ' recorded.');
+            ->with('success', "Purchase of {$shareTxn->shares} share(s) for ₦".number_format($shareTxn->amount, 2).' recorded.');
     }
 }

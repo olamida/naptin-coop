@@ -47,7 +47,7 @@ class DistributeDividend extends Action
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Dividend distribution notification failed: ' . $e->getMessage());
+            Log::error('Dividend distribution notification failed: '.$e->getMessage());
         }
 
         return $dividend->fresh();

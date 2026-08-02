@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class Company extends Model
 {
@@ -42,6 +41,7 @@ class Company extends Model
         'loan_interest_rate' => 'decimal:2',
         'max_loan_multiplier' => 'integer',
         'auto_approve_deposit_limit' => 'decimal:2',
+        'branding_json' => 'array',
     ];
 
     public static function instance(): static
@@ -57,7 +57,7 @@ class Company extends Model
             return null;
         }
 
-        return asset('storage/' . $this->logo_path);
+        return asset('storage/'.$this->logo_path);
     }
 
     public function getBannerUrlAttribute(): ?string
@@ -66,6 +66,11 @@ class Company extends Model
             return null;
         }
 
-        return asset('storage/' . $this->banner_path);
+        return asset('storage/'.$this->banner_path);
+    }
+
+    public function branding(string $key, mixed $default = null): mixed
+    {
+        return data_get($this->branding_json, $key, $default);
     }
 }

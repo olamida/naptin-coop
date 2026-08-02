@@ -82,6 +82,11 @@
                                     <span class="px-2.5 py-1 text-[10px] font-medium rounded-full border {{ $order->payment_type === 'cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200' }}">
                                         {{ $order->payment_type === 'cash' ? 'Cash' : 'Hire Purchase' }}
                                     </span>
+                                    @if ($order->is_society_expense)
+                                        <span class="px-2.5 py-1 text-[10px] font-medium rounded-full border bg-rose-50 text-rose-700 border-rose-200">
+                                            Expense
+                                        </span>
+                                    @endif
                                 </td>
                                 <td class="px-5 py-3.5">
                                     <x-status-badge :status="$order->status" />

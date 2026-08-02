@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
-use App\Services\LedgerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -146,18 +145,18 @@ class CartService
     public function generateOrderNumber(): string
     {
         $year = date('Y');
-        $prefix = 'PO/' . $year . '/';
+        $prefix = 'PO/'.$year.'/';
 
         return DB::transaction(function () use ($prefix) {
             $last = PurchaseOrder::withTrashed()
-                ->where('order_number', 'like', $prefix . '%')
+                ->where('order_number', 'like', $prefix.'%')
                 ->lockForUpdate()
                 ->orderByRaw('CAST(SUBSTRING(order_number, -6) AS UNSIGNED) DESC')
                 ->value('order_number');
 
             $next = $last ? ((int) substr($last, -6)) + 1 : 1;
 
-            return $prefix . str_pad($next, 6, '0', STR_PAD_LEFT);
+            return $prefix.str_pad($next, 6, '0', STR_PAD_LEFT);
         });
     }
 
@@ -166,7 +165,7 @@ class CartService
      *
      * @throws \Exception
      */
-    public function processCheckout(int $orderMemberId, string $paymentType, ?float $monthlyRepayment = null): array
+    public function processCheckout(int $orderMemberId, string $paymentType, ?float $monthlyRepayment = null, bool $isSocietyExpense = false): array
     {
         $cart = $this->getCart();
         $cartItems = $cart->items;
@@ -175,10 +174,10 @@ class CartService
             throw new \Exception('Your cart is empty.');
         }
 
-        $orderGroup = 'GRP-' . date('Y') . '-' . strtoupper(Str::random(8));
+        $orderGroup = 'GRP-'.date('Y').'-'.strtoupper(Str::random(8));
         $orders = [];
 
-        DB::transaction(function () use ($cart, $cartItems, $orderMemberId, $paymentType, $monthlyRepayment, $orderGroup, &$orders) {
+        DB::transaction(function () use ($cart, $cartItems, $orderMemberId, $paymentType, $monthlyRepayment, $isSocietyExpense, $orderGroup, &$orders) {
             $products = Product::whereIn('id', array_keys($cartItems))->lockForUpdate()->get()->keyBy('id');
 
             foreach ($cartItems as $productId => $quantity) {
@@ -205,6 +204,7 @@ class CartService
                     'unit_price' => $product->unit_price,
                     'total_amount' => $totalAmount,
                     'payment_type' => $paymentType,
+                    'is_society_expense' => $isSocietyExpense,
                     'monthly_repayment' => $monthlyRepayment ?? 0,
                     'status' => $status,
                 ]);
@@ -212,7 +212,9 @@ class CartService
                 $product->decrement('stock_quantity', $quantity);
 
                 $ledger = app(LedgerService::class);
-                if ($paymentType === 'cash') {
+                if ($isSocietyExpense) {
+                    $ledger->postSocietyExpense($order->id, $totalAmount);
+                } elseif ($paymentType === 'cash') {
                     $ledger->postCashSale($order->id, $totalAmount);
                 } else {
                     $ledger->postHirePurchaseSale($order->id, $totalAmount);

@@ -72,6 +72,14 @@
                         </div>
                     </div>
 
+                    <label class="flex items-start gap-3 p-3 border border-slate-200 rounded-[10px] bg-slate-50 cursor-pointer">
+                        <input type="checkbox" name="is_society_expense" value="1" class="mt-0.5 w-4 h-4 text-blue-600 rounded">
+                        <span class="text-sm">
+                            <span class="font-medium text-slate-800">Executive / Society procurement</span>
+                            <span class="block text-xs text-slate-500 mt-0.5">Records this order as a society expense (not a member sale) and posts it to the expense ledger.</span>
+                        </span>
+                    </label>
+
                     <div class="flex items-center gap-3 pt-3 border-t border-slate-200">
                         <button type="submit" class="bg-[#0F172A] hover:bg-slate-800 text-white px-6 py-2.5 rounded-[10px] text-sm font-medium transition">
                             Place Order

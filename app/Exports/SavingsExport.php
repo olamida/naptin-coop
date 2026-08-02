@@ -46,7 +46,7 @@ class SavingsExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $txn->transaction_date?->format('Y-m-d') ?? '',
             $txn->reference,
             $txn->savingsAccount->member->staff_id ?? '',
-            ($txn->savingsAccount->member->first_name ?? '') . ' ' . ($txn->savingsAccount->member->last_name ?? ''),
+            ($txn->savingsAccount->member->first_name ?? '').' '.($txn->savingsAccount->member->last_name ?? ''),
             $txn->savingsAccount->account_number ?? '',
             ucfirst($txn->type),
             ucfirst($txn->status),

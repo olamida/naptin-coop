@@ -2,14 +2,14 @@
 
 namespace App\Imports;
 
-use App\Models\Product;
 use App\Imports\Concerns\TracksImportStats;
+use App\Models\Product;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class ProductImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
     use TracksImportStats;
 

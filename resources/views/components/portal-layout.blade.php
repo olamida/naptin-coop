@@ -6,12 +6,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="{{ $branding->getThemeColor() }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="NAPTIN Coop">
+    <meta name="apple-mobile-web-app-title" content="{{ $company->name ?? 'NAPTIN Coop' }}">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <link rel="apple-touch-icon" href="{{ asset('icon-192.png') }}">
+    <link rel="icon" href="{{ $branding->get('favicon', 'favicon-32x32.png') ?? asset('favicon.ico') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ $branding->get('favicon', 'favicon-180x180.png') ?? asset('icon-192.png') }}">
     <title>{{ $title ?? 'My Account' }} - NAPTIN Cooperative</title>
     <script>
         (function () {
@@ -67,7 +68,10 @@
                :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
             <div class="p-5 border-b border-white/10">
                 <div class="flex items-center gap-3">
-                    @if ($company->logo_path && $company->logo_url)
+                    @if ($brandingLogo = $branding->getLogo('sidebar'))
+                        <img src="{{ $brandingLogo }}" alt="{{ $company->name }}"
+                             class="w-10 h-10 rounded-[16px] object-contain shadow-lg" style="background: rgba(255,255,255,0.15); padding: 2px;">
+                    @elseif ($company->logo_path && $company->logo_url)
                         <img src="{{ $company->logo_url }}" alt="{{ $company->name }}"
                              class="w-10 h-10 rounded-[16px] object-contain shadow-lg" style="background: rgba(255,255,255,0.15); padding: 2px;">
                     @else
@@ -298,7 +302,7 @@
         </div>
     </nav>
 
-    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=6"></script>
+    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=7"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

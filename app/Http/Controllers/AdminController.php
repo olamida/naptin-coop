@@ -3,38 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Loan;
 use App\Models\Member;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
-use App\Models\SavingsTransaction;
-use App\Models\Loan;
 use App\Models\User;
 use App\Notifications\AdminPasswordResetNotification;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
 
 class AdminController extends Controller
 {
-    public function users(): \Illuminate\View\View
+    public function users(): View
     {
         $users = User::with('roles')->latest()->paginate(15);
 
         return view('admin.users.index', ['users' => $users]);
     }
 
-    public function createUser(): \Illuminate\View\View
+    public function createUser(): View
     {
         $roles = Role::orderBy('name')->get();
 
         return view('admin.users.create', ['roles' => $roles]);
     }
 
-    public function storeUser(Request $request): \Illuminate\Http\RedirectResponse
+    public function storeUser(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -55,7 +54,7 @@ class AdminController extends Controller
             ->with('success', 'User created successfully.');
     }
 
-    public function editUser(User $user): \Illuminate\View\View
+    public function editUser(User $user): View
     {
         $roles = Role::orderBy('name')->get();
         $currentRole = $user->roles->first();
@@ -63,11 +62,11 @@ class AdminController extends Controller
         return view('admin.users.edit', compact('user', 'roles', 'currentRole'));
     }
 
-    public function updateUser(Request $request, User $user): \Illuminate\Http\RedirectResponse
+    public function updateUser(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'required|exists:roles,name',
         ]);
@@ -77,7 +76,7 @@ class AdminController extends Controller
             'email' => $validated['email'],
         ];
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $data['password'] = Hash::make($validated['password']);
         }
 
@@ -88,7 +87,7 @@ class AdminController extends Controller
             ->with('success', 'User updated successfully.');
     }
 
-    public function destroyUser(User $user): \Illuminate\Http\RedirectResponse
+    public function destroyUser(User $user): RedirectResponse
     {
         $this->authorize('manage-users');
 
@@ -102,7 +101,7 @@ class AdminController extends Controller
             ->with('success', 'User deleted successfully.');
     }
 
-    public function resetUserPassword(User $user): \Illuminate\Http\RedirectResponse
+    public function resetUserPassword(User $user): RedirectResponse
     {
         $this->authorize('manage-users');
 
@@ -116,20 +115,20 @@ class AdminController extends Controller
         try {
             $user->notify(new AdminPasswordResetNotification($tempPassword));
         } catch (\Exception $e) {
-            \Log::error('Password reset notification failed for user ' . $user->id . ': ' . $e->getMessage());
+            \Log::error('Password reset notification failed for user '.$user->id.': '.$e->getMessage());
         }
 
         return back()->with('success', "Password reset for {$user->name}. New temporary password has been sent to their email: {$user->email}");
     }
 
-    public function stock(): \Illuminate\View\View
+    public function stock(): View
     {
-        $products = \App\Models\Product::orderBy('name')->get();
+        $products = Product::orderBy('name')->get();
 
         return view('admin.stock', ['products' => $products]);
     }
 
-    public function updateStock(Request $request, \App\Models\Product $product): \Illuminate\Http\RedirectResponse
+    public function updateStock(Request $request, Product $product): RedirectResponse
     {
         $this->authorize('manage-users');
 
@@ -140,7 +139,7 @@ class AdminController extends Controller
 
         $newQuantity = $product->stock_quantity + $validated['adjustment'];
         if ($newQuantity < 0) {
-            return back()->withErrors(['error' => 'Stock cannot go below zero. Current stock: ' . $product->stock_quantity]);
+            return back()->withErrors(['error' => 'Stock cannot go below zero. Current stock: '.$product->stock_quantity]);
         }
 
         $product->update(['stock_quantity' => $newQuantity]);
@@ -148,7 +147,7 @@ class AdminController extends Controller
         return back()->with('success', "Stock for {$product->name} updated to {$newQuantity}.");
     }
 
-    public function statistics(): \Illuminate\View\View
+    public function statistics(): View
     {
         $totalUsers = User::count();
         $totalMembers = Member::count();
@@ -206,7 +205,7 @@ class AdminController extends Controller
         ));
     }
 
-    public function notifications(): \Illuminate\View\View
+    public function notifications(): View
     {
         $user = auth()->user();
         $notifications = $user->notifications()->latest()->paginate(20);
@@ -215,7 +214,7 @@ class AdminController extends Controller
         return view('admin.notifications', compact('notifications', 'unreadCount'));
     }
 
-    public function markNotificationRead($notificationId): \Illuminate\Http\RedirectResponse
+    public function markNotificationRead($notificationId): RedirectResponse
     {
         $notification = auth()->user()->notifications()->findOrFail($notificationId);
         $notification->markAsRead();
@@ -223,7 +222,7 @@ class AdminController extends Controller
         return back()->with('success', 'Notification marked as read.');
     }
 
-    public function markAllNotificationsRead(): \Illuminate\Http\RedirectResponse
+    public function markAllNotificationsRead(): RedirectResponse
     {
         auth()->user()->unreadNotifications()->update(['read_at' => now()]);
 

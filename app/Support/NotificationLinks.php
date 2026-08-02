@@ -2,6 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\Loan;
+use App\Models\Member;
+use App\Models\MonthlyPayroll;
+
 class NotificationLinks
 {
     public static function actionUrl(array $data, string $context = 'admin'): ?string
@@ -23,12 +27,12 @@ class NotificationLinks
                 : route('shares.index'),
             'payroll_compiled' => $context === 'portal'
                 ? route('portal.savings')
-                : (isset($data['payroll_id']) && \App\Models\MonthlyPayroll::whereKey($data['payroll_id'])->exists()
+                : (isset($data['payroll_id']) && MonthlyPayroll::whereKey($data['payroll_id'])->exists()
                     ? route('payroll.show', $data['payroll_id'])
                     : route('payroll.index')),
             'member_registered' => $context === 'portal'
                 ? null
-                : (isset($data['member_id']) && \App\Models\Member::whereKey($data['member_id'])->exists()
+                : (isset($data['member_id']) && Member::whereKey($data['member_id'])->exists()
                     ? route('members.show', $data['member_id'])
                     : null),
             default => null,
@@ -41,7 +45,7 @@ class NotificationLinks
             return null;
         }
 
-        return \App\Models\Loan::whereKey($data['loan_id'])->exists()
+        return Loan::whereKey($data['loan_id'])->exists()
             ? route('loans.show', $data['loan_id'])
             : null;
     }
@@ -52,7 +56,7 @@ class NotificationLinks
             return route('portal.loans');
         }
 
-        return \App\Models\Loan::whereKey($data['loan_id'])->exists()
+        return Loan::whereKey($data['loan_id'])->exists()
             ? route('portal.loan-detail', $data['loan_id'])
             : route('portal.loans');
     }

@@ -8,11 +8,13 @@ use App\Actions\Dividends\DeclareDividend;
 use App\Actions\Dividends\DistributeDividend;
 use App\Models\Dividend;
 use App\Models\DividendDistribution;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class DividendController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         $dividends = Dividend::latest('year')->paginate(15);
 
@@ -26,15 +28,15 @@ class DividendController extends Controller
         return view('dividends.index', ['dividends' => $dividends, 'stats' => $stats]);
     }
 
-    public function create(): \Illuminate\View\View
+    public function create(): View
     {
         return view('dividends.create');
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'year' => 'required|integer|min:2020|max:' . (date('Y') + 1),
+            'year' => 'required|integer|min:2020|max:'.(date('Y') + 1),
             'total_profit' => 'required|numeric|min:0',
         ]);
 
@@ -48,14 +50,14 @@ class DividendController extends Controller
             ->with('success', 'Dividend record created. Now calculate distributions.');
     }
 
-    public function show(Dividend $dividend): \Illuminate\View\View
+    public function show(Dividend $dividend): View
     {
         $dividend->load(['distributions.member', 'approvedBy']);
 
         return view('dividends.show', ['dividend' => $dividend]);
     }
 
-    public function calculate(Dividend $dividend): \Illuminate\Http\RedirectResponse
+    public function calculate(Dividend $dividend): RedirectResponse
     {
         $this->authorize('calculate-dividends');
 
@@ -68,7 +70,7 @@ class DividendController extends Controller
         return back()->with('success', 'Dividend distributions calculated successfully.');
     }
 
-    public function approve(Dividend $dividend): \Illuminate\Http\RedirectResponse
+    public function approve(Dividend $dividend): RedirectResponse
     {
         $this->authorize('approve-dividends');
 
@@ -81,7 +83,7 @@ class DividendController extends Controller
         return back()->with('success', 'Dividend approved successfully.');
     }
 
-    public function distribute(Dividend $dividend): \Illuminate\Http\RedirectResponse
+    public function distribute(Dividend $dividend): RedirectResponse
     {
         $this->authorize('distribute-dividends');
 

@@ -4,17 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class StockController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): RedirectResponse
     {
-        $products = Product::orderBy('name')->get();
-        return view('admin.stock', ['products' => $products]);
+        return redirect()->route('products.index');
     }
 
-    public function update(Request $request, Product $product): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, Product $product): RedirectResponse
     {
         $validated = $request->validate([
             'adjustment' => 'required|integer',
@@ -23,7 +23,7 @@ class StockController extends Controller
 
         $newQuantity = $product->stock_quantity + $validated['adjustment'];
         if ($newQuantity < 0) {
-            return back()->withErrors(['error' => 'Stock cannot go below zero. Current stock: ' . $product->stock_quantity]);
+            return back()->withErrors(['error' => 'Stock cannot go below zero. Current stock: '.$product->stock_quantity]);
         }
 
         $product->update(['stock_quantity' => $newQuantity]);

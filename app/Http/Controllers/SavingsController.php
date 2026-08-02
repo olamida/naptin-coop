@@ -14,13 +14,17 @@ use App\Models\ImportLog;
 use App\Models\Member;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
+use App\Notifications\DepositRecordedNotification;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SavingsController extends Controller
 {
-    public function index(Request $request): \Illuminate\View\View
+    public function index(Request $request): View
     {
         $query = SavingsTransaction::with('savingsAccount.member');
 
@@ -59,7 +63,7 @@ class SavingsController extends Controller
         return view('savings.index', compact('transactions', 'pendingCount', 'stats'));
     }
 
-    public function accounts(Request $request): \Illuminate\View\View
+    public function accounts(Request $request): View
     {
         $query = SavingsAccount::with('member');
 
@@ -86,7 +90,7 @@ class SavingsController extends Controller
         return view('savings.accounts', compact('accounts', 'totalBalance'));
     }
 
-    public function deposit(): \Illuminate\View\View
+    public function deposit(): View
     {
         $members = Member::where('status', 'active')
             ->with('savingsAccount')
@@ -96,7 +100,7 @@ class SavingsController extends Controller
         return view('savings.deposit', compact('members'));
     }
 
-    public function storeDeposit(Request $request): \Illuminate\Http\RedirectResponse
+    public function storeDeposit(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'member_id' => 'required|exists:members,id',
@@ -122,15 +126,16 @@ class SavingsController extends Controller
 
         if ($txn->savingsAccount && $txn->savingsAccount->member && $txn->savingsAccount->member->user) {
             try {
-                $txn->savingsAccount->member->user->notify(new \App\Notifications\DepositRecordedNotification($txn));
-            } catch (\Exception $e) {}
+                $txn->savingsAccount->member->user->notify(new DepositRecordedNotification($txn));
+            } catch (\Exception $e) {
+            }
         }
 
         return redirect()->route('savings.accounts')
-            ->with('success', 'Deposit of ₦' . number_format($amount, 2) . ' recorded successfully.');
+            ->with('success', 'Deposit of ₦'.number_format($amount, 2).' recorded successfully.');
     }
 
-    public function withdraw(): \Illuminate\View\View
+    public function withdraw(): View
     {
         $members = Member::where('status', 'active')
             ->with('savingsAccount')
@@ -140,7 +145,7 @@ class SavingsController extends Controller
         return view('savings.withdraw', compact('members'));
     }
 
-    public function storeWithdrawal(Request $request): \Illuminate\Http\RedirectResponse
+    public function storeWithdrawal(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'member_id' => 'required|exists:members,id',
@@ -165,10 +170,10 @@ class SavingsController extends Controller
         );
 
         return redirect()->route('savings.accounts')
-            ->with('success', 'Withdrawal request of ₦' . number_format($amount, 2) . ' submitted for approval. Reference: ' . $transaction->reference);
+            ->with('success', 'Withdrawal request of ₦'.number_format($amount, 2).' submitted for approval. Reference: '.$transaction->reference);
     }
 
-    public function pendingApprovals(): \Illuminate\View\View
+    public function pendingApprovals(): View
     {
         $withdrawals = SavingsTransaction::where('type', 'withdrawal')
             ->where('status', 'pending')
@@ -185,17 +190,18 @@ class SavingsController extends Controller
         return view('savings.pending-withdrawals', compact('withdrawals', 'pendingDeposits'));
     }
 
-    public function approveDeposit(SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
+    public function approveDeposit(SavingsTransaction $transaction): RedirectResponse
     {
         try {
             $transaction = ApproveDeposit::run($transaction);
-            return back()->with('success', 'Deposit of ₦' . number_format($transaction->amount, 2) . ' confirmed successfully. Balance updated.');
+
+            return back()->with('success', 'Deposit of ₦'.number_format($transaction->amount, 2).' confirmed successfully. Balance updated.');
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
-    public function rejectDeposit(Request $request, SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
+    public function rejectDeposit(Request $request, SavingsTransaction $transaction): RedirectResponse
     {
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
@@ -210,17 +216,18 @@ class SavingsController extends Controller
         }
     }
 
-    public function approveWithdrawal(SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
+    public function approveWithdrawal(SavingsTransaction $transaction): RedirectResponse
     {
         try {
             $transaction = ApproveWithdrawal::run($transaction);
-            return back()->with('success', 'Withdrawal of ₦' . number_format($transaction->amount, 2) . ' approved and processed successfully.');
+
+            return back()->with('success', 'Withdrawal of ₦'.number_format($transaction->amount, 2).' approved and processed successfully.');
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 
-    public function rejectWithdrawal(Request $request, SavingsTransaction $transaction): \Illuminate\Http\RedirectResponse
+    public function rejectWithdrawal(Request $request, SavingsTransaction $transaction): RedirectResponse
     {
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
@@ -237,15 +244,15 @@ class SavingsController extends Controller
 
     public function exportSavings()
     {
-        return Excel::download(new SavingsExport, 'savings_export_' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download(new SavingsExport, 'savings_export_'.now()->format('Y-m-d').'.xlsx');
     }
 
-    public function import(): \Illuminate\View\View
+    public function import(): View
     {
         return view('savings.import');
     }
 
-    public function importStore(Request $request): \Illuminate\Http\RedirectResponse
+    public function importStore(Request $request): RedirectResponse
     {
         $request->validate([
             'import_file' => 'required|mimes:xlsx,xls,csv|max:10240',
@@ -261,15 +268,15 @@ class SavingsController extends Controller
             ImportLog::record($batchId, 'savings', $fileName, $import->importStats());
 
             return redirect()->route('savings.index')
-                ->with('success', 'Savings transactions imported successfully. Batch: ' . substr($batchId, 0, 8) . '…');
+                ->with('success', 'Savings transactions imported successfully. Batch: '.substr($batchId, 0, 8).'…');
         } catch (\Exception $e) {
             ImportLog::record($batchId, 'savings', $fileName, $import->importStats(), 'failed', $e->getMessage());
 
-            return back()->withErrors(['import_file' => 'Import failed: ' . $e->getMessage()])->withInput();
+            return back()->withErrors(['import_file' => 'Import failed: '.$e->getMessage()])->withInput();
         }
     }
 
-    public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function downloadTemplate(): StreamedResponse
     {
         $headers = [
             'Content-Type' => 'text/csv',

@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Member;
 use App\Models\Region;
-use App\Models\ShareAccount;
 use App\Models\SavingsAccount;
+use App\Models\ShareAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -23,11 +23,11 @@ class MemberFormSearchTest extends TestCase
             return $this->admin;
         }
 
-        $token = 'test-session-' . uniqid();
+        $token = 'test-session-'.uniqid();
 
         $this->admin = User::create([
             'name' => 'Admin',
-            'email' => 'admin-form-search-' . uniqid() . '@naptin.coop',
+            'email' => 'admin-form-search-'.uniqid().'@naptin.coop',
             'password' => Hash::make('password'),
         ]);
         $this->admin->forceFill(['active_session_token' => $token])->save();
@@ -38,8 +38,8 @@ class MemberFormSearchTest extends TestCase
     private function makeMember(string $first, string $last, string $staffId, array $extra = []): Member
     {
         $region = Region::create([
-            'name' => 'Region ' . substr(uniqid(), -4),
-            'code' => 'RC-' . substr(uniqid(), -4),
+            'name' => 'Region '.substr(uniqid(), -4),
+            'code' => 'RC-'.substr(uniqid(), -4),
             'state' => 'S',
             'enabled' => true,
         ]);
@@ -55,7 +55,7 @@ class MemberFormSearchTest extends TestCase
 
         SavingsAccount::create([
             'member_id' => $member->id,
-            'account_number' => 'SAV/T/' . substr(uniqid(), -6),
+            'account_number' => 'SAV/T/'.substr(uniqid(), -6),
             'balance' => 2500,
         ]);
         ShareAccount::create([
@@ -73,7 +73,7 @@ class MemberFormSearchTest extends TestCase
         return $this
             ->withSession(['active_session_token' => $this->adminUser()->active_session_token])
             ->actingAs($this->adminUser())
-            ->getJson('/members/search/form?q=' . urlencode($query));
+            ->getJson('/members/search/form?q='.urlencode($query));
     }
 
     public function test_form_search_returns_active_members_with_account_data(): void

@@ -6,14 +6,24 @@
     <title>Welcome to NAPTIN Cooperative</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    @php
+        $company = \App\Models\Company::instance();
+        $emailLogo = app(\App\Services\BrandingService::class)->getLogo('pdf');
+        $primary = $company->theme_color ?: '#1d4ed8';
+        $secondary = $company->secondary_color ?: '#1e40af';
+        $companyName = $company->name ?? 'NAPTIN Staff Thrift Cooperative';
+    @endphp
     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
         <tr>
             <td align="center">
                 <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     {{-- Header --}}
                     <tr>
-                        <td style="background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%); padding: 30px 40px; text-align: center;">
-                            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">NAPTIN Staff Thrift Cooperative</h1>
+                        <td style="background: linear-gradient(135deg, {{ $secondary }} 0%, {{ $primary }} 100%); padding: 30px 40px; text-align: center;">
+                            @if ($emailLogo)
+                                <img src="{{ $emailLogo }}" alt="Logo" width="72" height="72" style="display: block; margin: 0 auto 12px; object-fit: contain; border-radius: 16px; background: rgba(255,255,255,0.15); padding: 4px;">
+                            @endif
+                            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">{{ $companyName }}</h1>
                             <p style="color: #bfdbfe; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Membership Welcome</p>
                         </td>
                     </tr>
@@ -75,7 +85,7 @@
                             <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0 10px;">
                                 <tr>
                                     <td align="center">
-                                        <a href="{{ route('login') }}" style="background-color: #1d4ed8; color: #ffffff; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">Login to Portal</a>
+                                        <a href="{{ route('login') }}" style="background-color: {{ $primary }}; color: #ffffff; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">Login to Portal</a>
                                     </td>
                                 </tr>
                             </table>
@@ -86,7 +96,7 @@
                     <tr>
                         <td style="background-color: #f9fafb; padding: 20px 40px; border-top: 1px solid #e5e7eb; text-align: center;">
                             <p style="color: #9ca3af; font-size: 11px; margin: 0;">
-                                NAPTIN Staff Thrift Cooperative Society &middot; This is an automated message.
+                                {{ $companyName }} &middot; This is an automated message.
                             </p>
                         </td>
                     </tr>

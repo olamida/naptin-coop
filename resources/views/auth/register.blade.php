@@ -2,9 +2,14 @@
     <div class="min-h-screen bg-[#0F172A] py-12 px-4">
         <div class="max-w-lg mx-auto">
             <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-white rounded-[16px] flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <span class="material-symbols-outlined text-[#0F172A] text-3xl">person_add</span>
-                </div>
+                @php $branding = app(\App\Services\BrandingService::class); @endphp
+                @if ($brandingLogo = $branding->getLogo('header'))
+                    <img src="{{ $brandingLogo }}" alt="Logo" class="w-16 h-16 object-contain mx-auto mb-4 shadow-lg rounded-[16px] bg-white p-1">
+                @else
+                    <div class="w-16 h-16 bg-white rounded-[16px] flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <span class="material-symbols-outlined text-[#0F172A] text-3xl">person_add</span>
+                    </div>
+                @endif
                 <h1 class="text-2xl font-bold text-white">Member Registration</h1>
                 <p class="text-slate-400 text-sm mt-2">Join NAPTIN Staff Thrift Cooperative Society</p>
             </div>

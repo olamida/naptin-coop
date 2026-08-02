@@ -31,7 +31,7 @@ class SessionController extends Controller
             $user->update(['active_session_token' => $token]);
             session(['active_session_token' => $token]);
 
-            ActivityLog::log('login', $user->name . ' logged in successfully');
+            ActivityLog::log('login', $user->name.' logged in successfully');
 
             if ($user->member_id) {
                 return redirect()->intended(route('portal.dashboard'));
@@ -40,7 +40,7 @@ class SessionController extends Controller
             return redirect()->intended(route('dashboard'));
         }
 
-        ActivityLog::log('login_failed', 'Failed login attempt for: ' . $request->email);
+        ActivityLog::log('login_failed', 'Failed login attempt for: '.$request->email);
 
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
@@ -52,7 +52,7 @@ class SessionController extends Controller
         $user = Auth::user();
 
         if ($user) {
-            ActivityLog::log('logout', $user->name . ' logged out');
+            ActivityLog::log('logout', $user->name.' logged out');
             $user->update(['active_session_token' => null]);
         }
 

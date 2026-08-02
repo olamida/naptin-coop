@@ -212,7 +212,18 @@
                                 </td>
                                 <td class="px-5 py-3.5 text-sm font-semibold text-[#0F172A]">₦{{ number_format($product->unit_price, 2) }}</td>
                                 @if ($isAdmin)
-                                    <td class="px-5 py-3.5 text-sm {{ $product->stock_quantity <= 0 ? 'text-red-600 font-semibold' : 'text-slate-700' }}">{{ $product->stock_quantity }}</td>
+                                    <td class="px-5 py-3.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-semibold {{ $product->stock_quantity <= 0 ? 'text-red-600' : 'text-slate-700' }}">{{ $product->stock_quantity }}</span>
+                                            @if (Auth::user()->can('manage-products'))
+                                                <form method="POST" action="{{ route('products.adjust-stock', $product) }}" class="flex items-center gap-1">
+                                                    @csrf
+                                                    <input type="number" name="adjustment" value="0" step="1" class="w-16 px-1.5 py-0.5 text-xs border border-slate-200 rounded-md focus:ring-blue-500 focus:border-blue-500" title="Enter quantity to add (+) or remove (-)">
+                                                    <button type="submit" class="px-2 py-0.5 text-[10px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md" title="Adjust stock">Adjust</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </td>
                                     <td class="px-5 py-3.5">
                                         <span class="px-2 py-0.5 text-[10px] font-medium rounded-full {{ $product->enabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' }}">
                                             {{ $product->enabled ? 'Active' : 'Disabled' }}
