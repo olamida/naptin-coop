@@ -1,10 +1,20 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.2
+> **Version:** 3.3
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
 > **Member Login:** `member@naptin.coop` / `password`
+
+---
+
+## Changelog
+
+| Version | Change |
+|---------|--------|
+| 3.3 | Added admin-managed **Branding** module: 6 uploadable assets (favicon, hero_savings, hero_unity, hero_fintech, logo_primary, icon_round) with GD-generated size variants, PWA favicon sync, and brand-aware login/register/home/about/portal/receipts/welcome-email rendering. |
+| 3.2 | Finance & Compliance: period close, P&L / balance sheet / cash flow, loan loss provisioning, control reconciliation, tamper-evident ledger audit trail. |
+| 3.1 | Payroll arrears, onboarding bulk import, society-expense purchasing, dynamic member search, Termii SMS notifications, domain `Actions` layer. |
 
 ---
 
@@ -20,6 +30,7 @@
 8. [Member Self-Service Portal](#8-member-self-service-portal)
 9. [Data Import & Export](#9-data-import--export)
 10. [Notifications](#10-notifications)
+11. [Changelog](#changelog)
 
 ---
 
@@ -48,12 +59,13 @@ naptin-coop/
 │   │   ├── SavingsExport.php
 │   │   └── SharesExport.php
 │   │
-│   ├── Http/Controllers/               # 23 controllers
+│   ├── Http/Controllers/               # 40 controllers (key ones shown)
 │   │   ├── Auth/
 │   │   │   ├── SessionController.php           # Login / Logout
 │   │   │   ├── PasswordResetLinkController.php # Forgot password email
 │   │   │   └── NewPasswordController.php       # Reset password with token
 │   │   ├── AdminController.php         # Users CRUD, stock management, backup, statistics
+│   │   ├── BrandingAssetController.php # Upload/regenerate/remove the 6 branding assets
 │   │   ├── CartController.php          # Session-based shopping cart (admin side)
 │   │   ├── DashboardController.php     # Dashboard stats + charts + trends
 │   │   ├── DataImportController.php    # Central import hub
@@ -96,12 +108,16 @@ naptin-coop/
 │   │   ├── PurchaseImport.php
 │   │   └── SavingsImport.php
 │   │
-│   ├── Models/                         # 26 Eloquent models
+│   ├── Models/                         # 34 Eloquent models
 │   │   ├── ActivityLog.php
+│   │   ├── BrandingAsset.php
+│   │   ├── BroadcastMessage.php
+│   │   ├── Cart.php
 │   │   ├── ChartOfAccount.php
 │   │   ├── Company.php
 │   │   ├── Dividend.php
 │   │   ├── DividendDistribution.php
+│   │   ├── ImportLog.php
 │   │   ├── JournalEntry.php            # hash-chained, immutable when posted
 │   │   ├── JournalEntryLine.php
 │   │   ├── Loan.php
@@ -115,6 +131,7 @@ naptin-coop/
 │   │   ├── MemberPosition.php
 │   │   ├── MonthlyPayroll.php
 │   │   ├── NextOfKin.php
+│   │   ├── PayrollArrear.php
 │   │   ├── PayrollDeduction.php
 │   │   ├── PeriodClose.php
 │   │   ├── Position.php
@@ -141,6 +158,7 @@ naptin-coop/
 │   │   └── ViewServiceProvider.php      # View Composers for layout data (regions, notifications)
 │   │
 │   └── Services/                       # Business logic layer (fat models → thin)
+│       ├── BrandingService.php         # Branding assets, GD size variants, cache, favicon/PWA sync
 │       ├── CartService.php             # Cart resolution, checkout processing, order numbers
 │       ├── LedgerService.php           # Double-entry posting, hash-chained immutability, reversal, reconciliation
 │       ├── LoanService.php             # Interest calculation, loan number generation, product validation
@@ -150,12 +168,14 @@ naptin-coop/
 ├── database/
 │   ├── migrations/                     # 44 migration files
 │   └── seeders/
+│       ├── BrandingAssetSeeder.php     # Seeds the 6 branding assets from resources/branding/seed
 │       ├── DatabaseSeeder.php          # Main seeder: regions, positions, roles, admin, 5 members, loan products, products
 │       ├── PermissionsSeeder.php        # 35 permissions across 12 groups, 7 roles
 │       └── DemoDataSeeder.php          # Demo loans, savings, payroll data
 │
 ├── resources/views/                    # 90+ Blade templates
 │   ├── admin/
+│   │   ├── branding/                           # index, preview (manage the 6 branding assets)
 │   │   ├── data-import/index.blade.php       # Central import hub view
 │   │   ├── loan-products/                    # index, create, edit
 │   │   ├── manage.blade.php                  # Admin dashboard (12 tiles, permission-gated)
@@ -212,7 +232,7 @@ naptin-coop/
 | Excel | Maatwebsite Excel | 3.x |
 | Auth | Laravel Breeze (session) | — |
 | Alpine.js | Via CDN | 3.x |
-| Services | Service Layer | 3 classes |
+| Services | Service Layer | 6 classes |
 
 ### Sidebar Navigation
 
@@ -239,6 +259,7 @@ naptin-coop/
 │ ADMINISTRATION          │  (if can manage-users)
 │ Management              │
 │   → Company Settings    │
+│   → Branding            │
 │   → User Management     │
 │   → Roles & Permissions │
 │   → Regional Centers    │
@@ -662,6 +683,38 @@ Reopen → reason required → is_closed = false, reopened_at/by, reopen_reason
 
 ---
 
+### Module J: Branding & Appearance
+
+**Purpose:** Admin-managed visual identity — browser favicon, hero banners, primary logo, and round sidebar icon. All assets are stored on the public disk under `branding/{key}/` with auto-generated size variants in `branding/{key}/variants` (GD-based, created at upload/seed time). Lookups are cached for 1 hour and flushed on every change.
+
+| Route | Method | Action |
+|-------|--------|--------|
+| `/admin/branding` | GET | Branding manager — 6 asset cards with upload / regenerate / remove |
+| `/admin/branding/preview` | GET | Live preview of heroes, logos (light/dark/PDF/PWA) and theme colours |
+| `/admin/branding/{key}/upload` | POST | Upload a new image (validates jpeg/png/jpg/gif/webp, max 10 MB) |
+| `/admin/branding/{key}/regenerate` | POST | Rebuild size variants from the stored original |
+| `/admin/branding/{key}` | DELETE | Remove the asset, its variants and cache entries |
+
+**The 6 Branding Assets:**
+
+| Key | Label | Used Where |
+|-----|-------|-----------|
+| `favicon` | Favicon | Browser tab, PWA home-screen icon, Apple touch icon |
+| `hero_savings` | Savings Hero | Member login + member dashboard balance card |
+| `hero_unity` | Unity Hero | Public homepage + about page |
+| `hero_fintech` | Fintech Hero | Admin login |
+| `logo_primary` | Primary Logo | Public header, receipts, welcome email, login card |
+| `icon_round` | Round Icon | Admin + member sidebars |
+
+**Variant Generation & PWA Sync:**
+- Heroes → cover-cropped WebP at 1920×720 / 1280×480 / 640×360.
+- Logos / icons / favicon → square PNG fit at 128 / 256 / 512 (favicon: 16 / 32 / 48 / 180 / 192 / 512).
+- The favicon variant set is auto-synced into `public/` (`favicon.ico`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) so the static PWA `manifest.json` and service worker stay in sync with no code changes.
+
+**Artisan helpers:** `php artisan branding:seed` re-imports the assets from `resources/branding/seed`; `php artisan branding:generate` rebuilds all variants from the stored originals.
+
+---
+
 ## 4. Workflows & Processes
 
 ### 4.1 Member Registration
@@ -904,6 +957,8 @@ LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
 | Manage Loan Products | Management → Loan Products |
 | Stock Management | Management → Stock Management → adjust quantities |
 | Company Settings | Management → Company Settings → logo, info, thrift config |
+| Manage Branding | Management → Branding → upload favicon, heroes, logo, round icon |
+| Preview Branding | Management → Branding → "Preview" → live hero/logo/theme colour preview |
 | Data Import | Management → Data Import & Upload → central hub |
 | Database Backup | Management → Database Backup → download SQL dump |
 | View Statistics | Management → Statistics → login stats, errors, charts |
@@ -959,7 +1014,7 @@ LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
 
 All receipts:
 - Open in a new browser tab
-- Use company logo from settings (56px, white background, `object-fit: contain`)
+- Use the branding primary logo (56px, white background, `object-fit: contain`), falling back to the company logo from settings
 - Dynamic company name and footer note from `Company::instance()`
 - Include member details (name, staff ID, region, phone)
 - Include NAPTIN watermark
@@ -1119,6 +1174,7 @@ When a member is created with an email address, a `WelcomeEmail` is sent contain
 | Admin (Roles) | 5 | `/admin/roles` |
 | Admin (Regions) | 5 | `/admin/regions` |
 | Admin (Settings) | 2 | `/admin/settings` |
+| Admin (Branding) | 5 | `/admin/branding` |
 | Admin (Stock) | 2 | `/admin/stock` |
 | Admin (Data Import) | 1 | `/admin/data-import` |
 | Admin (Backup) | 1 | `/admin/backup` |
