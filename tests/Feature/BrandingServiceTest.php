@@ -190,6 +190,13 @@ class BrandingServiceTest extends TestCase
         }
     }
 
+    public function test_login_page_renders_with_branding(): void
+    {
+        Storage::fake('public');
+
+        $this->get(route('login'))->assertOk();
+    }
+
     public function test_admin_can_upload_asset_via_endpoint(): void
     {
         Storage::fake('public');

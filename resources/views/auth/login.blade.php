@@ -1,3 +1,10 @@
+@php
+    $company = \App\Models\Company::instance();
+    $branding = app(\App\Services\BrandingService::class);
+    $heroA = $branding->getHero('login_admin');
+    $heroB = $branding->getHero('login_member') ?? $heroA;
+    $loginLogo = $branding->getLogo('header');
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,14 +37,6 @@
         <span>Server connection lost. Please check your local server.</span>
         <button @click="window.location.reload()" class="ml-2 underline hover:no-underline font-semibold">Retry</button>
     </div>
-
-    @php
-        $company = \App\Models\Company::instance();
-        $branding = app(\App\Services\BrandingService::class);
-        $heroA = $branding->getHero('login_admin');
-        $heroB = $branding->getHero('login_member') ?? $heroA;
-        $loginLogo = $branding->getLogo('header');
-    @endphp
 
     <div class="min-h-screen flex flex-col lg:flex-row" :class="serverDown ? 'pt-10' : ''" style="transition: padding-top 0.3s ease;">
         {{-- Hero Panel --}}

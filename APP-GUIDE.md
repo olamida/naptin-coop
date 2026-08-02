@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.3
+> **Version:** 3.3.1
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.3.1 | Fixed login page HTTP 500 (`Undefined variable $branding`): moved the branding/company setup block to the top of `auth/login.blade.php` so `<head>` meta/favicon resolve correctly; added a regression test for the login page. |
 | 3.3 | Added admin-managed **Branding** module: 6 uploadable assets (favicon, hero_savings, hero_unity, hero_fintech, logo_primary, icon_round) with GD-generated size variants, PWA favicon sync, and brand-aware login/register/home/about/portal/receipts/welcome-email rendering. |
 | 3.2 | Finance & Compliance: period close, P&L / balance sheet / cash flow, loan loss provisioning, control reconciliation, tamper-evident ledger audit trail. |
 | 3.1 | Payroll arrears, onboarding bulk import, society-expense purchasing, dynamic member search, Termii SMS notifications, domain `Actions` layer. |
