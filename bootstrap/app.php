@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnforceSingleSession;
 use App\Http\Middleware\MemberGuard;
+use App\Http\Middleware\ModuleEnabled;
 use App\Http\Middleware\MustChangePassword;
 use App\Http\Middleware\PortalMember;
 use App\Http\Middleware\RequireTwoFactor;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'enforce-single-session' => EnforceSingleSession::class,
             'must-change-password' => MustChangePassword::class,
             'two-factor' => RequireTwoFactor::class,
+            'module.enabled' => ModuleEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

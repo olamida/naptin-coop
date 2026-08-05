@@ -12,7 +12,7 @@
                 @csrf
                 <div x-data="{ preview: null }" class="text-center">
                     <div x-show="preview" class="mb-3">
-                        <img :src="preview" class="w-32 h-32 rounded-[16px] object-cover mx-auto border-2 border-slate-200">
+                        <img :src="preview" class="w-32 h-32 rounded-[16px] object-contain mx-auto border-2 border-slate-200 bg-slate-50">
                     </div>
                     <div x-show="!preview" class="w-32 h-32 rounded-[16px] bg-slate-100 flex items-center justify-center mx-auto mb-3 border-2 border-dashed border-slate-300">
                         <span class="material-symbols-outlined text-slate-400 text-3xl">image</span>

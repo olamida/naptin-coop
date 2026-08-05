@@ -17,7 +17,7 @@
     $source = $endpoint ?: $members;
 @endphp
 
-<div x-data="memberFormSearch(@json($source), { minChars: {{ (int) $minChars }}, initialSelectedId: '{{ $selectedId }}' })" x-init="init()">
+<div x-data="memberFormSearch({{ Js::from($source) }}, { minChars: {{ (int) $minChars }}, initialSelectedId: '{{ $selectedId }}' })" x-init="init()">
     <div class="relative">
         <input type="text" x-model="search" @input="filterMembers()" @click="showDropdown = true" @click.away="showDropdown = false"
                placeholder="{{ $placeholder }}"

@@ -133,7 +133,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('loans/{loan}/topup', [LoanController::class, 'topup'])->name('loans.topup');
         Route::post('loans/{loan}/topup', [LoanController::class, 'storeTopup'])->name('loans.topup.store');
 
-        Route::prefix('shares')->name('shares.')->group(function () {
+        Route::prefix('shares')->name('shares.')->middleware('module.enabled:shares')->group(function () {
             Route::get('/', [ShareController::class, 'index'])->name('index');
             Route::get('/accounts', [ShareController::class, 'accounts'])->name('accounts');
             Route::get('/purchase', [ShareController::class, 'purchase'])->name('purchase');
@@ -199,7 +199,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::post('/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('adjust-stock');
         });
 
-        Route::prefix('dividends')->name('dividends.')->group(function () {
+        Route::prefix('dividends')->name('dividends.')->middleware('module.enabled:dividends')->group(function () {
             Route::get('/', [DividendController::class, 'index'])->name('index');
             Route::get('/create', [DividendController::class, 'create'])->name('create');
             Route::post('/', [DividendController::class, 'store'])->name('store');
@@ -322,7 +322,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('/loans/apply', [MemberPortalController::class, 'loanApplyForm'])->name('loan-apply');
         Route::post('/loans/apply', [MemberPortalController::class, 'submitLoanApplication'])->name('loan-apply.store');
         Route::get('/loans/{loan}', [MemberPortalController::class, 'loanDetail'])->name('loan-detail');
-        Route::get('/shares', [MemberPortalController::class, 'shares'])->name('shares');
+        Route::get('/shares', [MemberPortalController::class, 'shares'])->middleware('module.enabled:shares')->name('shares');
         Route::get('/purchases', [MemberPortalController::class, 'purchases'])->name('purchases');
         Route::get('/products', [MemberPortalController::class, 'orderProducts'])->name('products');
         Route::get('/cart', [MemberPortalController::class, 'cart'])->name('cart');

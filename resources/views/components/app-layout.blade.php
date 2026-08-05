@@ -87,21 +87,24 @@
 
             <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
                 @php
+                    $company = \App\Models\Company::instance();
                     $navItems = [
                         ['route' => 'dashboard', 'icon' => 'dashboard', 'label' => 'Dashboard', 'permission' => 'view-dashboard'],
                         ['route' => 'members.index', 'icon' => 'group', 'label' => 'Members', 'permission' => 'view-members'],
+                    ];
+                    $accountItems = [
                         ['route' => 'savings.index', 'icon' => 'savings', 'label' => 'Savings', 'permission' => 'view-savings'],
                         ['route' => 'loans.index', 'icon' => 'account_balance', 'label' => 'Loans', 'permission' => 'view-loans'],
-                        ['route' => 'shares.index', 'icon' => 'trending_up', 'label' => 'Shares', 'permission' => 'view-shares'],
                         ['route' => 'purchases.index', 'icon' => 'shopping_cart', 'label' => 'Purchases', 'permission' => 'view-products'],
-                        ['route' => 'dividends.index', 'icon' => 'diversity_3', 'label' => 'Dividends', 'permission' => 'view-dividends'],
+                        ['route' => 'shares.index', 'icon' => 'trending_up', 'label' => 'Shares', 'permission' => 'view-shares', 'module' => 'shares'],
+                        ['route' => 'dividends.index', 'icon' => 'diversity_3', 'label' => 'Dividends', 'permission' => 'view-dividends', 'module' => 'dividends'],
                         ['route' => 'payroll.index', 'icon' => 'payments', 'label' => 'Payroll', 'permission' => 'view-payroll'],
                     ];
-                    $accountingItems = [
-                        ['route' => 'reports.index', 'icon' => 'description', 'label' => 'Reports', 'permission' => 'view-reports'],
-                        ['route' => 'ledger.accounts', 'icon' => 'account_balance_wallet', 'label' => 'Ledger', 'permission' => 'manage-users'],
+                    $financeItems = [
                         ['route' => 'finance.index', 'icon' => 'pie_chart', 'label' => 'Finance', 'permission' => 'manage-users'],
+                        ['route' => 'ledger.accounts', 'icon' => 'account_balance_wallet', 'label' => 'Ledger', 'permission' => 'manage-users'],
                     ];
+                    $accountsActive = request()->routeIs(['savings.*', 'loans.*', 'purchases.*', 'shares.*', 'dividends.*', 'payroll.*']);
                 @endphp
 
                 @foreach ($navItems as $item)
@@ -117,10 +120,45 @@
                     @endcan
                 @endforeach
 
-                @if (Auth::user()->can('view-reports') || Auth::user()->can('manage-users'))
+                @if (Auth::user()->hasAnyPermission(collect($accountItems)->pluck('permission')->all()))
+                    <div x-data="{ accountsOpen: @json($accountsActive) }" class="space-y-0.5">
+                        <button type="button" @click="accountsOpen = !accountsOpen"
+                                class="sidebar-link flex items-center gap-3 w-full px-3 py-2 rounded-[10px] text-sm {{ $accountsActive ? 'text-white' : 'text-slate-300' }}">
+                            <span class="material-symbols-outlined text-[19px]">account_balance</span>
+                            <span class="flex-1 text-left">Accounts</span>
+                            <span class="material-symbols-outlined text-[16px] transition-transform" :class="accountsOpen ? 'rotate-180' : ''">expand_more</span>
+                        </button>
+                        <div x-show="accountsOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                            @foreach ($accountItems as $item)
+                                @if (empty($item['module']) || $company->moduleEnabled($item['module']))
+                                    @can($item['permission'])
+                                        <a href="{{ route($item['route']) }}"
+                                           class="sidebar-link flex items-center gap-3 pl-10 pr-3 py-2 rounded-[10px] text-sm {{ request()->routeIs($item['route'] . '.*') ? 'active text-white font-medium' : 'text-slate-300' }}">
+                                            <span class="material-symbols-outlined text-[19px]">{{ $item['icon'] }}</span>
+                                            {{ $item['label'] }}
+                                        </a>
+                                    @endcan
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                @if (Auth::user()->can('view-reports'))
                     <div class="pt-3 mt-3 border-t border-white/10">
-                        <p class="px-3 py-1 text-[10px] text-slate-500 uppercase tracking-wider">Reporting &amp; Accounting</p>
-                        @foreach ($accountingItems as $item)
+                        <p class="px-3 py-1 text-[10px] text-slate-500 uppercase tracking-wider">Reporting</p>
+                        <a href="{{ route('reports.index') }}"
+                           class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-[10px] text-sm {{ request()->routeIs('reports.*') ? 'active text-white font-medium' : 'text-slate-300' }}">
+                            <span class="material-symbols-outlined text-[19px]">description</span>
+                            Reports
+                        </a>
+                    </div>
+                @endif
+
+                @if (Auth::user()->can('manage-users'))
+                    <div class="pt-3 mt-3 border-t border-white/10">
+                        <p class="px-3 py-1 text-[10px] text-slate-500 uppercase tracking-wider">Finance &amp; Accounting</p>
+                        @foreach ($financeItems as $item)
                             @can($item['permission'])
                                 <a href="{{ route($item['route']) }}"
                                    class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-[10px] text-sm {{ request()->routeIs($item['route'] . '.*') ? 'active text-white font-medium' : 'text-slate-300' }}">
@@ -332,7 +370,6 @@
         </div>
     </div>
 
-    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=8"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

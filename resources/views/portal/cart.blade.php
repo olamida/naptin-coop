@@ -117,10 +117,10 @@
                             }
                             this.total = this.items.reduce((sum, i) => sum + i.subtotal, 0);
                             document.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: data.cart_count } }));
-                            document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Cart updated.', type: 'success' } }));
+                            window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Cart updated.', type: 'success' } }));
                         }
                     } catch (e) {
-                        document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Failed to update cart.', type: 'error' } }));
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Failed to update cart.', type: 'error' } }));
                     }
                 },
 
@@ -141,10 +141,10 @@
                             this.items = this.items.filter(i => i.product.id !== productId);
                             this.total = this.items.reduce((sum, i) => sum + i.subtotal, 0);
                             document.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: data.cart_count } }));
-                            document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Item removed.', type: 'success' } }));
+                            window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Item removed.', type: 'success' } }));
                         }
                     } catch (e) {
-                        document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Failed to remove item.', type: 'error' } }));
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Failed to remove item.', type: 'error' } }));
                     }
                 },
 
@@ -166,10 +166,10 @@
                             this.items = [];
                             this.total = 0;
                             document.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: 0 } }));
-                            document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Cart cleared.', type: 'success' } }));
+                            window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Cart cleared.', type: 'success' } }));
                         }
                     } catch (e) {
-                        document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Failed to clear cart.', type: 'error' } }));
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Failed to clear cart.', type: 'error' } }));
                     }
                 },
             }

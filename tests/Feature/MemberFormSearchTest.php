@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Models\Member;
 use App\Models\Region;
 use App\Models\SavingsAccount;
+use App\Models\SavingsTransaction;
 use App\Models\ShareAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -112,5 +114,51 @@ class MemberFormSearchTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonCount(0);
+    }
+
+    public function test_combobox_static_renders_safe_x_data_attribute(): void
+    {
+        $member = $this->makeMember('Jane', 'Doe', 'STAFF-99');
+
+        $html = Blade::render('<x-member-combobox :members="$members" />', [
+            'members' => collect([
+                ['id' => $member->id, 'first_name' => 'Jane', 'last_name' => 'Doe', 'staff_id' => 'STAFF-99', 'staff_id_display' => 'STAFF-99'],
+            ]),
+        ]);
+
+        $this->assertStringContainsString('JSON.parse(', $html);
+        $this->assertStringNotContainsString('x-data="memberFormSearch([{', $html);
+    }
+
+    public function test_combobox_endpoint_renders_safe_x_data_attribute(): void
+    {
+        $html = Blade::render('<x-member-combobox :endpoint="route(\'members.search.form\')" />');
+
+        $this->assertStringContainsString('x-data="memberFormSearch(\'http', $html);
+        $this->assertStringNotContainsString('x-data="memberFormSearch("', $html);
+    }
+
+    public function test_member_show_page_renders_safe_ledger_attribute(): void
+    {
+        $member = $this->makeMember('Jane', 'Doe', 'STAFF-99');
+
+        SavingsTransaction::create([
+            'savings_account_id' => $member->savingsAccount->id,
+            'reference' => 'SAV/DEP/00000001',
+            'type' => 'deposit',
+            'amount' => 1000,
+            'balance_before' => 2500,
+            'balance_after' => 3500,
+            'status' => 'completed',
+            'transaction_date' => now(),
+        ]);
+
+        $response = $this
+            ->withSession(['active_session_token' => $this->adminUser()->active_session_token])
+            ->actingAs($this->adminUser())
+            ->get('/members/'.$member->id);
+
+        $response->assertOk();
+        $this->assertStringNotContainsString('x-data="ledgerCanvas([{', $response->getContent());
     }
 }

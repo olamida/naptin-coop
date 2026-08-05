@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.4.0
+> **Version:** 3.5.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.5 | **Module toggles, sidebar slim-down, login + JS hardening:** new **Settings → Modules** tab to enable/disable **Shares** and **Dividends** modules (hides sidebar entries, gates routes via `module.enabled` middleware, redirects direct access); **compact sidebar** rework — Savings/Loans/Shares/Purchases/Dividends/Payroll folded into a collapsible **Accounts** dropdown, standalone **Reporting** section (Reports), and new **Finance & Accounting** group (Finance + Ledger); **login page simplified** to a single static brand panel (removed rotating hero carousel); **combobox `x-data` fix** (`@json` → `Js::from`) so member-search widgets work on every form; **image-fit policy** enforced (product previews `object-contain`, avatars/banners `object-cover`); **TALL cleanup** — removed duplicate legacy `alpine-components.js` that overrode `window.memberFormSearch`, added the missing member-portal toast component, and standardized AJAX event dispatch (`cart-updated` on document, `toast` on window). |
 | 3.4 | UI/UX & architecture overhaul (8 parts): one reusable member-search combobox everywhere; post-login page bottom spacing; branding-background card text visibility fix; redesigned animated login slides; **Company + Branding settings merged** (branding manager lives in the Branding tab of Company Settings, standalone `/admin/branding` index removed); **fully dynamic cart** (DB-backed cart with AJAX update/remove/clear, live totals, DB-derived nav badge for admin & member); **compact sidebar** with a *Reporting & Accounting* group (Reports / Ledger / Finance) and an *Administration > Settings* link; removed unrelated `WORKRIDE-APP-GUIDE-V2.md` dev guide. |
 | 3.3.1 | Fixed login page HTTP 500 (`Undefined variable $branding`): moved the branding/company setup block to the top of `auth/login.blade.php` so `<head>` meta/favicon resolve correctly; added a regression test for the login page. |
 | 3.3 | Added admin-managed **Branding** module: 6 uploadable assets (favicon, hero_savings, hero_unity, hero_fintech, logo_primary, icon_round) with GD-generated size variants, PWA favicon sync, and brand-aware login/register/home/about/portal/receipts/welcome-email rendering. |
@@ -88,7 +89,7 @@ naptin-coop/
 │   │   ├── ReportController.php        # Printable member status reports
 │   │   ├── RoleController.php          # Roles & permissions CRUD
 │   │   ├── SavingsController.php       # Deposit + withdraw + approval workflow + import/export
-│   │   ├── SettingsController.php      # Company settings (branding, contact, content, financial)
+│   │   ├── SettingsController.php      # Company settings (branding, contact, content, financial, modules)
 │   │   └── ShareController.php         # Share purchase + accounts + export
 │   │
 │   ├── Http/Requests/                  # 9 Form Request validation classes
@@ -183,7 +184,7 @@ naptin-coop/
 │   │   ├── manage.blade.php                  # Admin dashboard (12 tiles, permission-gated)
 │   │   ├── regions/                          # index, create, edit
 │   │   ├── roles/                            # index, create, edit
-│   │   ├── settings/edit.blade.php           # Company settings (tabbed: Branding Assets, Branding, Contact, Content, Financial)
+│   │   ├── settings/edit.blade.php           # Company settings (tabbed: Branding Assets, Branding, Contact, Content, Financial, Modules)
 │   │   ├── statistics.blade.php              # Login stats, errors, charts
 │   │   ├── stock.blade.php                   # Stock management
 │   │   └── users/                            # index, create, edit
@@ -246,17 +247,20 @@ naptin-coop/
 ├─────────────────────────┤
 │ Dashboard               │
 │ Members                 │
-│ Savings                 │
-│ Loans                   │
-│ Shares                  │
-│ Purchases               │
-│ Dividends               │
-│ Payroll                 │
+│ ▸ Accounts              │  (collapsible dropdown)
+│    Savings              │
+│    Loans                │
+│    Purchases            │
+│    Shares               │  (hidden if module disabled)
+│    Dividends            │  (hidden if module disabled)
+│    Payroll              │
 ├─────────────────────────┤
-│ REPORTING & ACCOUNTING  │
-│ Reports                 │  (if can view-reports)
-│ Ledger                  │  (if can manage-users)
-│ Finance                 │  (if can manage-users)
+│ REPORTING               │  (if can view-reports)
+│ Reports                 │
+├─────────────────────────┤
+│ FINANCE & ACCOUNTING    │  (if can manage-users)
+│ Finance                 │
+│ Ledger                  │
 ├─────────────────────────┤
 │ ADMINISTRATION          │  (if can manage-users)
 │ Settings                │  → Company Settings hub (branding, users,
@@ -269,6 +273,8 @@ naptin-coop/
 ```
 
 All sidebar items are permission-gated using `@can` directives. The sidebar is dynamic — items appear/disappear based on the logged-in user's role. The sidebar uses the slate dark theme (`bg-[#0F172A]`) with white text icons and `rounded-[10px]` active/hover states. Admin sub-modules are consolidated behind a single **Settings** link that opens the Company Settings / Management hub (`/admin/manage`), whose tiles are permission-gated.
+
+**Module gating:** Shares and Dividends sidebar entries (admin **Accounts** dropdown + member portal "My Shares") are hidden whenever their module is disabled in Settings → Modules. The `module.enabled` middleware (`app/Http/Middleware/ModuleEnabled.php`) blocks direct access to those routes and redirects to the dashboard with an error flash.
 
 ---
 
@@ -338,7 +344,7 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 | Table | Purpose |
 |-------|---------|
 | `users` | System user accounts (with profile_photo_path, member_id, last_login_at) |
-| `companies` | Singleton company settings (name, logo_path, banner_path, theme_color, secondary_color, description, short_history, social links, thrift_amount, footer_note, etc.) |
+| `companies` | Singleton company settings (name, logo_path, banner_path, theme_color, secondary_color, description, short_history, social links, thrift_amount, footer_note, **shares_enabled**, **dividends_enabled**, etc.) |
 | `activity_logs` | Login/audit trail (user_id, event, description, ip_address, user_agent) |
 | `roles` | Spatie permission roles |
 | `permissions` | Spatie permission permissions (35 permissions) |
@@ -696,9 +702,9 @@ Reopen → reason required → is_closed = false, reopened_at/by, reopen_reason
 | Key | Label | Used Where |
 |-----|-------|-----------|
 | `favicon` | Favicon | Browser tab, PWA home-screen icon, Apple touch icon |
-| `hero_savings` | Savings Hero | Member login + member dashboard balance card |
+| `hero_savings` | Savings Hero | Member dashboard balance card |
 | `hero_unity` | Unity Hero | Public homepage + about page |
-| `hero_fintech` | Fintech Hero | Admin login |
+| `hero_fintech` | Fintech Hero | Login page brand panel (static, single hero) |
 | `logo_primary` | Primary Logo | Public header, receipts, welcome email, login card |
 | `icon_round` | Round Icon | Admin + member sidebars |
 
@@ -955,6 +961,7 @@ LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
 | Company Settings | Management → Company Settings → logo, info, thrift config |
 | Manage Branding | Management → Company Settings → Branding tab → upload favicon, heroes, logo, round icon |
 | Preview Branding | Management → Company Settings → Branding tab → "Preview" → live hero/logo/theme colour preview |
+| Toggle Modules | Management → Company Settings → Modules tab → enable/disable Shares & Dividends (hides sidebar entries, blocks direct access) |
 | Data Import | Management → Data Import & Upload → central hub |
 | Database Backup | Management → Database Backup → download SQL dump |
 | View Statistics | Management → Statistics → login stats, errors, charts |

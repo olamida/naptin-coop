@@ -22,6 +22,8 @@ class Company extends Model
         'secondary_color',
         'thrift_amount',
         'membership_fee',
+        'shares_enabled',
+        'dividends_enabled',
         'savings_interest_rate',
         'loan_interest_rate',
         'max_loan_multiplier',
@@ -37,6 +39,8 @@ class Company extends Model
     protected $casts = [
         'thrift_amount' => 'decimal:2',
         'membership_fee' => 'decimal:2',
+        'shares_enabled' => 'boolean',
+        'dividends_enabled' => 'boolean',
         'savings_interest_rate' => 'decimal:2',
         'loan_interest_rate' => 'decimal:2',
         'max_loan_multiplier' => 'integer',
@@ -49,6 +53,11 @@ class Company extends Model
         return static::firstOrCreate([], [
             'name' => 'NAPTIN Staff Thrift Cooperative',
         ]);
+    }
+
+    public function moduleEnabled(string $module): bool
+    {
+        return (bool) $this->{$module.'_enabled'};
     }
 
     public function getLogoUrlAttribute(): ?string

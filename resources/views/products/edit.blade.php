@@ -13,7 +13,7 @@
                 <div x-data="{ preview: '{{ $product->image_url }}', removed: false }" class="text-center">
                     <template x-if="preview && !removed">
                         <div class="mb-3 relative inline-block">
-                            <img :src="preview" class="w-32 h-32 rounded-[16px] object-cover border-2 border-slate-200">
+                            <img :src="preview" class="w-32 h-32 rounded-[16px] object-contain border-2 border-slate-200 bg-slate-50">
                             <button type="button" x-on:click="preview = null; removed = true; $refs.removeInput.value = '1'"
                                     class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center shadow">x</button>
                         </div>

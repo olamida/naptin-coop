@@ -259,12 +259,14 @@
                         </div>
                         <span class="text-xs font-medium text-slate-700 text-center">New Loan</span>
                     </a>
-                    <a href="{{ route('shares.purchase') }}" class="flex flex-col items-center gap-2 p-4 rounded-[16px] hover:bg-purple-50 transition group">
-                        <div class="w-10 h-10 bg-purple-100 rounded-[16px] flex items-center justify-center group-hover:bg-purple-200 transition">
-                            <span class="material-symbols-outlined text-purple-600">trending_up</span>
-                        </div>
-                        <span class="text-xs font-medium text-slate-700 text-center">Buy Shares</span>
-                    </a>
+                    @if (\App\Models\Company::instance()->moduleEnabled('shares'))
+                        <a href="{{ route('shares.purchase') }}" class="flex flex-col items-center gap-2 p-4 rounded-[16px] hover:bg-purple-50 transition group">
+                            <div class="w-10 h-10 bg-purple-100 rounded-[16px] flex items-center justify-center group-hover:bg-purple-200 transition">
+                                <span class="material-symbols-outlined text-purple-600">trending_up</span>
+                            </div>
+                            <span class="text-xs font-medium text-slate-700 text-center">Buy Shares</span>
+                        </a>
+                    @endif
                     <a href="{{ route('payroll.compile') }}" class="flex flex-col items-center gap-2 p-4 rounded-[16px] hover:bg-indigo-50 transition group">
                         <div class="w-10 h-10 bg-indigo-100 rounded-[16px] flex items-center justify-center group-hover:bg-indigo-200 transition">
                             <span class="material-symbols-outlined text-indigo-600">receipt_long</span>

@@ -88,22 +88,25 @@
 
             <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
                 @php
+                    $company = \App\Models\Company::instance();
                     $navItems = [
                         ['route' => 'portal.dashboard', 'icon' => 'dashboard', 'label' => 'Dashboard'],
                         ['route' => 'portal.savings', 'icon' => 'savings', 'label' => 'My Savings'],
                         ['route' => 'portal.loans', 'icon' => 'account_balance', 'label' => 'My Loans'],
-                        ['route' => 'portal.shares', 'icon' => 'trending_up', 'label' => 'My Shares'],
+                        ['route' => 'portal.shares', 'icon' => 'trending_up', 'label' => 'My Shares', 'module' => 'shares'],
                         ['route' => 'portal.purchases', 'icon' => 'receipt_long', 'label' => 'My Purchases'],
                         ['route' => 'portal.guarantors', 'icon' => 'group_add', 'label' => 'Guarantors'],
                     ];
                 @endphp
 
                 @foreach ($navItems as $item)
-                    <a href="{{ route($item['route']) }}"
-                       class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm {{ request()->routeIs($item['route'] . '*') ? 'active' : 'text-slate-300' }}">
-                        <span class="material-symbols-outlined text-[20px]">{{ $item['icon'] }}</span>
-                        {{ $item['label'] }}
-                    </a>
+                    @if (empty($item['module']) || $company->moduleEnabled($item['module']))
+                        <a href="{{ route($item['route']) }}"
+                           class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm {{ request()->routeIs($item['route'] . '*') ? 'active' : 'text-slate-300' }}">
+                            <span class="material-symbols-outlined text-[20px]">{{ $item['icon'] }}</span>
+                            {{ $item['label'] }}
+                        </a>
+                    @endif
                 @endforeach
             </nav>
         </aside>
@@ -302,7 +305,6 @@
         </div>
     </nav>
 
-    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=8"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -340,29 +342,23 @@
             document.addEventListener('cart-updated', function(e) {
                 updateCartBadge(e.detail.cart_count);
             });
-
-            document.addEventListener('click', function(e) {
-                const form = e.target.closest('form[data-cart]');
-                if (!form) return;
-                e.preventDefault();
-
-                fetch(form.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
-                    body: new FormData(form),
-                }).then(r => r.json()).then(data => {
-                    if (data.success) {
-                        updateCartBadge(data.cart_count);
-                        document.dispatchEvent(new CustomEvent('toast', { detail: { message: data.message, type: 'success' } }));
-                    }
-                });
-            });
         });
     </script>
+
+    {{-- Toast Notification --}}
+    <div x-data="{ show: false, message: '', type: 'success', _t: null }"
+         x-on:toast.window="message = $event.detail.message; type = $event.detail.type || 'success'; show = true; clearTimeout(_t); _t = setTimeout(() => show = false, 4000)"
+         x-show="show" x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4"
+         class="fixed bottom-6 right-6 z-50 max-w-sm">
+        <div class="flex items-center gap-3 px-4 py-3 rounded-[16px] shadow-lg text-sm font-medium"
+             :class="type === 'success' ? 'bg-emerald-600 text-white' : type === 'error' ? 'bg-red-600 text-white' : 'bg-[#0F172A] text-white'">
+            <span class="material-symbols-outlined text-lg" x-text="type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'"></span>
+            <span x-text="message"></span>
+        </div>
+    </div>
 
     @if (session('success'))
         <script>document.addEventListener('DOMContentLoaded', () => window.dispatchEvent(new CustomEvent('toast', { detail: { message: {!! json_encode(session('success')) !!}, type: 'success' } })))</script>

@@ -192,7 +192,7 @@
 
         {{-- Transactions Tab --}}
         <div x-show="tab === 'transactions'" x-cloak
-             x-data="ledgerCanvas(@json($ledger))"
+             x-data="ledgerCanvas({{ Js::from($ledger) }})"
              class="bg-white rounded-[16px] border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
                 <h3 class="text-sm font-semibold text-[#0F172A]">Unified Ledger</h3>

@@ -190,16 +190,18 @@
                 @endif
             </a>
 
-            <a href="{{ route('portal.shares') }}" class="stat-card bg-white rounded-[16px] shadow-sm border border-slate-200 p-5">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-10 h-10 rounded-[16px] bg-blue-100 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-blue-600 text-xl">trending_up</span>
+            @if (\App\Models\Company::instance()->moduleEnabled('shares'))
+                <a href="{{ route('portal.shares') }}" class="stat-card bg-white rounded-[16px] shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-[16px] bg-blue-100 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-blue-600 text-xl">trending_up</span>
+                        </div>
+                        <p class="text-xs text-slate-500 font-medium">Share Value</p>
                     </div>
-                    <p class="text-xs text-slate-500 font-medium">Share Value</p>
-                </div>
-                <p class="text-2xl font-bold text-[#0F172A]">₦{{ number_format($totalShares, 2) }}</p>
-                <p class="text-[10px] text-slate-400 mt-1">{{ number_format($shareCount) }} share(s)</p>
-            </a>
+                    <p class="text-2xl font-bold text-[#0F172A]">₦{{ number_format($totalShares, 2) }}</p>
+                    <p class="text-[10px] text-slate-400 mt-1">{{ number_format($shareCount) }} share(s)</p>
+                </a>
+            @endif
 
             <a href="{{ route('portal.loans') }}" class="stat-card bg-white rounded-[16px] shadow-sm border border-slate-200 p-5">
                 <div class="flex items-center gap-3 mb-3">

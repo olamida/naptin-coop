@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\GuarantorStatus;
 use App\Models\ActivityLog;
+use App\Models\Company;
 use App\Models\Dividend;
 use App\Models\Loan;
 use App\Models\LoanGuarantor;
@@ -249,10 +250,10 @@ class DashboardController extends Controller
             if ($user->can('create-loans')) {
                 $addAction('New Loan Application', route('loans.create'), 'request_quote');
             }
-            if ($user->can('view-shares')) {
+            if ($user->can('view-shares') && Company::instance()->moduleEnabled('shares')) {
                 $addAction('Shares', route('shares.index'), 'trending_up');
             }
-            if ($user->can('purchase-shares')) {
+            if ($user->can('purchase-shares') && Company::instance()->moduleEnabled('shares')) {
                 $addAction('Purchase Shares', route('shares.purchase'), 'add_card');
             }
             if ($user->can('view-purchase-orders')) {
@@ -267,7 +268,7 @@ class DashboardController extends Controller
             if ($user->can('view-payroll') && $user->can('compile-payroll')) {
                 $addAction('Compile Payroll', route('payroll.compile'), 'fact_check');
             }
-            if ($user->can('view-dividends')) {
+            if ($user->can('view-dividends') && Company::instance()->moduleEnabled('dividends')) {
                 $addAction('Dividends', route('dividends.index'), 'diversity_3');
             }
             if ($user->can('view-reports')) {

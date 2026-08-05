@@ -29,6 +29,10 @@
                         <span class="material-symbols-outlined text-lg">payments</span>
                         Financial
                     </button>
+                    <button @click="tab = 'modules'" :class="tab === 'modules' ? 'border-b-2 border-[#0F172A] text-[#0F172A]' : 'text-slate-500 hover:text-slate-700'" class="px-5 py-3.5 text-sm font-medium whitespace-nowrap transition flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">toggle_on</span>
+                        Modules
+                    </button>
                 </nav>
             </div>
 
@@ -476,6 +480,44 @@
                                     <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₦</span>
                                 </div>
                                 <p class="text-xs text-slate-400 mt-1">Portal deposits with evidence up to this limit are approved automatically</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- TAB: Modules --}}
+                <div x-show="tab === 'modules'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+                    <div class="bg-slate-50 rounded-[16px] p-5 border border-slate-200">
+                        <h4 class="text-sm font-semibold text-[#0F172A] mb-1">Module Toggles</h4>
+                        <p class="text-xs text-slate-500 mb-5">Disable a module to hide it from the sidebar and block access to its pages. Existing data is never deleted.</p>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-[16px] p-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-slate-500">trending_up</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-[#0F172A]">Shares</p>
+                                        <p class="text-xs text-slate-500 mt-0.5">Share accounts, purchases, certificates and the member portal "My Shares" page.</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                    <input type="checkbox" name="shares_enabled" value="1" class="sr-only peer"
+                                           {{ $company->shares_enabled ? 'checked' : '' }}>
+                                    <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer transition peer-checked:bg-[#0F172A] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-slate-300 after:rounded-full after:h-5 after:w-5 after:transition peer-checked:after:translate-x-full"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-[16px] p-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-slate-500">diversity_3</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-[#0F172A]">Dividends</p>
+                                        <p class="text-xs text-slate-500 mt-0.5">Annual dividend declaration, calculation, approval and distribution.</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                    <input type="checkbox" name="dividends_enabled" value="1" class="sr-only peer"
+                                           {{ $company->dividends_enabled ? 'checked' : '' }}>
+                                    <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer transition peer-checked:bg-[#0F172A] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-slate-300 after:rounded-full after:h-5 after:w-5 after:transition peer-checked:after:translate-x-full"></div>
+                                </label>
                             </div>
                         </div>
                     </div>

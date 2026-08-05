@@ -61,9 +61,16 @@ class SettingsController extends Controller
             'loan_interest_rate' => 'required|numeric|min:0|max:100',
             'max_loan_multiplier' => 'required|integer|min:1|max:20',
             'auto_approve_deposit_limit' => 'nullable|numeric|min:0',
+
+            // Modules
+            'shares_enabled' => 'sometimes|boolean',
+            'dividends_enabled' => 'sometimes|boolean',
         ]);
 
         $data = collect($validated)->except(['logo', 'banner'])->toArray();
+
+        $data['shares_enabled'] = $request->boolean('shares_enabled');
+        $data['dividends_enabled'] = $request->boolean('dividends_enabled');
 
         $data['theme_color'] = $request->filled('theme_color') ? $request->theme_color : '#2563eb';
         $data['secondary_color'] = $request->filled('secondary_color') ? $request->secondary_color : '#059669';

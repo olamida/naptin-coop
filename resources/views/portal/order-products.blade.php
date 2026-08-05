@@ -82,7 +82,7 @@
                                     }).then(r => r.json()).then(data => {
                                         loading = false;
                                         added = true;
-                                        window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: data.cart_count } }));
+                                        document.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: data.cart_count } }));
                                         window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Added to cart!', type: 'success' } }));
                                         setTimeout(() => added = false, 2000);
                                     });

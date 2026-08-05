@@ -122,7 +122,7 @@
                                             loading = false;
                                             added = true;
                                             document.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: data.cart_count } }));
-                                            document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Added to cart.', type: 'success' } }));
+                                            window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Added to cart.', type: 'success' } }));
                                         });
                                     ">
                                         @csrf
@@ -251,7 +251,7 @@
                                                         loading = false;
                                                         added = true;
                                                         document.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: data.cart_count } }));
-                                                        document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Added to cart.', type: 'success' } }));
+                                                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Added to cart.', type: 'success' } }));
                                                     });
                                                 ">
                                                     @csrf
