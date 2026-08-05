@@ -65,17 +65,17 @@
         {{-- Sidebar --}}
         <aside class="w-64 bg-[#0F172A] bg-linear-to-b from-[#0F172A] to-[#1a2332] text-white flex flex-col shadow-xl fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 lg:relative lg:translate-x-0"
                :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
-            <div class="p-5 border-b border-white/10">
+            <div class="p-4 border-b border-white/10">
                 <div class="flex items-center gap-3">
                     @if ($brandingLogo = $branding->getLogo('sidebar'))
                         <img src="{{ $brandingLogo }}" alt="{{ $company->name }}"
-                             class="w-10 h-10 rounded-[16px] object-contain shadow-lg" style="background: rgba(255,255,255,0.1); padding: 2px;">
+                             class="w-9 h-9 rounded-[14px] object-contain shadow-lg" style="background: rgba(255,255,255,0.1); padding: 2px;">
                     @elseif ($company->logo_path && $company->logo_url)
                         <img src="{{ $company->logo_url }}" alt="{{ $company->name }}"
-                             class="w-10 h-10 rounded-[16px] object-contain shadow-lg" style="background: rgba(255,255,255,0.1); padding: 2px;">
+                             class="w-9 h-9 rounded-[14px] object-contain shadow-lg" style="background: rgba(255,255,255,0.1); padding: 2px;">
                     @else
-                        <div class="w-10 h-10 bg-[#0F172A] rounded-[16px] flex items-center justify-center shadow-lg">
-                            <span class="material-symbols-outlined text-white text-xl">account_balance</span>
+                        <div class="w-9 h-9 bg-[#0F172A] rounded-[14px] flex items-center justify-center shadow-lg">
+                            <span class="material-symbols-outlined text-white text-lg">account_balance</span>
                         </div>
                     @endif
                     <div>
@@ -92,12 +92,14 @@
                         ['route' => 'members.index', 'icon' => 'group', 'label' => 'Members', 'permission' => 'view-members'],
                         ['route' => 'savings.index', 'icon' => 'savings', 'label' => 'Savings', 'permission' => 'view-savings'],
                         ['route' => 'loans.index', 'icon' => 'account_balance', 'label' => 'Loans', 'permission' => 'view-loans'],
+                        ['route' => 'shares.index', 'icon' => 'trending_up', 'label' => 'Shares', 'permission' => 'view-shares'],
                         ['route' => 'purchases.index', 'icon' => 'shopping_cart', 'label' => 'Purchases', 'permission' => 'view-products'],
                         ['route' => 'dividends.index', 'icon' => 'diversity_3', 'label' => 'Dividends', 'permission' => 'view-dividends'],
-                        ['route' => 'shares.index', 'icon' => 'trending_up', 'label' => 'Shares', 'permission' => 'view-shares'],
                         ['route' => 'payroll.index', 'icon' => 'payments', 'label' => 'Payroll', 'permission' => 'view-payroll'],
+                    ];
+                    $accountingItems = [
                         ['route' => 'reports.index', 'icon' => 'description', 'label' => 'Reports', 'permission' => 'view-reports'],
-                        ['route' => 'ledger.accounts', 'icon' => 'account_balance', 'label' => 'Ledger', 'permission' => 'manage-users'],
+                        ['route' => 'ledger.accounts', 'icon' => 'account_balance_wallet', 'label' => 'Ledger', 'permission' => 'manage-users'],
                         ['route' => 'finance.index', 'icon' => 'pie_chart', 'label' => 'Finance', 'permission' => 'manage-users'],
                     ];
                 @endphp
@@ -105,8 +107,8 @@
                 @foreach ($navItems as $item)
                     @can($item['permission'])
                         <a href="{{ route($item['route']) }}"
-                           class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm {{ request()->routeIs($item['route'] . '.*') ? 'active text-white font-medium' : 'text-slate-300' }}">
-                            <span class="material-symbols-outlined text-[20px]">{{ $item['icon'] }}</span>
+                           class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-[10px] text-sm {{ request()->routeIs($item['route'] . '.*') ? 'active text-white font-medium' : 'text-slate-300' }}">
+                            <span class="material-symbols-outlined text-[19px]">{{ $item['icon'] }}</span>
                             {{ $item['label'] }}
                             @if (!empty($item['badge']) && $unreadCount > 0)
                                 <span class="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
@@ -115,12 +117,38 @@
                     @endcan
                 @endforeach
 
+                @if (Auth::user()->can('view-reports') || Auth::user()->can('manage-users'))
+                    <div class="pt-3 mt-3 border-t border-white/10">
+                        <p class="px-3 py-1 text-[10px] text-slate-500 uppercase tracking-wider">Reporting &amp; Accounting</p>
+                        @foreach ($accountingItems as $item)
+                            @can($item['permission'])
+                                <a href="{{ route($item['route']) }}"
+                                   class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-[10px] text-sm {{ request()->routeIs($item['route'] . '.*') ? 'active text-white font-medium' : 'text-slate-300' }}">
+                                    <span class="material-symbols-outlined text-[19px]">{{ $item['icon'] }}</span>
+                                    {{ $item['label'] }}
+                                </a>
+                            @endcan
+                        @endforeach
+                    </div>
+                @endif
+
+                @if (Auth::user()->can('manage-users'))
+                    <div class="pt-3 mt-3 border-t border-white/10">
+                        <p class="px-3 py-1 text-[10px] text-slate-500 uppercase tracking-wider">Administration</p>
+                        <a href="{{ route('admin.manage') }}"
+                           class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-[10px] text-sm {{ request()->routeIs('admin.manage') ? 'active text-white font-medium' : 'text-slate-300' }}">
+                            <span class="material-symbols-outlined text-[19px]">settings</span>
+                            Settings
+                        </a>
+                    </div>
+                @endif
+
                 @if (Auth::user()->member_id)
                     <div class="pt-3 mt-3 border-t border-white/10">
                         <p class="px-3 py-1 text-[10px] text-slate-500 uppercase tracking-wider">Member Portal</p>
                         <a href="{{ route('portal.dashboard') }}"
-                           class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm text-slate-300">
-                            <span class="material-symbols-outlined text-[20px]">person</span>
+                           class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-[10px] text-sm text-slate-300">
+                            <span class="material-symbols-outlined text-[19px]">person</span>
                             My Account
                         </a>
                     </div>
@@ -128,7 +156,7 @@
 
 
             </nav>
-            <div class="p-4 border-t border-white/10">
+            <div class="p-3 border-t border-white/10">
                 <p class="text-[10px] text-slate-500 uppercase tracking-wider">{{ now()->format('D, M d, Y') }}</p>
             </div>
         </aside>
@@ -283,7 +311,7 @@
             </header>
 
             {{-- Page Content --}}
-            <main class="flex-1 overflow-auto p-4 lg:p-6">
+            <main class="flex-1 overflow-auto p-4 lg:p-6 pb-20 lg:pb-10">
                 @if (session('success'))
                     <div class="fade-in mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-[10px] text-sm flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg">check_circle</span>
@@ -304,7 +332,7 @@
         </div>
     </div>
 
-    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=7"></script>
+    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=8"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

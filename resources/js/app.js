@@ -53,6 +53,7 @@ window.memberFormSearch = (data, options = {}) => {
     const staticMembers = endpoint ? [] : (data || []);
     const minChars = options.minChars || 1;
     const debounceMs = options.debounce || 300;
+    const initialSelectedId = options.initialSelectedId ? String(options.initialSelectedId) : '';
 
     return {
         search: '',
@@ -64,9 +65,19 @@ window.memberFormSearch = (data, options = {}) => {
         loading: false,
         _endpoint: endpoint,
         _timer: null,
+        _initial: initialSelectedId,
 
         init() {
             this.filteredMembers = this.members;
+            if (this._initial && !this._endpoint) {
+                const m = this.members.find(x => String(x.id) === this._initial);
+                if (m) {
+                    this.selectedId = m.id;
+                    this.selectedName = m.first_name + ' ' + m.last_name;
+                    this.search = m.first_name + ' ' + m.last_name;
+                    this.$nextTick(() => this.$el.dispatchEvent(new CustomEvent('member-selected', { bubbles: true, detail: { member: m } })));
+                }
+            }
         },
         filterMembers() {
             if (this._endpoint) {
@@ -115,9 +126,19 @@ window.memberFormSearch = (data, options = {}) => {
             this.selectedName = m.first_name + ' ' + m.last_name;
             this.search = m.first_name + ' ' + m.last_name + (m.staff_id_display ? ' (' + m.staff_id_display + ')' : '');
             this.showDropdown = false;
+            this.$el.dispatchEvent(new CustomEvent('member-selected', { bubbles: true, detail: { member: m } }));
+        },
+        clearSelected() {
+            this.selectedId = '';
+            this.selectedName = '';
+            this.search = '';
+            this.showDropdown = false;
+            this.$el.dispatchEvent(new CustomEvent('member-cleared', { bubbles: true }));
         }
     };
 };
+
+window.memberSearch = (data, options = {}) => window.memberFormSearch(data, options);
 
 window.commandPalette = (options = {}) => ({
     open: false,

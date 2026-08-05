@@ -32,9 +32,8 @@
                     <a href="{{ route('cart.index') }}" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5 relative">
                         <span class="material-symbols-outlined text-lg">shopping_cart</span>
                         Cart
-                        @php $cartCount = count(session('cart', [])); @endphp
                         @if ($cartCount > 0)
-                            <span class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">{{ $cartCount }}</span>
+                            <span id="cart-badge" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">{{ $cartCount }}</span>
                         @endif
                     </a>
                 @endif
@@ -119,9 +118,11 @@
                                                 'Content-Type': 'application/x-www-form-urlencoded',
                                             },
                                             body: new URLSearchParams(new FormData($el))
-                                        }).then(() => {
+                                        }).then(r => r.json()).then(data => {
                                             loading = false;
                                             added = true;
+                                            document.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: data.cart_count } }));
+                                            document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Added to cart.', type: 'success' } }));
                                         });
                                     ">
                                         @csrf
@@ -246,9 +247,11 @@
                                                             'Content-Type': 'application/x-www-form-urlencoded',
                                                         },
                                                         body: new URLSearchParams(new FormData($el))
-                                                    }).then(() => {
+                                                    }).then(r => r.json()).then(data => {
                                                         loading = false;
                                                         added = true;
+                                                        document.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart_count: data.cart_count } }));
+                                                        document.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Added to cart.', type: 'success' } }));
                                                     });
                                                 ">
                                                     @csrf

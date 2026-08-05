@@ -1,11 +1,6 @@
 <x-public-layout title="Home">
-    @php $brandingHero = app(\App\Services\BrandingService::class)->getHero('homepage'); @endphp
     {{-- Hero Section --}}
-    <section class="relative text-white {{ $brandingHero ? '' : 'hero-gradient' }}">
-        @if ($brandingHero)
-            <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('{{ $brandingHero }}');"></div>
-            <div class="absolute inset-0 bg-gradient-to-br from-[#0F172A]/95 via-[#0F172A]/70 to-[#2563eb]/30"></div>
-        @endif
+    <section class="relative text-white hero-gradient">
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
             <div class="max-w-2xl">
                 <h1 class="text-4xl lg:text-5xl font-extrabold leading-tight mb-6">

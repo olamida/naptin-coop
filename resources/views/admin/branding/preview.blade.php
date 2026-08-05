@@ -11,17 +11,17 @@
     @endphp
 
     <div class="space-y-6">
-        <x-breadcrumb :items="[['label' => 'Management', 'url' => route('admin.manage')], ['label' => 'Branding', 'url' => route('admin.branding.index')], ['label' => 'Preview']]" />
+        <x-breadcrumb :items="[['label' => 'Management', 'url' => route('admin.manage')], ['label' => 'Company Settings', 'url' => route('admin.settings.edit')], ['label' => 'Brand Preview']]" />
 
         <div class="flex items-center justify-between flex-wrap gap-3">
             <div>
                 <h2 class="text-2xl font-bold text-[#0F172A]">Brand Preview</h2>
                 <p class="text-xs text-slate-500 mt-1">A live preview of how the uploaded assets appear across the app.</p>
             </div>
-            <a href="{{ route('admin.branding.index') }}"
+            <a href="{{ route('admin.settings.edit') }}"
                class="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2.5 rounded-[10px] text-sm font-medium transition">
                 <span class="material-symbols-outlined text-lg">arrow_back</span>
-                Back to Branding
+                Back to Settings
             </a>
         </div>
 
@@ -40,7 +40,7 @@
                         </div>
                         <div class="p-3 flex items-center justify-between">
                             <p class="text-xs font-medium text-[#0F172A]">{{ $context }}</p>
-                            <a href="{{ route('admin.branding.index') }}" class="text-[11px] text-blue-600 hover:text-blue-800">Change</a>
+                            <a href="{{ route('admin.settings.edit') }}" class="text-[11px] text-blue-600 hover:text-blue-800">Change</a>
                         </div>
                     </div>
                 @endforeach

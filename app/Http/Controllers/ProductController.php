@@ -39,7 +39,9 @@ class ProductController extends Controller
         $memberId = $request->input('member_id');
         $orderMember = $memberId ? Member::find($memberId) : null;
 
-        return view('products.index', ['products' => $products, 'isAdmin' => $isAdmin, 'memberId' => $memberId, 'orderMember' => $orderMember]);
+        $cartCount = (new CartService('admin', auth()->id()))->counts()['cart_count'];
+
+        return view('products.index', ['products' => $products, 'isAdmin' => $isAdmin, 'memberId' => $memberId, 'orderMember' => $orderMember, 'cartCount' => $cartCount]);
     }
 
     public function create(): View

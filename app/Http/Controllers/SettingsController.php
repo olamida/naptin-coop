@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BrandingAsset;
 use App\Models\Company;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,9 @@ class SettingsController extends Controller
     {
         $company = Company::instance();
 
-        return view('admin.settings.edit', compact('company'));
+        $assets = BrandingAsset::query()->orderBy('key')->get()->keyBy('key');
+
+        return view('admin.settings.edit', compact('company', 'assets'));
     }
 
     public function update(Request $request): RedirectResponse

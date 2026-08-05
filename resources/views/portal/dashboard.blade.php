@@ -13,12 +13,8 @@
         </div>
 
         {{-- Big Balance Card --}}
-        @php $savingsHero = app(\App\Services\BrandingService::class)->getHero('savings'); @endphp
         <div x-data="{ showBalance: true }" class="relative overflow-hidden rounded-[20px] p-6 text-white"
              style="background: linear-gradient(135deg, #0F172A 0%, #1e3a5f 55%, #10B981 130%);">
-            @if ($savingsHero)
-                <div class="absolute inset-0 bg-cover bg-center opacity-20 mix-blend-overlay" style="background-image: url('{{ $savingsHero }}');"></div>
-            @endif
             <div class="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-white/5"></div>
             <div class="absolute top-24 right-24 w-24 h-24 rounded-full bg-white/5"></div>
             <div class="relative">

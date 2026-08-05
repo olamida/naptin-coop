@@ -22,6 +22,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .hero-fade { transition: opacity 1s ease-in-out; }
+        @keyframes kenburns { 0% { transform: scale(1) translate(0, 0); } 100% { transform: scale(1.08) translate(-1%, -1%); } }
+        .kenburns { animation: kenburns 9s ease-in-out forwards; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen"
@@ -42,8 +44,8 @@
         {{-- Hero Panel --}}
         <div class="hidden lg:block lg:w-1/2 relative overflow-hidden">
             <div class="absolute inset-0">
-                <div class="absolute inset-0 bg-cover bg-center hero-fade" :class="hero === 0 ? 'opacity-100' : 'opacity-0'" style="background-image: url('{{ $heroA }}');"></div>
-                <div class="absolute inset-0 bg-cover bg-center hero-fade" :class="hero === 1 ? 'opacity-100' : 'opacity-0'" style="background-image: url('{{ $heroB }}');"></div>
+                <div class="absolute inset-0 bg-cover bg-center hero-fade" :class="hero === 0 ? 'opacity-100 kenburns' : 'opacity-0'" style="background-image: url('{{ $heroA }}');"></div>
+                <div class="absolute inset-0 bg-cover bg-center hero-fade" :class="hero === 1 ? 'opacity-100 kenburns' : 'opacity-0'" style="background-image: url('{{ $heroB }}');"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-[#0F172A]/95 via-[#0F172A]/75 to-[#2563eb]/40"></div>
             </div>
             <div class="relative h-full flex flex-col justify-between p-12 text-white">
@@ -61,32 +63,55 @@
                     </div>
                 </div>
 
-                <div>
-                    <h1 class="text-3xl xl:text-4xl font-extrabold leading-tight mb-4">
-                        Building financial independence together.
-                    </h1>
-                    <p class="text-slate-200 text-sm leading-relaxed max-w-md mb-8">
-                        Save consistently, access affordable loans, earn share dividends, and shop at cooperative prices.
-                    </p>
-                    <div class="flex flex-wrap gap-3 text-xs text-slate-300">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10">
-                            <span class="material-symbols-outlined text-[16px]">savings</span> Savings
-                        </span>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10">
-                            <span class="material-symbols-outlined text-[16px]">account_balance</span> Loans
-                        </span>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10">
-                            <span class="material-symbols-outlined text-[16px]">trending_up</span> Dividends
-                        </span>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10">
-                            <span class="material-symbols-outlined text-[16px]">storefront</span> Shop
-                        </span>
+                <div class="relative min-h-[15rem]">
+                    {{-- Slide 1: Staff & Admin --}}
+                    <div class="hero-fade absolute inset-0" :class="hero === 0 ? 'opacity-100' : 'opacity-0'">
+                        <p class="inline-flex items-center gap-2 text-[11px] font-semibold tracking-widest uppercase text-blue-200 bg-white/10 px-3 py-1 rounded-full mb-4">
+                            <span class="material-symbols-outlined text-[14px]">admin_panel_settings</span>
+                            Staff &amp; Admin Portal
+                        </p>
+                        <h1 class="text-3xl xl:text-4xl font-extrabold leading-tight mb-4">Manage the cooperative with clarity.</h1>
+                        <p class="text-slate-200 text-sm leading-relaxed max-w-md">Members, savings, loans, payroll and dividends — one secure dashboard built for NAPTIN staff.</p>
+                    </div>
+                    {{-- Slide 2: Member --}}
+                    <div class="hero-fade absolute inset-0" :class="hero === 1 ? 'opacity-100' : 'opacity-0'">
+                        <p class="inline-flex items-center gap-2 text-[11px] font-semibold tracking-widest uppercase text-emerald-200 bg-white/10 px-3 py-1 rounded-full mb-4">
+                            <span class="material-symbols-outlined text-[14px]">person</span>
+                            Member Self-Service
+                        </p>
+                        <h1 class="text-3xl xl:text-4xl font-extrabold leading-tight mb-4">Your savings, your loans, your shop.</h1>
+                        <p class="text-slate-200 text-sm leading-relaxed max-w-md">Track savings, apply for loans, respond to guarantor requests and order products from your member portal.</p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-white/60" :class="hero === 0 ? 'bg-white' : ''"></span>
-                    <span class="w-1.5 h-1.5 rounded-full bg-white/60" :class="hero === 1 ? 'bg-white' : ''"></span>
+                <div class="flex flex-wrap gap-3 text-xs text-slate-300 mt-6">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10">
+                        <span class="material-symbols-outlined text-[16px]">savings</span> Savings
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10">
+                        <span class="material-symbols-outlined text-[16px]">account_balance</span> Loans
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10">
+                        <span class="material-symbols-outlined text-[16px]">trending_up</span> Dividends
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10">
+                        <span class="material-symbols-outlined text-[16px]">storefront</span> Shop
+                    </span>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <button @click="hero = 0" class="w-2 h-2 rounded-full bg-white/60 transition-all" :class="hero === 0 ? 'bg-white scale-125' : ''" aria-label="Show staff slide"></button>
+                        <button @click="hero = 1" class="w-2 h-2 rounded-full bg-white/60 transition-all" :class="hero === 1 ? 'bg-white scale-125' : ''" aria-label="Show member slide"></button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button @click="hero = hero === 0 ? 1 : 0" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition" aria-label="Previous slide">
+                            <span class="material-symbols-outlined text-lg">chevron_left</span>
+                        </button>
+                        <button @click="hero = hero === 0 ? 1 : 0" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition" aria-label="Next slide">
+                            <span class="material-symbols-outlined text-lg">chevron_right</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

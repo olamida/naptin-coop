@@ -249,7 +249,7 @@
                 </div>
             </header>
 
-            <main class="flex-1 overflow-auto p-4 lg:p-6 pb-24 lg:pb-6">
+            <main class="flex-1 overflow-auto p-4 lg:p-6 pb-24 lg:pb-10">
 
     @if (session('success'))
                     <div class="fade-in mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-[10px] text-sm flex items-center gap-2">
@@ -302,7 +302,7 @@
         </div>
     </nav>
 
-    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=7"></script>
+    <script src="{{ asset('vendor/js/alpine-components.js') }}?v=8"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

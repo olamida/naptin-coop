@@ -234,7 +234,6 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
             Route::prefix('branding')->name('branding.')->group(function () {
-                Route::get('/', [BrandingAssetController::class, 'index'])->name('index');
                 Route::get('/preview', [BrandingAssetController::class, 'preview'])->name('preview');
                 Route::post('/{key}/upload', [BrandingAssetController::class, 'upload'])->name('upload');
                 Route::post('/{key}/regenerate', [BrandingAssetController::class, 'regenerate'])->name('regenerate');

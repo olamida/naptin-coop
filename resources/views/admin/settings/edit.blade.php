@@ -198,6 +198,117 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- Branding Assets --}}
+                    <div class="mt-6">
+                        @php $branding = app(\App\Services\BrandingService::class); @endphp
+                        <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+                            <div>
+                                <h4 class="text-sm font-semibold text-[#0F172A]">Branding Assets</h4>
+                                <p class="text-xs text-slate-500 mt-0.5">Favicon, heroes, logo and round icon used across the site — uploads are resized and cached automatically.</p>
+                            </div>
+                            <a href="{{ route('admin.branding.preview') }}"
+                               class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800">
+                                <span class="material-symbols-outlined text-sm">visibility</span>
+                                Preview Brand
+                            </a>
+                        </div>
+
+                        @php
+                            $brandingMeta = \App\Services\BrandingService::META;
+                            $thumb = function (string $key) use ($branding): ?string {
+                                return match ($key) {
+                                    'favicon' => $branding->get('favicon', 'favicon-180x180.png'),
+                                    'logo_primary' => $branding->get('logo_primary', 'logo-128x128.png'),
+                                    'icon_round' => $branding->get('icon_round', 'icon-128x128.png'),
+                                    default => $branding->get($key, 'hero-640.webp') ?? $branding->get($key),
+                                };
+                            };
+                            $isHero = fn (string $key) => str_starts_with($key, 'hero_');
+                        @endphp
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            @foreach ($brandingMeta as $key => $info)
+                                @php $asset = $assets->get($key); @endphp
+                                <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 overflow-hidden"
+                                     x-data="brandingAsset('{{ $key }}', '{{ route('admin.branding.upload', $key) }}', '{{ route('admin.branding.regenerate', $key) }}', '{{ route('admin.branding.destroy', $key) }}')">
+                                    <div class="{{ $isHero($key) ? 'h-32 bg-slate-800' : 'h-32 bg-slate-50' }} flex items-center justify-center p-3 border-b border-slate-100">
+                                        @if ($thumb($key))
+                                            <img src="{{ $thumb($key) }}" alt="{{ $info['label'] }}"
+                                                 class="{{ $isHero($key) ? 'w-full h-full object-cover rounded-[8px]' : 'max-h-20 max-w-20 object-contain' }}">
+                                        @else
+                                            <div class="flex flex-col items-center text-slate-300">
+                                                <span class="material-symbols-outlined text-3xl">image_not_supported</span>
+                                                <p class="text-[11px] mt-1">Not set</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="p-4">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div>
+                                                <h3 class="text-sm font-semibold text-[#0F172A]">{{ $info['label'] }}</h3>
+                                                <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">{{ $info['description'] }}</p>
+                                            </div>
+                                            @if ($asset)
+                                                <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>SET
+                                                </span>
+                                            @else
+                                                <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-semibold">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>EMPTY
+                                                </span>
+                                            @endif
+                                        </div>
+                                        @if ($info['recommended_size'])
+                                            <p class="mt-2 text-[10px] text-slate-400">Recommended: {{ $info['recommended_size'] }}</p>
+                                        @endif
+                                        <div class="mt-3 flex items-center gap-2">
+                                            <label class="flex-1 cursor-pointer">
+                                                <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="sr-only"
+                                                       x-ref="file" @change="onFileChange($event)">
+                                                <span class="flex items-center gap-2 w-full border border-slate-300 rounded-[10px] px-3 py-1.5 text-[11px] text-slate-500 hover:border-slate-400 transition">
+                                                    <span class="material-symbols-outlined text-[14px]">upload_file</span>
+                                                    <span class="truncate" x-text="fileName ? fileName : '{{ $asset->file_path ?? 'Choose an image…' }}'">{{ $asset->file_path ?? 'Choose an image…' }}</span>
+                                                </span>
+                                            </label>
+                                            <button type="button" @click="upload()" :disabled="busy || !fileName"
+                                                    class="shrink-0 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3.5 py-1.5 rounded-[10px] text-[11px] font-medium transition">
+                                                Upload
+                                            </button>
+                                        </div>
+                                        @if ($asset)
+                                            <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                                <p class="text-[10px] text-slate-400 truncate">
+                                                    {{ $asset->file_type ?? 'image' }}
+                                                    @if ($asset->uploader)
+                                                        &middot; by {{ $asset->uploader->name }}
+                                                    @endif
+                                                </p>
+                                                <div class="flex items-center gap-1">
+                                                    <button type="button" @click="regenerate()" :disabled="busy" title="Regenerate size variants"
+                                                            class="p-1.5 rounded-[8px] text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition">
+                                                        <span class="material-symbols-outlined text-[18px]">refresh</span>
+                                                    </button>
+                                                    <button type="button" @click="remove()" :disabled="busy" title="Remove asset"
+                                                            class="p-1.5 rounded-[8px] text-slate-400 hover:text-red-600 hover:bg-red-50 transition">
+                                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 rounded-[16px] p-3 mt-4 flex items-start gap-2">
+                            <span class="material-symbols-outlined text-slate-500 text-base mt-0.5">info</span>
+                            <p class="text-[11px] text-slate-600 leading-relaxed">
+                                Missing assets fall back to default placeholders. Uploading a favicon also refreshes the PWA home-screen icons and browser favicon.
+                                Use <code class="bg-white px-1 rounded">php artisan branding:seed</code> to (re)seed from <code class="bg-white px-1 rounded">resources/branding/seed</code>.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- TAB: Contact & Social --}}
@@ -438,6 +549,82 @@
                 clearFile() {
                     this.preview = null;
                     this.hasFile = false;
+                }
+            }
+        }
+
+        function brandingAsset(key, uploadUrl, regenerateUrl, removeUrl) {
+            return {
+                fileName: '',
+                busy: false,
+                _file: null,
+                onFileChange(event) {
+                    const file = event.target.files[0];
+                    if (file && file.size > 10 * 1024 * 1024) {
+                        alert('File is too large. Maximum size is 10MB.');
+                        this.fileName = '';
+                        this._file = null;
+                        event.target.value = '';
+                        return;
+                    }
+                    this._file = file;
+                    this.fileName = file ? file.name : '';
+                },
+                _token() {
+                    const input = document.querySelector('input[name="_token"]');
+                    return input ? input.value : (document.querySelector('meta[name="csrf-token"]') || {}).content;
+                },
+                async upload() {
+                    if (this.busy || !this._file) return;
+                    const fd = new FormData();
+                    fd.append('_token', this._token());
+                    fd.append('asset', this._file);
+                    this.busy = true;
+                    try {
+                        const res = await fetch(uploadUrl, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                        if (res.ok) {
+                            window.location.reload();
+                        } else {
+                            const data = await res.json().catch(() => ({}));
+                            alert(data.message || 'Upload failed. Check the file type and size.');
+                        }
+                    } finally {
+                        this.busy = false;
+                    }
+                },
+                async regenerate() {
+                    if (this.busy) return;
+                    const fd = new FormData();
+                    fd.append('_token', this._token());
+                    this.busy = true;
+                    try {
+                        const res = await fetch(regenerateUrl, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                        if (res.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Regeneration failed. Upload an asset first.');
+                        }
+                    } finally {
+                        this.busy = false;
+                    }
+                },
+                async remove() {
+                    if (this.busy) return;
+                    if (!confirm('Remove this branding asset? All pages will fall back to the default placeholder.')) return;
+                    const fd = new FormData();
+                    fd.append('_token', this._token());
+                    fd.append('_method', 'DELETE');
+                    this.busy = true;
+                    try {
+                        const res = await fetch(removeUrl, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                        if (res.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Removal failed.');
+                        }
+                    } finally {
+                        this.busy = false;
+                    }
                 }
             }
         }

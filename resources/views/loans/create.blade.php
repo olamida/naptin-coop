@@ -1,5 +1,7 @@
 <x-app-layout title="New Loan Application">
-    <div class="max-w-2xl mx-auto space-y-6" x-data="loanWizard()">
+    <div class="max-w-2xl mx-auto space-y-6" x-data="loanWizard()"
+         @member-selected="selectEligibleMember($event.detail.member)"
+         @member-cleared="selectedMemberData = null">
         <x-breadcrumb :items="[['label' => 'Loans', 'url' => route('loans.index')], ['label' => 'New Loan']]" />
         <div class="flex items-center gap-3">
             <a href="{{ route('loans.index') }}" class="text-slate-500 hover:text-slate-700">&larr;</a>
@@ -55,26 +57,7 @@
                 @endphp
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Member *</label>
-                    <div x-data="memberSearch({{ $membersJson->toJson() }})" x-init="init()">
-                        <div class="relative">
-                            <input type="text" x-model="search" @input="filterMembers(); parent.selectedMemberData = null" @click="showDropdown = true" @click.away="showDropdown = false"
-                                placeholder="Type to search members..." class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-[#0F172A] outline-none">
-                            <input type="hidden" name="member_id" :value="selectedId">
-                            <div x-show="showDropdown && filteredMembers.length > 0" x-transition
-                                class="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-[10px] shadow-lg max-h-60 overflow-y-auto">
-                                <template x-for="m in filteredMembers" :key="m.id">
-                                    <div @click="selectMember(m); parent.selectEligibleMember(m)" class="px-3 py-2.5 cursor-pointer hover:bg-slate-50 text-sm border-b border-slate-50 last:border-0 flex items-center justify-between"
-                                        :class="selectedId == m.id ? 'bg-slate-50 font-medium' : ''">
-                                        <div>
-                                            <span x-text="m.first_name + ' ' + m.last_name" class="font-medium text-slate-800"></span>
-                                            <span class="text-xs text-slate-400 ml-1" x-text="'(' + m.staff_id_display + ')'"></span>
-                                        </div>
-                                        <span class="text-[10px] font-mono text-emerald-600" x-text="'₦' + Number(m.savings_balance).toLocaleString()"></span>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
+                    <x-member-combobox :members="$membersJson" :selected-id="old('member_id')" />
                 </div>
 
                 {{-- Eligibility Info --}}
@@ -478,40 +461,6 @@
                     if (this.amountRaw > 0) this.calculateRepayment();
                     if (this.selectedProduct) this.$nextTick(() => this.onProductChange());
                     this.updateSchedule();
-                }
-            };
-        }
-
-        function memberSearch(data) {
-            return {
-                search: '',
-                showDropdown: false,
-                members: data || [],
-                filteredMembers: [],
-                selectedId: '{{ old('member_id') }}',
-                parent: null,
-                init() {
-                    this.parent = this.$el.closest('[x-data]').__x.$data;
-                    this.filteredMembers = this.members;
-                    if (this.selectedId) {
-                        const m = this.members.find(x => x.id == this.selectedId);
-                        if (m) {
-                            this.search = m.first_name + ' ' + m.last_name;
-                            this.parent.selectEligibleMember(m);
-                        }
-                    }
-                },
-                filterMembers() {
-                    const q = this.search.toLowerCase();
-                    this.filteredMembers = q ? this.members.filter(m =>
-                        (m.first_name + ' ' + m.last_name).toLowerCase().includes(q) ||
-                        (m.staff_id || '').toLowerCase().includes(q)
-                    ) : this.members;
-                },
-                selectMember(m) {
-                    this.selectedId = m.id;
-                    this.search = m.first_name + ' ' + m.last_name;
-                    this.showDropdown = false;
                 }
             };
         }

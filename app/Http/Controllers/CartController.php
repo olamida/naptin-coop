@@ -30,41 +30,73 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $this->cartService()->add($request->product_id, $request->quantity);
+        $counts = $this->cartService()->add((int) $request->product_id, (int) $request->quantity);
 
-        if ($request->ajax()) {
-            return response()->json(['success' => true, 'message' => 'Product added to cart.']);
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Product added to cart.',
+                'cart_count' => $counts['cart_count'],
+                'cart_quantity' => $counts['cart_quantity'],
+            ]);
         }
 
         return back()->with('success', 'Product added to cart.');
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request)
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:0',
         ]);
 
-        $this->cartService()->update($request->product_id, $request->quantity);
+        $counts = $this->cartService()->update((int) $request->product_id, (int) $request->quantity);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Cart updated.',
+                'cart_count' => $counts['cart_count'],
+                'cart_quantity' => $counts['cart_quantity'],
+            ]);
+        }
 
         return back()->with('success', 'Cart updated.');
     }
 
-    public function remove(Request $request): RedirectResponse
+    public function remove(Request $request)
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
         ]);
 
-        $this->cartService()->remove($request->product_id);
+        $counts = $this->cartService()->remove((int) $request->product_id);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Item removed from cart.',
+                'cart_count' => $counts['cart_count'],
+                'cart_quantity' => $counts['cart_quantity'],
+            ]);
+        }
 
         return back()->with('success', 'Item removed from cart.');
     }
 
-    public function clear(): RedirectResponse
+    public function clear(Request $request)
     {
         $this->cartService()->clear();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Cart cleared.',
+                'cart_count' => 0,
+                'cart_quantity' => 0,
+            ]);
+        }
 
         return back()->with('success', 'Cart cleared.');
     }

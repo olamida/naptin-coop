@@ -13,16 +13,6 @@ class BrandingAssetController extends Controller
 {
     public function __construct(private readonly BrandingService $branding) {}
 
-    public function index(): View
-    {
-        $assets = BrandingAsset::query()->orderBy('key')->get()->keyBy('key');
-
-        return view('admin.branding.index', [
-            'assets' => $assets,
-            'meta' => BrandingService::META,
-        ]);
-    }
-
     public function upload(Request $request, string $key): RedirectResponse
     {
         $this->assertKey($key);

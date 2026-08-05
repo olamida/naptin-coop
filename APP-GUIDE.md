@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.3.1
+> **Version:** 3.4.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.4 | UI/UX & architecture overhaul (8 parts): one reusable member-search combobox everywhere; post-login page bottom spacing; branding-background card text visibility fix; redesigned animated login slides; **Company + Branding settings merged** (branding manager lives in the Branding tab of Company Settings, standalone `/admin/branding` index removed); **fully dynamic cart** (DB-backed cart with AJAX update/remove/clear, live totals, DB-derived nav badge for admin & member); **compact sidebar** with a *Reporting & Accounting* group (Reports / Ledger / Finance) and an *Administration > Settings* link; removed unrelated `WORKRIDE-APP-GUIDE-V2.md` dev guide. |
 | 3.3.1 | Fixed login page HTTP 500 (`Undefined variable $branding`): moved the branding/company setup block to the top of `auth/login.blade.php` so `<head>` meta/favicon resolve correctly; added a regression test for the login page. |
 | 3.3 | Added admin-managed **Branding** module: 6 uploadable assets (favicon, hero_savings, hero_unity, hero_fintech, logo_primary, icon_round) with GD-generated size variants, PWA favicon sync, and brand-aware login/register/home/about/portal/receipts/welcome-email rendering. |
 | 3.2 | Finance & Compliance: period close, P&L / balance sheet / cash flow, loan loss provisioning, control reconciliation, tamper-evident ledger audit trail. |
@@ -66,8 +67,8 @@ naptin-coop/
 │   │   │   ├── PasswordResetLinkController.php # Forgot password email
 │   │   │   └── NewPasswordController.php       # Reset password with token
 │   │   ├── AdminController.php         # Users CRUD, stock management, backup, statistics
-│   │   ├── BrandingAssetController.php # Upload/regenerate/remove the 6 branding assets
-│   │   ├── CartController.php          # Session-based shopping cart (admin side)
+│   │   ├── BrandingAssetController.php # Upload/regenerate/remove/preview the 6 branding assets
+│   │   ├── CartController.php          # DB-backed shopping cart (admin side, AJAX endpoints)
 │   │   ├── DashboardController.php     # Dashboard stats + charts + trends
 │   │   ├── DataImportController.php    # Central import hub
 │   │   ├── DividendController.php      # Declare → calculate → approve → distribute
@@ -176,13 +177,13 @@ naptin-coop/
 │
 ├── resources/views/                    # 90+ Blade templates
 │   ├── admin/
-│   │   ├── branding/                           # index, preview (manage the 6 branding assets)
+│   │   ├── branding/preview.blade.php          # Live branding preview (heroes, logos, theme colours)
 │   │   ├── data-import/index.blade.php       # Central import hub view
 │   │   ├── loan-products/                    # index, create, edit
 │   │   ├── manage.blade.php                  # Admin dashboard (12 tiles, permission-gated)
 │   │   ├── regions/                          # index, create, edit
 │   │   ├── roles/                            # index, create, edit
-│   │   ├── settings/edit.blade.php           # Company settings (tabbed: Branding, Contact, Content, Financial)
+│   │   ├── settings/edit.blade.php           # Company settings (tabbed: Branding Assets, Branding, Contact, Content, Financial)
 │   │   ├── statistics.blade.php              # Login stats, errors, charts
 │   │   ├── stock.blade.php                   # Stock management
 │   │   └── users/                            # index, create, edit
@@ -192,6 +193,7 @@ naptin-coop/
 │   │   ├── app-layout.blade.php              # Admin master layout with sidebar
 │   │   ├── breadcrumb.blade.php              # Reusable breadcrumb component
 │   │   ├── empty-state.blade.php             # Empty state placeholder
+│   │   ├── member-combobox.blade.php         # Reusable dynamic member-search combobox (all forms)
 │   │   ├── portal-layout.blade.php           # Member portal layout (with notification dropdown)
 │   │   ├── stat-card.blade.php               # Reusable stat card component
 │   │   ├── status-badge.blade.php            # Color-coded status badge
@@ -250,31 +252,23 @@ naptin-coop/
 │ Purchases               │
 │ Dividends               │
 │ Payroll                 │
-│ Reports                 │
+├─────────────────────────┤
+│ REPORTING & ACCOUNTING  │
+│ Reports                 │  (if can view-reports)
 │ Ledger                  │  (if can manage-users)
 │ Finance                 │  (if can manage-users)
 ├─────────────────────────┤
-│ Member Portal           │  (if user has linked member)
-│ My Account              │
-├─────────────────────────┤
 │ ADMINISTRATION          │  (if can manage-users)
-│ Management              │
-│   → Company Settings    │
-│   → Branding            │
-│   → User Management     │
-│   → Roles & Permissions │
-│   → Regional Centers    │
-│   → Loan Products       │
-│   → Stock Management    │
-│   → Products            │
-│   → Data Import & Upload│
-│   → Reports             │
-│   → Database Backup     │
-│   → Statistics          │
+│ Settings                │  → Company Settings hub (branding, users,
+│                         │    roles, regions, loan products, stock,
+│                         │    products, imports, reports, backup, stats)
+├─────────────────────────┤
+│ MEMBER PORTAL           │  (if user has linked member)
+│ My Account              │
 └─────────────────────────┘
 ```
 
-All sidebar items are permission-gated using `@can` directives. The sidebar is dynamic — items appear/disappear based on the logged-in user's role. The sidebar uses the slate dark theme (`bg-[#0F172A]`) with white text icons and `rounded-[10px]` active/hover states.
+All sidebar items are permission-gated using `@can` directives. The sidebar is dynamic — items appear/disappear based on the logged-in user's role. The sidebar uses the slate dark theme (`bg-[#0F172A]`) with white text icons and `rounded-[10px]` active/hover states. Admin sub-modules are consolidated behind a single **Settings** link that opens the Company Settings / Management hub (`/admin/manage`), whose tiles are permission-gated.
 
 ---
 
@@ -400,7 +394,7 @@ A dedicated migration (`2026_07_26_000001_add_performance_indexes.php`) adds com
 2. Creates a Share Account (shares = 0, value = ₦0)
 3. If email provided: creates User account with `member` role, sends welcome email with temporary password
 
-**Member search on forms:** The deposit, withdrawal, share purchase and cart checkout forms use a **dynamic server-side member search** (`GET /members/search/form?q=…`). Typing 1+ characters queries active members by name, staff ID or phone and returns their current savings balance and share count — selecting a result attaches the correct `member_id` to the form. (Loans, product orders and purchase orders still use a static client-side member list.)
+**Member search on forms:** Every member-picking form uses the reusable `<x-member-combobox>` component (`resources/views/components/member-combobox.blade.php`). Forms backed by the **dynamic server-side search** endpoint (`GET /members/search/form?q=…`) query active members by name, staff ID or phone and return their current savings balance and share count — used by deposit, withdrawal, share purchase and cart checkout. Static (client-side) list forms — loans, product orders and purchase orders — feed the same component a pre-built member array. Selecting a result attaches the correct `member_id` to the form via the `member-selected` event.
 
 ---
 
@@ -527,13 +521,15 @@ The system automatically splits each repayment into principal and interest porti
 **Shopping Cart (Admin Side):**
 | Route | Method | Action |
 |-------|--------|--------|
-| `/cart` | GET | View cart |
-| `/cart/add` | POST | Add product to cart (AJAX supported) |
-| `/cart/update` | POST | Update quantity |
-| `/cart/remove` | POST | Remove item |
-| `/cart/clear` | POST | Clear cart |
+| `/cart` | GET | View cart — **fully dynamic page** (Alpine: AJAX update quantity, remove, clear, live totals) |
+| `/cart/add` | POST | Add product to cart (AJAX supported, returns JSON counts) |
+| `/cart/update` | POST | Update quantity (AJAX supported, returns JSON counts) |
+| `/cart/remove` | POST | Remove item (AJAX supported, returns JSON counts) |
+| `/cart/clear` | POST | Clear cart (AJAX supported, returns JSON counts) |
 | `/cart/checkout` | GET | Checkout form (select member, payment type) — **dynamic member search** |
 | `/cart/checkout` | POST | Process checkout (creates orders, deducts stock) |
+
+**Cart storage:** Both admin and member carts are **DB-backed** via `App\Services\CartService` (polymorphic actor: `admin`/`member`, JSON `items` on the `carts` table, 3-day TTL with lazy pruning). The nav cart badge is derived from the DB cart through `ViewServiceProvider` (not the session) and updates live via the `cart-updated` browser event.
 
 **Standalone Purchase Orders:**
 | Route | Method | Action |
@@ -686,11 +682,10 @@ Reopen → reason required → is_closed = false, reopened_at/by, reopen_reason
 
 ### Module J: Branding & Appearance
 
-**Purpose:** Admin-managed visual identity — browser favicon, hero banners, primary logo, and round sidebar icon. All assets are stored on the public disk under `branding/{key}/` with auto-generated size variants in `branding/{key}/variants` (GD-based, created at upload/seed time). Lookups are cached for 1 hour and flushed on every change.
+**Purpose:** Admin-managed visual identity — browser favicon, hero banners, primary logo, and round sidebar icon. All assets are stored on the public disk under `branding/{key}/` with auto-generated size variants in `branding/{key}/variants` (GD-based, created at upload/seed time). Lookups are cached for 1 hour and flushed on every change. **The branding manager lives in the Branding Assets tab of Company Settings** (`/admin/settings`); the standalone `/admin/branding` index page was removed and merged there. The manager (AJAX upload / regenerate / remove per asset) and the live preview are both reachable from the settings Branding tab.
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/admin/branding` | GET | Branding manager — 6 asset cards with upload / regenerate / remove |
 | `/admin/branding/preview` | GET | Live preview of heroes, logos (light/dark/PDF/PWA) and theme colours |
 | `/admin/branding/{key}/upload` | POST | Upload a new image (validates jpeg/png/jpg/gif/webp, max 10 MB) |
 | `/admin/branding/{key}/regenerate` | POST | Rebuild size variants from the stored original |
@@ -958,8 +953,8 @@ LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
 | Manage Loan Products | Management → Loan Products |
 | Stock Management | Management → Stock Management → adjust quantities |
 | Company Settings | Management → Company Settings → logo, info, thrift config |
-| Manage Branding | Management → Branding → upload favicon, heroes, logo, round icon |
-| Preview Branding | Management → Branding → "Preview" → live hero/logo/theme colour preview |
+| Manage Branding | Management → Company Settings → Branding tab → upload favicon, heroes, logo, round icon |
+| Preview Branding | Management → Company Settings → Branding tab → "Preview" → live hero/logo/theme colour preview |
 | Data Import | Management → Data Import & Upload → central hub |
 | Database Backup | Management → Database Backup → download SQL dump |
 | View Statistics | Management → Statistics → login stats, errors, charts |
@@ -1175,7 +1170,7 @@ When a member is created with an email address, a `WelcomeEmail` is sent contain
 | Admin (Roles) | 5 | `/admin/roles` |
 | Admin (Regions) | 5 | `/admin/regions` |
 | Admin (Settings) | 2 | `/admin/settings` |
-| Admin (Branding) | 5 | `/admin/branding` |
+| Admin (Branding) | 4 | `/admin/branding` |
 | Admin (Stock) | 2 | `/admin/stock` |
 | Admin (Data Import) | 1 | `/admin/data-import` |
 | Admin (Backup) | 1 | `/admin/backup` |
