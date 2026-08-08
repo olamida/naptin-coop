@@ -8,6 +8,7 @@
                 <p class="text-xs text-slate-500 mt-1">IFRS 9 / CBN classification &middot; Period {{ $report['period'] }} &middot; {{ auth()->user()->name }}</p>
             </div>
             <div class="flex gap-2">
+                <x-report-export-buttons route="finance.export.loan-aging" />
                 <button onclick="window.print()" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-2">
                     <span class="material-symbols-outlined text-lg">print</span> Print
                 </button>

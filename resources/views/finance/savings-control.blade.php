@@ -7,10 +7,13 @@
                 <h2 class="text-2xl font-bold text-[#0F172A]">Members Savings Control Report</h2>
                 <p class="text-xs text-slate-500 mt-1">Report 6 — member-by-member savings ledger with closing balances vs the 2001 control account.</p>
             </div>
-            <a href="{{ route('finance.control-reconciliation') }}" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-[10px] text-sm font-medium transition">
-                <span class="material-symbols-outlined text-lg">balance</span>
-                Control Reconciliation
-            </a>
+            <div class="flex flex-wrap items-center gap-2">
+                <x-report-export-buttons route="finance.export.savings-control" :params="['from' => $from ?? '', 'to' => $to]" />
+                <a href="{{ route('finance.control-reconciliation') }}" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-[10px] text-sm font-medium transition">
+                    <span class="material-symbols-outlined text-lg">balance</span>
+                    Control Reconciliation
+                </a>
+            </div>
         </div>
 
         @if ($errors->any())

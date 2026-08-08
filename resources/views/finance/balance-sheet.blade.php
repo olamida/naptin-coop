@@ -7,9 +7,12 @@
                 <h2 class="text-2xl font-bold text-[#0F172A]">Balance Sheet</h2>
                 <p class="text-xs text-slate-500 mt-1">As at {{ \Carbon\Carbon::parse($asOf)->format('M d, Y') }} &middot; Generated {{ now()->format('M d, Y h:i A') }}</p>
             </div>
-            <button onclick="window.print()" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-2">
-                <span class="material-symbols-outlined text-lg">print</span> Print
-            </button>
+            <div class="flex items-center gap-2">
+                <x-report-export-buttons route="finance.export.balance-sheet" :params="['as_of' => $asOf]" />
+                <button onclick="window.print()" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">print</span> Print
+                </button>
+            </div>
         </div>
 
         <form method="GET" class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-4 flex items-end gap-3">

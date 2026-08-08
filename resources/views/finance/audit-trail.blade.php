@@ -7,6 +7,10 @@
                 <h2 class="text-2xl font-bold text-[#0F172A]">Audit Trail</h2>
                 <p class="text-xs text-slate-500 mt-1">System activity logs + ledger hash-chain integrity check.</p>
             </div>
+            <x-report-export-buttons
+                route="finance.export.audit-trail"
+                :params="['user_id' => request('user_id'), 'event' => request('event'), 'from' => request('from'), 'to' => request('to')]"
+            />
         </div>
 
         <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-5">

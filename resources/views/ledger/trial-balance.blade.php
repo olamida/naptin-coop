@@ -2,9 +2,12 @@
     <div class="max-w-5xl mx-auto space-y-6">
         <div class="flex items-center justify-between">
             <h2 class="text-lg font-bold text-[#0F172A]">Trial Balance</h2>
-            <button onclick="window.print()" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-2">
-                <span class="material-symbols-outlined text-lg">print</span> Print
-            </button>
+            <div class="flex items-center gap-2">
+                <x-report-export-buttons route="ledger.trial-balance.export" />
+                <button onclick="window.print()" class="bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">print</span> Print
+                </button>
+            </div>
         </div>
 
         <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 overflow-hidden">

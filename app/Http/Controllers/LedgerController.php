@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\StreamsReportExports;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class LedgerController extends Controller
 {
+    use StreamsReportExports;
+
     public function accounts()
     {
         $accounts = ChartOfAccount::with('children')->whereNull('parent_id')->orderBy('code')->get();
@@ -149,6 +152,11 @@ class LedgerController extends Controller
 
     public function trialBalance()
     {
+        return view('ledger.trial-balance', $this->trialBalanceData());
+    }
+
+    private function trialBalanceData(): array
+    {
         $accounts = ChartOfAccount::withSum('journalLines', 'debit')
             ->withSum('journalLines', 'credit')
             ->active()
@@ -173,7 +181,40 @@ class LedgerController extends Controller
             }
         }
 
-        return view('ledger.trial-balance', compact('accounts', 'totalDebit', 'totalCredit'));
+        return compact('accounts', 'totalDebit', 'totalCredit');
+    }
+
+    public function trialBalanceExport(Request $request)
+    {
+        $validated = $request->validate([
+            'format' => 'required|in:xlsx,pdf',
+        ]);
+
+        $data = $this->trialBalanceData();
+
+        $rows = $data['accounts']
+            ->map(fn ($account) => [
+                $account->code,
+                $account->name,
+                ucfirst($account->type),
+                ucfirst($account->balance_side),
+                $account->balance_value,
+            ])
+            ->all();
+
+        $rows[] = ['', 'TOTAL DEBIT', '', 'debit', $data['totalDebit']];
+        $rows[] = ['', 'TOTAL CREDIT', '', 'credit', $data['totalCredit']];
+
+        return $this->streamReportExport(
+            $validated['format'],
+            'trial-balance',
+            'Trial Balance',
+            ['Code', 'Account', 'Type', 'Balance Side', 'Balance'],
+            $rows,
+            ['rows' => $rows, 'totalDebit' => $data['totalDebit'], 'totalCredit' => $data['totalCredit']],
+            [4],
+            'trial-balance-'.now()->format('Ymd')
+        );
     }
 
     public function generalLedger(Request $request)

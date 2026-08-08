@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.9.1
+> **Version:** 3.10.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.10 | **Finance report exports (Excel + QR-stamped PDF):** every financial report — Trial Balance, P&L, Balance Sheet, Cash Flow, Loan Aging, Savings Control and Audit Trail — now has **Excel** and **PDF** download buttons that preserve the active filters. PDFs are rendered by **DomPDF** (`barryvdh/laravel-dompdf`) with the company header and footer, and every export embeds a **QR code containing the report's SHA-256 hash** (computed over the canonical dataset) plus the plain hash text for verification. New `ReportExportService` (canonical hash + GD-backed PNG QR via bacon-qr-code `GDLibRenderer`), generic `FinanceReportExport` Excel class, and a shared `StreamsReportExports` controller trait. Export routes: `/ledger/trial-balance/export` and `/finance/{profit-loss,balance-sheet,cash-flow,loan-aging,audit-trail}/export` + `/finance/reports/savings-control/export`, all `?format=xlsx|pdf`. |
 | 3.9.1 | **Members Savings Control Report (Report 6):** new **Finance → Savings Control** page (`/finance/reports/savings-control`) — member-by-member savings ledger (opening balance, deposits, withdrawals, interest, transfers, closing balance) with a per-member ledger-variance check and an overall control comparison of `sum(savings_accounts.balance)` vs the `2001` Members Savings Liability control account, with optional date-range filter. |
 | 3.9 | **Daily Cash Count (audit P2 #4, Report 8):** new **Finance → Daily Cash Count** page — record the physical cash on hand each day (one count per date); the system balance is read live from ledger account `1001`, variance is auto-calculated and any imbalance posts a journal to `1005` Cash Suspense (excess → Dr Cash / Cr Suspense, shortage → Dr Suspense / Cr Cash); counts carry a `counted_by`/`verified_by` two-step trail with an in-page Verify action, and history is listed with status badges (balanced/shortage/excess). New `cash_counts` table + `CashCount` model + `LedgerService::postCashVariance()`. |
 | 3.8 | **Loan processing fees + dividend accrual (audit P1 #10, #11):** loan products gained `processing_fee_pct`; `loans.processing_fee` is captured at application (amount × pct); disbursement now posts Dr Loans Receivable (1101) / Cr Cash (1001, net = principal − fee) / Cr Processing Fees Income (4004) via `LedgerService::postLoanDisbursement(loanId, amount, fee)`; **dividend accrual** — `CalculateDividend` posts the liability immediately (Dr Retained Earnings 3001 / Cr Dividend Payable 2201) so the payable exists at declaration/calculation time, and `DistributeDividend` clears the payable (Dr 2201 / Cr Cash) instead of hitting retained earnings at payout. |
@@ -58,7 +59,8 @@ naptin-coop/
 │   │   ├── SavingsTransactionType.php  # deposit, withdrawal, interest, transfer
 │   │   └── ShareTransactionType.php    # purchase, sale, transfer, dividend
 │   │
-│   ├── Exports/                        # 6 Maatwebsite Excel exports
+│   ├── Exports/                        # 7 Maatwebsite Excel exports
+│   │   ├── FinanceReportExport.php     # Generic array-driven export (headings/rows/title) for all finance reports
 │   │   ├── LoansExport.php
 │   │   ├── MembersExport.php
 │   │   ├── PayrollDeductionExport.php
@@ -172,6 +174,7 @@ naptin-coop/
 │       ├── LedgerSyncService.php       # One-click conversion: posts opening balances so the ledger matches sub-ledgers
 │       ├── LoanService.php             # Interest calculation, loan number generation, product validation
 │       ├── ProvisioningService.php     # IFRS 9 / CBN loan loss provisioning buckets
+│       ├── ReportExportService.php     # Canonical report SHA-256 hash + GD PNG QR rendering for exports
 │       └── SavingsService.php          # Atomic deposit/withdrawal with row locking
 │
 ├── database/
@@ -241,9 +244,11 @@ naptin-coop/
 | Database | MySQL | 8.x |
 | Permissions | Spatie Laravel Permission | 8.3 |
 | Excel | Maatwebsite Excel | 3.x |
+| PDF | barryvdh/laravel-dompdf | 3.x |
+| QR Codes | bacon/bacon-qr-code (GD `GDLibRenderer`) | 3.x |
 | Auth | Laravel Breeze (session) | — |
 | Alpine.js | Via CDN | 3.x |
-| Services | Service Layer | 6 classes |
+| Services | Service Layer | 7 classes |
 
 ### Sidebar Navigation
 
@@ -657,16 +662,22 @@ compiled → deducted → completed
 | `/finance/period-close` | POST | Close a period (pre-checks: no unbalanced posted entries, no pending savings transactions) |
 | `/finance/period-close/{period}/reopen` | POST | Reopen a closed period (reason required) |
 | `/finance/profit-loss` | GET | Income statement (income/expense accounts, net profit, date-range filter) |
+| `/finance/profit-loss/export` | GET | Download P&L as Excel or PDF (`?format=xlsx\|pdf`, preserves date filters) |
 | `/finance/balance-sheet` | GET | Balance sheet as of a date (Assets = Liabilities + Equity variance check; contra-asset provision nets against assets) |
+| `/finance/balance-sheet/export` | GET | Download Balance Sheet as Excel or PDF (`?format=xlsx\|pdf`) |
 | `/finance/cash-flow` | GET | Direct-method cash flow (inflows/outflows on cash & bank accounts) |
+| `/finance/cash-flow/export` | GET | Download Cash Flow as Excel or PDF (`?format=xlsx\|pdf`) |
 | `/finance/loan-aging` | GET | Loan aging report with IFRS 9 buckets and provision coverage |
+| `/finance/loan-aging/export` | GET | Download Loan Aging as Excel or PDF (`?format=xlsx\|pdf`) |
 | `/finance/provision/calculate` | POST | Calculate & post the loan loss provision movement to the ledger |
 | `/finance/control-reconciliation` | GET | Ledger control accounts vs sub-ledger totals (savings, loans, shares, **purchase receivables** — variance badges) |
 | `/finance/cash-count` | GET | **Daily Cash Reconciliation (Report 8)** — record physical cash vs system balance (1001), auto variance, history with verify action |
 | `/finance/cash-count` | POST | Record a daily count (one per date); imbalance posts a 1005 Cash Suspense journal |
 | `/finance/cash-count/{count}/verify` | POST | Verify a recorded count (second-step `verified_by` trail) |
 | `/finance/reports/savings-control` | GET | **Members Savings Control (Report 6)** — per-member savings ledger + closing balances, control comparison vs `2001`, per-member variance flags, date-range filter |
+| `/finance/reports/savings-control/export` | GET | Download Savings Control as Excel or PDF (`?format=xlsx\|pdf`) |
 | `/finance/audit-trail` | GET | Filterable activity logs + ledger hash-chain integrity verification |
+| `/finance/audit-trail/export` | GET | Download Audit Trail as Excel or PDF (`?format=xlsx\|pdf`) |
 | `/finance/sync-opening-balances` | POST | **Ledger conversion:** post opening-balance journal entries so the ledger matches every sub-ledger (idempotent, delta-based) |
 
 **Ledger Opening Balance Sync (Finance → Sync Opening Balances):**
@@ -1145,6 +1156,7 @@ Each import type links directly to its upload form and template download.
 | Shares | Excel (.xlsx) | Shares page → "Export" |
 | Payroll (full) | Excel (.xlsx) | Payroll show → "Export Excel" |
 | Payroll (template) | Excel (.xlsx) | Payroll show → "Download Template" |
+| Trial Balance / P&L / Balance Sheet / Cash Flow / Loan Aging / Savings Control / Audit Trail | Excel (.xlsx) + QR-stamped PDF | Each Finance/Ledger report page → "Excel" / "PDF" buttons |
 
 ---
 
@@ -1192,8 +1204,8 @@ When a member is created with an email address, a `WelcomeEmail` is sent contain
 | Receipts | 8 | `/receipts` |
 | Invoices | 1 | `/invoices/purchase/{id}` |
 | Reports | 2 | `/reports` |
-| Ledger | 10 | `/ledger` |
-| Finance | 12 | `/finance` |
+| Ledger | 12 | `/ledger` |
+| Finance | 22 | `/finance` |
 | Admin (Users) | 7 | `/admin/users` |
 | Admin (Loan Products) | 6 | `/admin/loan-products` |
 | Admin (Roles) | 5 | `/admin/roles` |

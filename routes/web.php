@@ -285,6 +285,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::post('/journals/{journalEntry}/post', [LedgerController::class, 'postJournal'])->name('journals.post');
         Route::post('/journals/{journalEntry}/reverse', [LedgerController::class, 'reverseJournal'])->name('journals.reverse');
         Route::get('/trial-balance', [LedgerController::class, 'trialBalance'])->name('trial-balance');
+        Route::get('/trial-balance/export', [LedgerController::class, 'trialBalanceExport'])->name('trial-balance.export');
         Route::get('/general-ledger', [LedgerController::class, 'generalLedger'])->name('general-ledger');
     });
 
@@ -294,17 +295,23 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::post('/period-close', [FinanceController::class, 'periodCloseStore'])->name('period-close.store');
         Route::post('/period-close/{period}/reopen', [FinanceController::class, 'periodCloseReopen'])->name('period-close.reopen');
         Route::get('/profit-loss', [FinanceController::class, 'profitLoss'])->name('profit-loss');
+        Route::get('/profit-loss/export', [FinanceController::class, 'exportProfitLoss'])->name('export.profit-loss');
         Route::get('/balance-sheet', [FinanceController::class, 'balanceSheet'])->name('balance-sheet');
+        Route::get('/balance-sheet/export', [FinanceController::class, 'exportBalanceSheet'])->name('export.balance-sheet');
         Route::get('/cash-flow', [FinanceController::class, 'cashFlow'])->name('cash-flow');
+        Route::get('/cash-flow/export', [FinanceController::class, 'exportCashFlow'])->name('export.cash-flow');
         Route::get('/loan-aging', [FinanceController::class, 'loanAging'])->name('loan-aging');
+        Route::get('/loan-aging/export', [FinanceController::class, 'exportLoanAging'])->name('export.loan-aging');
         Route::post('/provision/calculate', [FinanceController::class, 'calculateProvision'])->name('provision.calculate');
         Route::get('/control-reconciliation', [FinanceController::class, 'controlReconciliation'])->name('control-reconciliation');
         Route::get('/cash-count', [FinanceController::class, 'cashCount'])->name('cash-count');
         Route::post('/cash-count', [FinanceController::class, 'cashCountStore'])->name('cash-count.store');
         Route::post('/cash-count/{cashCount}/verify', [FinanceController::class, 'cashCountVerify'])->name('cash-count.verify');
         Route::get('/reports/savings-control', [FinanceController::class, 'savingsControl'])->name('savings-control');
+        Route::get('/reports/savings-control/export', [FinanceController::class, 'exportSavingsControl'])->name('export.savings-control');
         Route::post('/sync-opening-balances', [FinanceController::class, 'syncOpeningBalances'])->name('sync-opening-balances');
         Route::get('/audit-trail', [FinanceController::class, 'auditTrail'])->name('audit-trail');
+        Route::get('/audit-trail/export', [FinanceController::class, 'exportAuditTrail'])->name('export.audit-trail');
     });
 
     Route::prefix('receipts')->name('receipts.')->group(function () {

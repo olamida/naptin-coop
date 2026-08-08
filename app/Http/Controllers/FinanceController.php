@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\StreamsReportExports;
 use App\Models\ActivityLog;
 use App\Models\CashCount;
 use App\Models\ChartOfAccount;
@@ -15,11 +16,14 @@ use App\Models\User;
 use App\Services\LedgerService;
 use App\Services\LedgerSyncService;
 use App\Services\ProvisioningService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class FinanceController extends Controller
 {
+    use StreamsReportExports;
+
     public function index()
     {
         $period = now()->format('Y-m');
@@ -132,11 +136,16 @@ class FinanceController extends Controller
 
     public function profitLoss(Request $request)
     {
-        $validated = $request->validate([
+        $data = $this->profitLossData($request->validate([
             'from' => 'nullable|date',
             'to' => 'nullable|date',
-        ]);
+        ]));
 
+        return view('finance.profit-loss', $data);
+    }
+
+    private function profitLossData(array $validated): array
+    {
         $from = $validated['from'] ?? now()->startOfYear()->toDateString();
         $to = $validated['to'] ?? now()->toDateString();
 
@@ -175,30 +184,55 @@ class FinanceController extends Controller
         $totalExpenses = array_sum(array_column($expenses, 'amount'));
         $netProfit = round($totalIncome - $totalExpenses, 2);
 
-        return view('finance.profit-loss', compact('income', 'expenses', 'totalIncome', 'totalExpenses', 'netProfit', 'from', 'to'));
+        return compact('income', 'expenses', 'totalIncome', 'totalExpenses', 'netProfit', 'from', 'to');
+    }
+
+    public function exportProfitLoss(Request $request)
+    {
+        $validated = $request->validate([
+            'format' => 'required|in:xlsx,pdf',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+        ]);
+
+        $data = $this->profitLossData($validated);
+
+        $rows = collect($data['income'])
+            ->map(fn ($row) => [$row['account']->code, $row['account']->name, 'INCOME', $row['amount']])
+            ->concat(collect($data['expenses'])->map(fn ($row) => [$row['account']->code, $row['account']->name, 'EXPENSE', $row['amount']]))
+            ->values()
+            ->all();
+
+        $rows[] = ['', 'Total Income', '', $data['totalIncome']];
+        $rows[] = ['', 'Total Expenses', '', $data['totalExpenses']];
+        $rows[] = ['', 'NET PROFIT / (LOSS)', '', $data['netProfit']];
+
+        return $this->streamReportExport(
+            $validated['format'],
+            'profit-loss',
+            'Profit & Loss',
+            ['Code', 'Account', 'Type', 'Amount'],
+            $rows,
+            ['rows' => $rows, 'from' => $data['from'], 'to' => $data['to']],
+            [3],
+            'profit-loss-'.$data['from'].'-'.$data['to']
+        );
     }
 
     public function balanceSheet(Request $request)
     {
-        $validated = $request->validate([
+        $data = $this->balanceSheetData($request->validate([
             'as_of' => 'nullable|date',
-        ]);
+        ]));
 
+        return view('finance.balance-sheet', $data);
+    }
+
+    private function balanceSheetData(array $validated): array
+    {
         $asOf = $validated['as_of'] ?? now()->toDateString();
 
         $accounts = ChartOfAccount::all()->keyBy('code');
-
-        $balanceOf = function (string $code) use ($asOf, $accounts): float {
-            $totals = DB::table('journal_entry_lines as jel')
-                ->join('journal_entries as je', 'je.id', '=', 'jel.journal_entry_id')
-                ->where('je.status', 'posted')
-                ->where('je.entry_date', '<=', $asOf)
-                ->where('jel.account_id', $accounts->get($code)?->id ?? -1)
-                ->selectRaw('SUM(jel.debit) as d, SUM(jel.credit) as c')
-                ->first();
-
-            return round((float) ($totals->d ?? 0) - (float) ($totals->c ?? 0), 2);
-        };
 
         $accountBalance = function (ChartOfAccount $account) use ($asOf): float {
             $totals = DB::table('journal_entry_lines as jel')
@@ -243,10 +277,46 @@ class FinanceController extends Controller
         $liabilitiesSide = round($totalLiabilities + $totalEquity, 2);
         $variance = round($assetsSide - $liabilitiesSide, 2);
 
-        return view('finance.balance-sheet', compact(
+        return compact(
             'assets', 'liabilities', 'equityRows', 'totalAssets', 'totalLiabilities', 'totalEquity',
             'assetsSide', 'liabilitiesSide', 'variance', 'asOf', 'netProfit'
-        ));
+        );
+    }
+
+    public function exportBalanceSheet(Request $request)
+    {
+        $validated = $request->validate([
+            'format' => 'required|in:xlsx,pdf',
+            'as_of' => 'nullable|date',
+        ]);
+
+        $data = $this->balanceSheetData($validated);
+
+        $section = fn (string $label, $collection) => $collection
+            ->map(fn ($row) => [$row['account']->code, $row['account']->name, $label, $row['balance']]);
+
+        $rows = $section('ASSETS', $data['assets'])
+            ->concat($section('LIABILITIES', $data['liabilities']))
+            ->concat($section('EQUITY', $data['equityRows']))
+            ->values()
+            ->all();
+
+        $rows[] = ['', 'TOTAL ASSETS', '', $data['totalAssets']];
+        $rows[] = ['', 'TOTAL LIABILITIES', '', $data['totalLiabilities']];
+        $rows[] = ['', 'TOTAL EQUITY', '', $data['totalEquity']];
+        $rows[] = ['', 'LIABILITIES + EQUITY', '', $data['liabilitiesSide']];
+        $rows[] = ['', 'BALANCE SHEET VARIANCE', '', $data['variance']];
+
+        return $this->streamReportExport(
+            $validated['format'],
+            'balance-sheet',
+            'Balance Sheet',
+            ['Code', 'Account', 'Section', 'Balance'],
+            $rows,
+            ['rows' => $rows, 'as_of' => $data['asOf']],
+            [3],
+            'balance-sheet-'.$data['asOf']
+        );
     }
 
     private function netProfitAsOf(string $asOf): float
@@ -265,11 +335,16 @@ class FinanceController extends Controller
 
     public function cashFlow(Request $request)
     {
-        $validated = $request->validate([
+        $data = $this->cashFlowData($request->validate([
             'from' => 'nullable|date',
             'to' => 'nullable|date',
-        ]);
+        ]));
 
+        return view('finance.cash-flow', $data);
+    }
+
+    private function cashFlowData(array $validated): array
+    {
         $from = $validated['from'] ?? now()->startOfYear()->toDateString();
         $to = $validated['to'] ?? now()->toDateString();
 
@@ -309,7 +384,37 @@ class FinanceController extends Controller
 
         $netCash = round($inflows - $outflows, 2);
 
-        return view('finance.cash-flow', compact('entries', 'inflows', 'outflows', 'netCash', 'from', 'to'));
+        return compact('entries', 'inflows', 'outflows', 'netCash', 'from', 'to');
+    }
+
+    public function exportCashFlow(Request $request)
+    {
+        $validated = $request->validate([
+            'format' => 'required|in:xlsx,pdf',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+        ]);
+
+        $data = $this->cashFlowData($validated);
+
+        $rows = collect($data['entries'])
+            ->map(fn ($e) => [$e['entry_number'], $e['entry_date'], $e['description'], $e['inflow'], $e['outflow']])
+            ->all();
+
+        $rows[] = ['', '', 'TOTAL INFLOWS', $data['inflows'], ''];
+        $rows[] = ['', '', 'TOTAL OUTFLOWS', '', $data['outflows']];
+        $rows[] = ['', '', 'NET CASH FLOW', '', $data['netCash']];
+
+        return $this->streamReportExport(
+            $validated['format'],
+            'cash-flow',
+            'Cash Flow Statement',
+            ['Entry No.', 'Date', 'Description', 'Inflow', 'Outflow'],
+            $rows,
+            ['rows' => $rows, 'from' => $data['from'], 'to' => $data['to']],
+            [3, 4],
+            'cash-flow-'.$data['from'].'-'.$data['to']
+        );
     }
 
     // ---------------------------------------------------------------- Loan Aging + Provisioning
@@ -332,6 +437,46 @@ class FinanceController extends Controller
         ActivityLog::log('provision.calculate', "Calculated loan loss provision for {$result['period']}: ₦{$result['required_provision']}.");
 
         return back()->with('success', "Provision calculated for {$result['period']} — required ₦".number_format($result['required_provision'], 2).' (delta posted: ₦'.number_format($result['delta'], 2).').');
+    }
+
+    public function exportLoanAging(Request $request)
+    {
+        $validated = $request->validate([
+            'format' => 'required|in:xlsx,pdf',
+        ]);
+
+        $report = ProvisioningService::agingReport();
+
+        $rows = collect($report['rows'])
+            ->map(fn ($r) => [
+                $r['loan_number'],
+                $r['member'],
+                $r['outstanding'],
+                $r['days_past_due'],
+                $r['classification'],
+                ($r['rate'] * 100).'%',
+                $r['provision'],
+            ])
+            ->all();
+
+        $rows[] = ['', 'TOTAL', $report['total_outstanding'], '', '', '', $report['total_provision']];
+
+        return $this->streamReportExport(
+            $validated['format'],
+            'loan-aging',
+            'Loan Portfolio Aging & Provisioning',
+            ['Loan No.', 'Member', 'Outstanding', 'Days Past Due', 'Classification', 'Rate', 'Provision'],
+            $rows,
+            [
+                'rows' => $rows,
+                'period' => $report['period'],
+                'total_outstanding' => $report['total_outstanding'],
+                'total_provision' => $report['total_provision'],
+                'coverage_ratio' => $report['coverage_ratio'],
+            ],
+            [2, 6],
+            'loan-aging-'.$report['period']
+        );
     }
 
     // ---------------------------------------------------------------- Control Reconciliation
@@ -439,11 +584,16 @@ class FinanceController extends Controller
 
     public function savingsControl(Request $request)
     {
-        $validated = $request->validate([
+        $data = $this->savingsControlData($request->validate([
             'from' => 'nullable|date',
             'to' => 'nullable|date',
-        ]);
+        ]));
 
+        return view('finance.savings-control', $data);
+    }
+
+    private function savingsControlData(array $validated): array
+    {
         $from = $validated['from'] ?? null;
         $to = $validated['to'] ?? now()->toDateString();
 
@@ -491,7 +641,50 @@ class FinanceController extends Controller
                 ];
             });
 
-        return view('finance.savings-control', compact('rows', 'subLedgerTotal', 'ledgerBalance', 'controlVariance', 'from', 'to'));
+        return compact('rows', 'subLedgerTotal', 'ledgerBalance', 'controlVariance', 'from', 'to');
+    }
+
+    public function exportSavingsControl(Request $request)
+    {
+        $validated = $request->validate([
+            'format' => 'required|in:xlsx,pdf',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+        ]);
+
+        $data = $this->savingsControlData($validated);
+
+        $rows = $data['rows']
+            ->map(fn ($r) => [
+                $r['account_number'],
+                ($r['member']?->first_name ?? '').' '.($r['member']?->last_name ?? ''),
+                $r['member']?->staff_id ?? '',
+                $r['opening'],
+                $r['deposits'],
+                $r['withdrawals'],
+                $r['interest'],
+                $r['transfers'],
+                $r['reversals'],
+                $r['closing'],
+                $r['variance'],
+            ])
+            ->values()
+            ->all();
+
+        $rows[] = ['', '', 'CONTROL TOTALS', '', '', '', '', '', '', $data['subLedgerTotal'], $data['controlVariance']];
+
+        $range = $data['from'] ?? $data['to'];
+
+        return $this->streamReportExport(
+            $validated['format'],
+            'savings-control',
+            'Members Savings Control',
+            ['Account No.', 'Member', 'Staff ID', 'Opening', 'Deposits', 'Withdrawals', 'Interest', 'Transfers', 'Reversals', 'Closing', 'Variance'],
+            $rows,
+            ['rows' => $rows, 'subLedgerTotal' => $data['subLedgerTotal'], 'ledgerBalance' => $data['ledgerBalance'], 'controlVariance' => $data['controlVariance']],
+            [3, 4, 5, 6, 7, 8, 9, 10],
+            'savings-control-'.$range
+        );
     }
 
     // ---------------------------------------------------------------- Ledger Sync
@@ -526,6 +719,20 @@ class FinanceController extends Controller
             'to' => 'nullable|date',
         ]);
 
+        $query = $this->auditTrailQuery($validated);
+        $logs = $query->paginate(25);
+
+        $users = User::orderBy('name')->get();
+        $events = ActivityLog::distinct()->pluck('event')->sort()->values();
+
+        $ledger = new LedgerService;
+        $hashViolations = $ledger->verifyHashChain();
+
+        return view('finance.audit-trail', compact('logs', 'users', 'events', 'hashViolations'));
+    }
+
+    private function auditTrailQuery(array $validated): Builder
+    {
         $query = ActivityLog::with('user')->latest();
 
         if (! empty($validated['user_id'])) {
@@ -541,14 +748,41 @@ class FinanceController extends Controller
             $query->whereDate('created_at', '<=', $validated['to']);
         }
 
-        $logs = $query->paginate(25);
+        return $query;
+    }
 
-        $users = User::orderBy('name')->get();
-        $events = ActivityLog::distinct()->pluck('event')->sort()->values();
+    public function exportAuditTrail(Request $request)
+    {
+        $validated = $request->validate([
+            'format' => 'required|in:xlsx,pdf',
+            'user_id' => 'nullable|exists:users,id',
+            'event' => 'nullable|string|max:100',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+        ]);
 
-        $ledger = new LedgerService;
-        $hashViolations = $ledger->verifyHashChain();
+        $logs = $this->auditTrailQuery($validated)->limit(500)->get();
 
-        return view('finance.audit-trail', compact('logs', 'users', 'events', 'hashViolations'));
+        $rows = $logs
+            ->map(fn ($log) => [
+                $log->id,
+                $log->user?->name ?? 'System',
+                $log->event,
+                $log->description,
+                $log->ip_address ?? '',
+                $log->created_at?->format('Y-m-d H:i:s') ?? '',
+            ])
+            ->all();
+
+        return $this->streamReportExport(
+            $validated['format'],
+            'audit-trail',
+            'Audit Trail',
+            ['ID', 'User', 'Event', 'Description', 'IP Address', 'Timestamp'],
+            $rows,
+            ['rows' => $rows],
+            [],
+            'audit-trail-'.now()->format('Ymd-His')
+        );
     }
 }
