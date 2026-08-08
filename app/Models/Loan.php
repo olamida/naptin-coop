@@ -20,6 +20,7 @@ class Loan extends Model
         'loan_number',
         'type',
         'amount',
+        'processing_fee',
         'interest_rate',
         'tenure_months',
         'monthly_repayment',
@@ -38,6 +39,7 @@ class Loan extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'processing_fee' => 'decimal:2',
         'interest_rate' => 'decimal:2',
         'monthly_repayment' => 'decimal:2',
         'total_repaid' => 'decimal:2',

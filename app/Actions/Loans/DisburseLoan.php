@@ -38,7 +38,7 @@ class DisburseLoan extends Action
 
             app(LoanService::class)->generateRepaymentSchedules($locked);
 
-            app(LedgerService::class)->postLoanDisbursement($locked->id, $locked->amount);
+            app(LedgerService::class)->postLoanDisbursement($locked->id, $locked->amount, (float) $locked->processing_fee);
 
             if ($locked->member && $locked->member->user) {
                 try {

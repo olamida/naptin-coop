@@ -6,6 +6,7 @@ use App\Actions\Action;
 use App\Models\Dividend;
 use App\Models\DividendDistribution;
 use App\Models\ShareAccount;
+use App\Services\LedgerService;
 use Illuminate\Support\Facades\DB;
 
 class CalculateDividend extends Action
@@ -48,6 +49,9 @@ class CalculateDividend extends Action
                 'total_distributed' => $totalDistributed,
                 'status' => 'calculated',
             ]);
+
+            // Accrue the liability: Dr Retained Earnings / Cr Dividend Payable (2201).
+            app(LedgerService::class)->postDividendAccrual($dividend->id, (float) $totalDistributed);
         });
 
         return $dividend->fresh();

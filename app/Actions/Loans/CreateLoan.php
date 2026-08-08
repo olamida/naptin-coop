@@ -43,15 +43,24 @@ class CreateLoan extends Action
             $data['tenure_months']
         );
 
+        $processingFee = 0.00;
+        if (! empty($data['loan_product_id'])) {
+            $product = LoanProduct::find($data['loan_product_id']);
+            if ($product) {
+                $processingFee = round(((float) $data['amount'] * (float) $product->processing_fee_pct) / 100, 2);
+            }
+        }
+
         $loanNumber = $loanService->generateLoanNumber();
 
-        return DB::transaction(function () use ($data, $loanNumber, $monthlyRepayment) {
+        return DB::transaction(function () use ($data, $loanNumber, $monthlyRepayment, $processingFee) {
             $loan = Loan::create([
                 'member_id' => $data['member_id'],
                 'loan_product_id' => $data['loan_product_id'] ?? null,
                 'loan_number' => $loanNumber,
                 'type' => $data['type'],
                 'amount' => $data['amount'],
+                'processing_fee' => $processingFee,
                 'interest_rate' => $data['interest_rate'],
                 'tenure_months' => $data['tenure_months'],
                 'monthly_repayment' => $monthlyRepayment,

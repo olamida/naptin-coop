@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.6.0
+> **Version:** 3.8.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,7 +12,8 @@
 
 | Version | Change |
 |---------|--------|
-| 3.6 | **Ledger gap-fix + auth hardening:** new **Finance → Sync Opening Balances** action posts a single balanced conversion entry (idempotent, delta-based) so the balance sheet, P&L and control reconciliation reflect all sub-ledger activity (savings, loans, shares, hire-purchase) that predates the ledger module — the ledger previously held only provisioning entries, leaving statements empty; **Control Reconciliation** gained a Purchase Receivables row; **419 Page Expired** now renders a branded error page and stale-CSRF on the login/logout forms redirects to a fresh login instead of a dead-end; **PreventCache** middleware sends no-store cache headers on auth routes so the browser never serves a stale login/logout; dashboard Chart.js init hardened (retries when a canvas has zero size, no uncaught errors) and the member shop page no longer binds a nonexistent `shopApp()` Alpine component. |
+| 3.8 | **Loan processing fees + dividend accrual (audit P1 #10, #11):** loan products gained `processing_fee_pct`; `loans.processing_fee` is captured at application (amount × pct); disbursement now posts Dr Loans Receivable (1101) / Cr Cash (1001, net = principal − fee) / Cr Processing Fees Income (4004) via `LedgerService::postLoanDisbursement(loanId, amount, fee)`; **dividend accrual** — `CalculateDividend` posts the liability immediately (Dr Retained Earnings 3001 / Cr Dividend Payable 2201) so the payable exists at declaration/calculation time, and `DistributeDividend` clears the payable (Dr 2201 / Cr Cash) instead of hitting retained earnings at payout. |
+| 3.7 | **Full CBN Chart of Accounts (audit P1 #1–#2 + #15):** new `LedgerAccountsSeeder` seeds the complete CBN MFB chart (35 accounts: 1001–1501 assets incl. 1301 Inventory, 1401/1402 fixed assets & depreciation, 1501 Payroll Deductions Receivable; 2001–2401 liabilities incl. 2003 Fixed Deposit, 2201 Dividend Payable, 2301 Audit Fees; 3001/3002 equity incl. Education Fund; 4001–4007 income incl. 4004 Processing Fees, 4005 Sales Margin; 5001–5008 expenses) — idempotent and data-safe, preserving the existing operational codes (1101 Loans Receivable, 1201 Purchase Receivables, 3001 Retained Earnings, etc.); `chart_of_accounts` gained `subtype`, `is_control_account`, `control_module`, `allow_manual_entry` columns with control-flag backfill; `LedgerService::ensureAccount` now creates any CBN code on demand with matching flags and `DEFAULTS` was extended to the full chart (Dividends Payable moved to spec code `2201`); new helpers `LedgerService::getBalance(code, ?from, ?to)` (date-range), `isPeriodClosed()`, and `validateControlAccounts()` (returns variance rows for every control account) power the upcoming compliance and report work. |
 | 3.5 | **Module toggles, sidebar slim-down, login + JS hardening:** new **Settings → Modules** tab to enable/disable **Shares** and **Dividends** modules (hides sidebar entries, gates routes via `module.enabled` middleware, redirects direct access); **compact sidebar** rework — Savings/Loans/Shares/Purchases/Dividends/Payroll folded into a collapsible **Accounts** dropdown, standalone **Reporting** section (Reports), and new **Finance & Accounting** group (Finance + Ledger); **login page simplified** to a single static brand panel (removed rotating hero carousel); **combobox `x-data` fix** (`@json` → `Js::from`) so member-search widgets work on every form; **image-fit policy** enforced (product previews `object-contain`, avatars/banners `object-cover`); **TALL cleanup** — removed duplicate legacy `alpine-components.js` that overrode `window.memberFormSearch`, added the missing member-portal toast component, and standardized AJAX event dispatch (`cart-updated` on document, `toast` on window). |
 | 3.4 | UI/UX & architecture overhaul (8 parts): one reusable member-search combobox everywhere; post-login page bottom spacing; branding-background card text visibility fix; redesigned animated login slides; **Company + Branding settings merged** (branding manager lives in the Branding tab of Company Settings, standalone `/admin/branding` index removed); **fully dynamic cart** (DB-backed cart with AJAX update/remove/clear, live totals, DB-derived nav badge for admin & member); **compact sidebar** with a *Reporting & Accounting* group (Reports / Ledger / Finance) and an *Administration > Settings* link; removed unrelated `WORKRIDE-APP-GUIDE-V2.md` dev guide. |
 | 3.3.1 | Fixed login page HTTP 500 (`Undefined variable $branding`): moved the branding/company setup block to the top of `auth/login.blade.php` so `<head>` meta/favicon resolve correctly; added a regression test for the login page. |
@@ -171,10 +172,11 @@ naptin-coop/
 │       └── SavingsService.php          # Atomic deposit/withdrawal with row locking
 │
 ├── database/
-│   ├── migrations/                     # 44 migration files
+│   ├── migrations/                     # 45 migration files
 │   └── seeders/
 │       ├── BrandingAssetSeeder.php     # Seeds the 6 branding assets from resources/branding/seed
 │       ├── DatabaseSeeder.php          # Main seeder: regions, positions, roles, admin, 5 members, loan products, products
+│       ├── LedgerAccountsSeeder.php    # Full CBN chart of accounts (35 accounts, idempotent, data-safe)
 │       ├── PermissionsSeeder.php        # 35 permissions across 12 groups, 7 roles
 │       └── DemoDataSeeder.php          # Demo loans, savings, payroll data
 │
@@ -336,7 +338,7 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 #### Finance & Ledger Domain
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `chart_of_accounts` | Chart of accounts (parent-child) | code, name, type (asset/liability/equity/income/expense), normal_side, is_active, parent_id |
+| `chart_of_accounts` | Chart of accounts (parent-child) | code, name, type (asset/liability/equity/income/expense), subtype (current_asset/reserve/…), normal_side, is_control_account, control_module, is_active, allow_manual_entry, parent_id |
 | `journal_entries` | Double-entry headers, **hash-chained + immutable** | entry_number, entry_date, period, description, reference_type/id, status (draft/posted), uuid, prev_hash, hash, reversal_of_id, reversal_reason, ip_address, user_agent |
 | `journal_entry_lines` | Debit/credit lines per entry | journal_entry_id, account_id, debit, credit, description |
 | `period_closes` | Financial period lock/unlock | period (Y-m), is_closed, closed_at/by, reopened_at/by, reopen_reason, notes |
@@ -667,7 +669,7 @@ compiled → deducted → completed
   - `2101 Share Capital` ← `sum(share_accounts.total_value)`
   - `1201 Purchase Receivables` ← outstanding hire-purchase balances
   - The difference is plugged to `3001 Retained Earnings` (standard conversion equity).
-- Only the **delta** is posted, so re-running is a no-op and never double-counts (same design as provisioning). The missing accounts (`1201`, `3001`, `2002`, `4002`, `5001`) are auto-created on demand by `LedgerService::ensureAccount`.
+- Only the **delta** is posted, so re-running is a no-op and never double-counts (same design as provisioning). Any missing accounts are auto-created on demand by `LedgerService::ensureAccount` against the full CBN chart (seeded by `LedgerAccountsSeeder`, `DEFAULTS` in `LedgerService`).
 - Historical income/expense is **not** re-created; the existing loan-loss provision entry keeps driving the P&L.
 
 **Ledger Immutability (hash chain):**

@@ -406,16 +406,28 @@ class LedgerService
 
     /**
      * Convenience: record a loan disbursement (debit loans receivable, credit cash).
+     * When a processing fee is charged, the payout account is credited with the
+     * net amount (principal − fee) and the fee is recognised as Processing Fees
+     * Income (4004) — net disbursement = principal − fee, per CBN spec.
      */
-    public function postLoanDisbursement(int $loanId, float $amount): JournalEntry
+    public function postLoanDisbursement(int $loanId, float $amount, float $processingFee = 0.0): JournalEntry
     {
-        return $this->postSimple(
+        $lines = [
+            ['account_code' => self::LOANS_RECEIVABLE, 'debit' => $amount, 'credit' => 0],
+        ];
+
+        if ($processingFee > 0) {
+            $lines[] = ['account_code' => self::CASH, 'debit' => 0, 'credit' => round($amount - $processingFee, 2)];
+            $lines[] = ['account_code' => self::PROCESSING_FEES_INCOME, 'debit' => 0, 'credit' => $processingFee];
+        } else {
+            $lines[] = ['account_code' => self::CASH, 'debit' => 0, 'credit' => $amount];
+        }
+
+        return $this->post(
             'Loan disbursement #'.$loanId,
             'loan',
             $loanId,
-            self::LOANS_RECEIVABLE,
-            self::CASH,
-            $amount
+            $lines
         );
     }
 
@@ -497,7 +509,24 @@ class LedgerService
     }
 
     /**
-     * Convenience: record a dividend payout (debit retained earnings, credit cash).
+     * Convenience: accrue a declared dividend (debit retained earnings, credit dividend payable).
+     * Posted once per dividend at calculation time so the payable mirrors the distribution.
+     */
+    public function postDividendAccrual(int $dividendId, float $amount): JournalEntry
+    {
+        return $this->postSimple(
+            'Dividend accrual #'.$dividendId,
+            'dividend',
+            $dividendId,
+            self::RETAINED_EARNINGS,
+            self::DIVIDENDS_PAYABLE,
+            $amount
+        );
+    }
+
+    /**
+     * Convenience: record a dividend payout (debit dividend payable, credit cash).
+     * Clears the payable accrued at declaration/calculation time.
      */
     public function postDividendDistribution(int $distributionId, float $amount): JournalEntry
     {
@@ -505,7 +534,7 @@ class LedgerService
             'Dividend distribution #'.$distributionId,
             'dividend',
             $distributionId,
-            self::RETAINED_EARNINGS,
+            self::DIVIDENDS_PAYABLE,
             self::CASH,
             $amount
         );
