@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(PermissionsSeeder::class);
+        $this->call(LedgerAccountsSeeder::class);
         $regions = [
             ['name' => 'Abuja', 'code' => 'ABJ', 'state' => 'FCT'],
             ['name' => 'Lagos', 'code' => 'LAG', 'state' => 'Lagos'],

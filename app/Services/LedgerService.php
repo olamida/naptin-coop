@@ -17,41 +17,85 @@ class LedgerService
 {
     public const CASH = '1001';                  // Cash & Bank (asset, debit normal)
 
+    public const BANK = '1002';                  // Bank - First Bank (asset, debit normal)
+
+    public const CASH_SUSPENSE = '1005';         // Cash Suspense - shortage/excess (asset, debit normal)
+
     public const LOANS_RECEIVABLE = '1101';      // Loans Receivable (asset, debit normal)
 
     public const PURCHASE_RECEIVABLES = '1201';  // Purchase Receivables (asset, debit normal)
 
+    public const LOAN_LOSS_PROVISION = '1205';   // Loan Loss Provision (contra asset, credit normal)
+
+    public const INVENTORY = '1301';             // Inventory - Cooperative Store (asset, debit normal)
+
+    public const FIXED_ASSETS = '1401';          // Fixed Assets - Furniture (asset, debit normal)
+
+    public const ACCUMULATED_DEPRECIATION = '1402'; // Accumulated Depreciation (contra asset, credit normal)
+
+    public const PAYROLL_RECEIVABLE = '1501';    // Receivable - Payroll Deductions Expected (asset, debit normal)
+
     public const MEMBERS_SAVINGS = '2001';       // Members Savings Liability (liability, credit normal)
 
-    public const DIVIDENDS_PAYABLE = '2002';     // Dividends Payable (liability, credit normal)
+    public const DIVIDENDS_PAYABLE = '2201';     // Dividend Payable (liability, credit normal)
 
     public const SHARE_CAPITAL = '2101';         // Share Capital (equity, credit normal)
 
     public const RETAINED_EARNINGS = '3001';     // Retained Earnings (equity, credit normal)
 
+    public const EDUCATION_FUND = '3002';        // Education Fund (equity, credit normal)
+
     public const INTEREST_INCOME = '4001';       // Interest Income (income, credit normal)
 
     public const SALES_REVENUE = '4002';         // Sales Revenue (income, credit normal)
 
+    public const PROCESSING_FEES_INCOME = '4004'; // Processing Fees Income (income, credit normal)
+
+    public const SALES_MARGIN = '4005';          // Sales Margin - Store (income, credit normal)
+
     public const PROCUREMENT_EXPENSE = '5001';   // Procurement / General Expenses (expense, debit normal)
 
-    public const LOAN_LOSS_PROVISION = '1205';   // Loan Loss Provision (contra asset, credit normal)
+    public const AUDIT_FEES_EXPENSE = '5002';    // Audit Fees (expense, debit normal)
+
+    public const ADMIN_EXPENSE = '5003';         // Administrative Expenses (expense, debit normal)
 
     public const LOAN_LOSS_EXPENSE = '5004';     // Loan Loss Expense / Provisioning (expense, debit normal)
 
+    public const DEPRECIATION_EXPENSE = '5005';  // Depreciation Expense (expense, debit normal)
+
+    public const STAFF_COSTS = '5007';           // Staff Costs (expense, debit normal)
+
+    /**
+     * Full CBN chart the LedgerService can create on demand. Codes match the
+     * accounting spec exactly (LedgerAccountsSeeder seeds the full chart); this
+     * list guarantees ensureAccount() never fails for any supported code.
+     */
     private const DEFAULTS = [
         self::CASH => ['name' => 'Cash & Bank', 'type' => 'asset', 'normal_side' => 'debit'],
+        self::BANK => ['name' => 'Bank - First Bank', 'type' => 'asset', 'normal_side' => 'debit'],
+        self::CASH_SUSPENSE => ['name' => 'Cash Suspense - Shortage/Excess', 'type' => 'asset', 'normal_side' => 'debit'],
         self::LOANS_RECEIVABLE => ['name' => 'Loans Receivable', 'type' => 'asset', 'normal_side' => 'debit'],
         self::PURCHASE_RECEIVABLES => ['name' => 'Purchase Receivables', 'type' => 'asset', 'normal_side' => 'debit'],
         self::LOAN_LOSS_PROVISION => ['name' => 'Loan Loss Provision', 'type' => 'asset', 'normal_side' => 'credit'],
+        self::INVENTORY => ['name' => 'Inventory - Cooperative Store', 'type' => 'asset', 'normal_side' => 'debit'],
+        self::FIXED_ASSETS => ['name' => 'Fixed Assets - Furniture', 'type' => 'asset', 'normal_side' => 'debit'],
+        self::ACCUMULATED_DEPRECIATION => ['name' => 'Accumulated Depreciation', 'type' => 'asset', 'normal_side' => 'credit'],
+        self::PAYROLL_RECEIVABLE => ['name' => 'Receivable - Payroll Deductions Expected', 'type' => 'asset', 'normal_side' => 'debit'],
         self::MEMBERS_SAVINGS => ['name' => 'Members Savings Liability', 'type' => 'liability', 'normal_side' => 'credit'],
-        self::DIVIDENDS_PAYABLE => ['name' => 'Dividends Payable', 'type' => 'liability', 'normal_side' => 'credit'],
+        self::DIVIDENDS_PAYABLE => ['name' => 'Dividend Payable', 'type' => 'liability', 'normal_side' => 'credit'],
         self::SHARE_CAPITAL => ['name' => 'Share Capital', 'type' => 'equity', 'normal_side' => 'credit'],
         self::RETAINED_EARNINGS => ['name' => 'Retained Earnings', 'type' => 'equity', 'normal_side' => 'credit'],
+        self::EDUCATION_FUND => ['name' => 'Education Fund', 'type' => 'equity', 'normal_side' => 'credit'],
         self::INTEREST_INCOME => ['name' => 'Interest Income', 'type' => 'income', 'normal_side' => 'credit'],
         self::SALES_REVENUE => ['name' => 'Sales Revenue', 'type' => 'income', 'normal_side' => 'credit'],
+        self::PROCESSING_FEES_INCOME => ['name' => 'Processing Fees Income', 'type' => 'income', 'normal_side' => 'credit'],
+        self::SALES_MARGIN => ['name' => 'Sales Margin - Store', 'type' => 'income', 'normal_side' => 'credit'],
         self::PROCUREMENT_EXPENSE => ['name' => 'Procurement & General Expenses', 'type' => 'expense', 'normal_side' => 'debit'],
+        self::AUDIT_FEES_EXPENSE => ['name' => 'Audit Fees', 'type' => 'expense', 'normal_side' => 'debit'],
+        self::ADMIN_EXPENSE => ['name' => 'Administrative Expenses', 'type' => 'expense', 'normal_side' => 'debit'],
         self::LOAN_LOSS_EXPENSE => ['name' => 'Loan Loss Expense', 'type' => 'expense', 'normal_side' => 'debit'],
+        self::DEPRECIATION_EXPENSE => ['name' => 'Depreciation Expense', 'type' => 'expense', 'normal_side' => 'debit'],
+        self::STAFF_COSTS => ['name' => 'Staff Costs', 'type' => 'expense', 'normal_side' => 'debit'],
     ];
 
     /**
@@ -158,11 +202,18 @@ class LedgerService
             throw new \RuntimeException("Unknown ledger account code: {$code}");
         }
 
+        $isControl = $default['is_control_account'] ?? false;
+        $allowManual = $default['allow_manual_entry'] ?? false;
+
         return ChartOfAccount::create([
             'code' => $code,
             'name' => $default['name'],
             'type' => $default['type'],
+            'subtype' => $default['subtype'] ?? null,
             'normal_side' => $default['normal_side'],
+            'is_control_account' => $isControl,
+            'control_module' => $default['control_module'] ?? ($isControl ? $code : null),
+            'allow_manual_entry' => $allowManual,
             'description' => 'Auto-created by LedgerService.',
         ]);
     }
@@ -207,8 +258,9 @@ class LedgerService
     /**
      * Net balance for a single ledger account. Positive value is on the account's normal side.
      * Only posted entries are counted — draft entries are never final.
+     * Optionally restrict the window with inclusive fromDate/toDate (Y-m-d).
      */
-    public function getBalance(string $code): float
+    public function getBalance(string $code, ?string $fromDate = null, ?string $toDate = null): float
     {
         $account = ChartOfAccount::where('code', $code)->first();
 
@@ -216,10 +268,19 @@ class LedgerService
             return 0.0;
         }
 
-        $totals = JournalEntryLine::query()
+        $query = JournalEntryLine::query()
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
             ->where('journal_entries.status', 'posted')
-            ->where('journal_entry_lines.account_id', $account->id)
+            ->where('journal_entry_lines.account_id', $account->id);
+
+        if ($fromDate) {
+            $query->whereDate('journal_entries.entry_date', '>=', $fromDate);
+        }
+        if ($toDate) {
+            $query->whereDate('journal_entries.entry_date', '<=', $toDate);
+        }
+
+        $totals = $query
             ->selectRaw('COALESCE(SUM(journal_entry_lines.debit), 0) as d, COALESCE(SUM(journal_entry_lines.credit), 0) as c')
             ->first();
 
@@ -227,6 +288,44 @@ class LedgerService
         $credit = (float) $totals->c;
 
         return $account->normal_side === 'debit' ? $debit - $credit : $credit - $debit;
+    }
+
+    /**
+     * Is the given financial period (Y-m) locked against new postings?
+     */
+    public function isPeriodClosed(string $period): bool
+    {
+        return PeriodClose::isClosed($period);
+    }
+
+    /**
+     * Validate every control account against its sub-ledger total.
+     *
+     * @return array<int, array{code: string, name: string, ledger_balance: float, sub_ledger_balance: float, variance: float, reconciled: bool}>
+     */
+    public function validateControlAccounts(): array
+    {
+        $targets = app(LedgerSyncService::class)->subLedgerTargets();
+
+        $map = [
+            self::MEMBERS_SAVINGS => ['name' => 'Members Savings', 'sub' => $targets['savings']],
+            self::LOANS_RECEIVABLE => ['name' => 'Loans Receivable', 'sub' => $targets['loans']],
+            self::SHARE_CAPITAL => ['name' => 'Share Capital', 'sub' => $targets['shares']],
+            self::PURCHASE_RECEIVABLES => ['name' => 'Purchase Receivables', 'sub' => $targets['purchases']],
+        ];
+
+        $rows = [];
+
+        foreach ($map as $code => $meta) {
+            $account = ChartOfAccount::firstWhere('code', $code);
+            $rows[] = [
+                'code' => $code,
+                'name' => $account?->name ?? $meta['name'],
+                ...$this->reconcileControlAccount($code, $meta['sub']),
+            ];
+        }
+
+        return $rows;
     }
 
     /**

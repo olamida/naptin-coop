@@ -8,13 +8,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ChartOfAccount extends Model
 {
     protected $fillable = [
-        'code', 'name', 'type', 'normal_side', 'parent_id', 'description', 'is_active',
+        'code', 'name', 'type', 'subtype', 'normal_side', 'is_control_account', 'control_module',
+        'is_active', 'allow_manual_entry', 'parent_id', 'description',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'is_control_account' => 'boolean',
+            'allow_manual_entry' => 'boolean',
         ];
     }
 
