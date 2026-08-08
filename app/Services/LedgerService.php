@@ -206,6 +206,7 @@ class LedgerService
 
     /**
      * Net balance for a single ledger account. Positive value is on the account's normal side.
+     * Only posted entries are counted — draft entries are never final.
      */
     public function getBalance(string $code): float
     {
@@ -215,8 +216,15 @@ class LedgerService
             return 0.0;
         }
 
-        $debit = (float) $account->journalLines()->sum('debit');
-        $credit = (float) $account->journalLines()->sum('credit');
+        $totals = JournalEntryLine::query()
+            ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
+            ->where('journal_entries.status', 'posted')
+            ->where('journal_entry_lines.account_id', $account->id)
+            ->selectRaw('COALESCE(SUM(journal_entry_lines.debit), 0) as d, COALESCE(SUM(journal_entry_lines.credit), 0) as c')
+            ->first();
+
+        $debit = (float) $totals->d;
+        $credit = (float) $totals->c;
 
         return $account->normal_side === 'debit' ? $debit - $credit : $credit - $debit;
     }

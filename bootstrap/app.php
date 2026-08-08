@@ -5,10 +5,13 @@ use App\Http\Middleware\MemberGuard;
 use App\Http\Middleware\ModuleEnabled;
 use App\Http\Middleware\MustChangePassword;
 use App\Http\Middleware\PortalMember;
+use App\Http\Middleware\PreventCache;
 use App\Http\Middleware\RequireTwoFactor;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
@@ -30,8 +33,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'must-change-password' => MustChangePassword::class,
             'two-factor' => RequireTwoFactor::class,
             'module.enabled' => ModuleEnabled::class,
+            'prevent-cache' => PreventCache::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // A stale CSRF token on the login/logout forms (e.g. a cached page or an
+        // expired session) should bounce back to a fresh login instead of a dead-end
+        // "419 Page Expired" screen.
+        $exceptions->render(function (TokenMismatchException $e, Request $request) {
+            if ($request->is('login', 'logout')) {
+                return redirect()->route('login')->with('error', 'Your session expired. Please sign in again.');
+            }
+
+            return response()->view('errors.419', [], 419);
+        });
     })->create();

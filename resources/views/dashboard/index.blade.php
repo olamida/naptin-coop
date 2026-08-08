@@ -492,12 +492,25 @@
 
     @push('scripts')
     <script>
+        function createChart(canvas, config, retries = 6) {
+            if (!canvas) return;
+            const render = () => {
+                if (canvas.clientWidth === 0 || canvas.clientHeight === 0) return false;
+                try { new Chart(canvas, config); return true; }
+                catch (e) { console.warn('Chart init skipped:', e.message); return false; }
+            };
+            if (render()) return;
+            let attempts = 0;
+            const timer = setInterval(() => { attempts++; if (render() || attempts >= retries) clearInterval(timer); }, 150);
+            window.addEventListener('load', () => { if (attempts < retries && render()) clearInterval(timer); });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Savings sparkline
             const sparkCanvas = document.getElementById('savingsSparkline');
             if (sparkCanvas) {
                 const sparkData = {!! $savingsSparklineData !!};
-                new Chart(sparkCanvas, {
+                createChart(sparkCanvas, {
                     type: 'line',
                     data: {
                         labels: Array(sparkData.length).fill(''),
@@ -524,7 +537,7 @@
             // Overview bar chart
             const overviewCtx = document.getElementById('overviewChart');
             if (overviewCtx) {
-                new Chart(overviewCtx, {
+                createChart(overviewCtx, {
                     type: 'bar',
                     data: {
                         labels: ['Savings', 'Shares', 'Loans Disbursed', 'Loans Repaid', 'Loans Outstanding', 'Purchases'],
@@ -573,7 +586,7 @@
             // Portfolio Mix doughnut
             const distCtx = document.getElementById('distributionChart');
             if (distCtx) {
-                new Chart(distCtx, {
+                createChart(distCtx, {
                     type: 'doughnut',
                     data: {
                         labels: ['Savings', 'Shares', 'Loans Outstanding'],
@@ -606,7 +619,7 @@
                     'rejected': '#ef4444',
                     'defaulted': '#6b7280',
                 };
-                new Chart(loanCtx, {
+                createChart(loanCtx, {
                     type: 'bar',
                     data: {
                         labels: statusLabels.map(function(l) { return l.charAt(0).toUpperCase() + l.slice(1); }),
@@ -634,7 +647,7 @@
             const trendsCtx = document.getElementById('trendsChart');
             if (trendsCtx) {
                 const trendLabels = {!! json_encode(array_column($monthlyTrends, 'label')) !!};
-                new Chart(trendsCtx, {
+                createChart(trendsCtx, {
                     type: 'line',
                     data: {
                         labels: trendLabels,

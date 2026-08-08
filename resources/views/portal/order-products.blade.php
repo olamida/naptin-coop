@@ -1,5 +1,5 @@
 <x-portal-layout title="Shop">
-    <div class="space-y-6" x-data="shopApp()">
+    <div class="space-y-6">
         {{-- Search & Filter Bar --}}
         <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-4">
             <form method="GET" action="{{ route('portal.products') }}">

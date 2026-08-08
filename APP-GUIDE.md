@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.5.0
+> **Version:** 3.6.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.6 | **Ledger gap-fix + auth hardening:** new **Finance → Sync Opening Balances** action posts a single balanced conversion entry (idempotent, delta-based) so the balance sheet, P&L and control reconciliation reflect all sub-ledger activity (savings, loans, shares, hire-purchase) that predates the ledger module — the ledger previously held only provisioning entries, leaving statements empty; **Control Reconciliation** gained a Purchase Receivables row; **419 Page Expired** now renders a branded error page and stale-CSRF on the login/logout forms redirects to a fresh login instead of a dead-end; **PreventCache** middleware sends no-store cache headers on auth routes so the browser never serves a stale login/logout; dashboard Chart.js init hardened (retries when a canvas has zero size, no uncaught errors) and the member shop page no longer binds a nonexistent `shopApp()` Alpine component. |
 | 3.5 | **Module toggles, sidebar slim-down, login + JS hardening:** new **Settings → Modules** tab to enable/disable **Shares** and **Dividends** modules (hides sidebar entries, gates routes via `module.enabled` middleware, redirects direct access); **compact sidebar** rework — Savings/Loans/Shares/Purchases/Dividends/Payroll folded into a collapsible **Accounts** dropdown, standalone **Reporting** section (Reports), and new **Finance & Accounting** group (Finance + Ledger); **login page simplified** to a single static brand panel (removed rotating hero carousel); **combobox `x-data` fix** (`@json` → `Js::from`) so member-search widgets work on every form; **image-fit policy** enforced (product previews `object-contain`, avatars/banners `object-cover`); **TALL cleanup** — removed duplicate legacy `alpine-components.js` that overrode `window.memberFormSearch`, added the missing member-portal toast component, and standardized AJAX event dispatch (`cart-updated` on document, `toast` on window). |
 | 3.4 | UI/UX & architecture overhaul (8 parts): one reusable member-search combobox everywhere; post-login page bottom spacing; branding-background card text visibility fix; redesigned animated login slides; **Company + Branding settings merged** (branding manager lives in the Branding tab of Company Settings, standalone `/admin/branding` index removed); **fully dynamic cart** (DB-backed cart with AJAX update/remove/clear, live totals, DB-derived nav badge for admin & member); **compact sidebar** with a *Reporting & Accounting* group (Reports / Ledger / Finance) and an *Administration > Settings* link; removed unrelated `WORKRIDE-APP-GUIDE-V2.md` dev guide. |
 | 3.3.1 | Fixed login page HTTP 500 (`Undefined variable $branding`): moved the branding/company setup block to the top of `auth/login.blade.php` so `<head>` meta/favicon resolve correctly; added a regression test for the login page. |
@@ -73,7 +74,7 @@ naptin-coop/
 │   │   ├── DashboardController.php     # Dashboard stats + charts + trends
 │   │   ├── DataImportController.php    # Central import hub
 │   │   ├── DividendController.php      # Declare → calculate → approve → distribute
-│   │   ├── FinanceController.php       # Period close, P&L, balance sheet, cash flow, provisioning, audit trail
+│   │   ├── FinanceController.php       # Period close, P&L, balance sheet, cash flow, provisioning, audit trail, ledger sync
 │   │   ├── InvoiceController.php       # Printable purchase invoice
 │   │   ├── LoanController.php          # Loan CRUD + approve + reject + disburse + repayment + import/export
 │   │   ├── LoanProductController.php   # Loan product CRUD (admin)
@@ -164,6 +165,7 @@ naptin-coop/
 │       ├── BrandingService.php         # Branding assets, GD size variants, cache, favicon/PWA sync
 │       ├── CartService.php             # Cart resolution, checkout processing, order numbers
 │       ├── LedgerService.php           # Double-entry posting, hash-chained immutability, reversal, reconciliation
+│       ├── LedgerSyncService.php       # One-click conversion: posts opening balances so the ledger matches sub-ledgers
 │       ├── LoanService.php             # Interest calculation, loan number generation, product validation
 │       ├── ProvisioningService.php     # IFRS 9 / CBN loan loss provisioning buckets
 │       └── SavingsService.php          # Atomic deposit/withdrawal with row locking
@@ -645,7 +647,7 @@ compiled → deducted → completed
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/finance` | GET | Finance hub (7 tiles: Period Close, P&L, Balance Sheet, Cash Flow, Loan Aging, Control Reconciliation, Audit Trail) |
+| `/finance` | GET | Finance hub (7 tiles + **Sync Opening Balances** action: Period Close, P&L, Balance Sheet, Cash Flow, Loan Aging, Control Reconciliation, Audit Trail) |
 | `/finance/period-close` | GET | 12-month period grid with close/reopen buttons |
 | `/finance/period-close` | POST | Close a period (pre-checks: no unbalanced posted entries, no pending savings transactions) |
 | `/finance/period-close/{period}/reopen` | POST | Reopen a closed period (reason required) |
@@ -654,8 +656,19 @@ compiled → deducted → completed
 | `/finance/cash-flow` | GET | Direct-method cash flow (inflows/outflows on cash & bank accounts) |
 | `/finance/loan-aging` | GET | Loan aging report with IFRS 9 buckets and provision coverage |
 | `/finance/provision/calculate` | POST | Calculate & post the loan loss provision movement to the ledger |
-| `/finance/control-reconciliation` | GET | Ledger control accounts vs sub-ledger totals (variance badges) |
+| `/finance/control-reconciliation` | GET | Ledger control accounts vs sub-ledger totals (savings, loans, shares, **purchase receivables** — variance badges) |
 | `/finance/audit-trail` | GET | Filterable activity logs + ledger hash-chain integrity verification |
+| `/finance/sync-opening-balances` | POST | **Ledger conversion:** post opening-balance journal entries so the ledger matches every sub-ledger (idempotent, delta-based) |
+
+**Ledger Opening Balance Sync (Finance → Sync Opening Balances):**
+- Runs a one-click conversion that posts a **single balanced journal entry** closing the gap between each control account and its sub-ledger total:
+  - `2001 Members Savings Liability` ← `sum(savings_accounts.balance)`
+  - `1101 Loans Receivable` ← `sum(loans.outstanding)` for disbursed/repaying/defaulted loans
+  - `2101 Share Capital` ← `sum(share_accounts.total_value)`
+  - `1201 Purchase Receivables` ← outstanding hire-purchase balances
+  - The difference is plugged to `3001 Retained Earnings` (standard conversion equity).
+- Only the **delta** is posted, so re-running is a no-op and never double-counts (same design as provisioning). The missing accounts (`1201`, `3001`, `2002`, `4002`, `5001`) are auto-created on demand by `LedgerService::ensureAccount`.
+- Historical income/expense is **not** re-created; the existing loan-loss provision entry keeps driving the P&L.
 
 **Ledger Immutability (hash chain):**
 - Every posted `journal_entries` row carries a `uuid`, `period`, `prev_hash` (previous entry's hash or `GENESIS`) and `hash = SHA-256(uuid|entry_number|period|prev_hash|id)`.
@@ -1171,7 +1184,7 @@ When a member is created with an email address, a `WelcomeEmail` is sent contain
 | Invoices | 1 | `/invoices/purchase/{id}` |
 | Reports | 2 | `/reports` |
 | Ledger | 10 | `/ledger` |
-| Finance | 11 | `/finance` |
+| Finance | 12 | `/finance` |
 | Admin (Users) | 7 | `/admin/users` |
 | Admin (Loan Products) | 6 | `/admin/loan-products` |
 | Admin (Roles) | 5 | `/admin/roles` |

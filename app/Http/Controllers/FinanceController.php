@@ -12,6 +12,7 @@ use App\Models\SavingsTransaction;
 use App\Models\ShareAccount;
 use App\Models\User;
 use App\Services\LedgerService;
+use App\Services\LedgerSyncService;
 use App\Services\ProvisioningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -353,9 +354,35 @@ class FinanceController extends Controller
         $sharesSub = (float) ShareAccount::sum('total_value');
         $shares = $ledger->reconcileControlAccount(LedgerService::SHARE_CAPITAL, $sharesSub);
 
-        $reports = compact('savings', 'loans', 'shares');
+        // 1201 Purchase Receivables vs outstanding hire-purchase balances.
+        $purchasesLedger = $ledger->getBalance(LedgerService::PURCHASE_RECEIVABLES);
+        $purchasesSub = app(LedgerSyncService::class)->subLedgerTargets()['purchases'];
+        $purchases = $ledger->reconcileControlAccount(LedgerService::PURCHASE_RECEIVABLES, $purchasesSub);
 
-        return view('finance.control-reconciliation', compact('reports', 'savingsLedger', 'loansLedger', 'sharesLedger'));
+        $reports = compact('savings', 'loans', 'shares', 'purchases');
+
+        return view('finance.control-reconciliation', compact('reports', 'savingsLedger', 'loansLedger', 'sharesLedger', 'purchasesLedger'));
+    }
+
+    // ---------------------------------------------------------------- Ledger Sync
+
+    public function syncOpeningBalances()
+    {
+        try {
+            $result = app(LedgerSyncService::class)->syncOpeningBalances();
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        if (! $result['posted']) {
+            ActivityLog::log('ledger.sync', 'Ledger sync run — no postings required.');
+
+            return back()->with('info', $result['message']);
+        }
+
+        ActivityLog::log('ledger.sync', "Posted opening-balance conversion entry {$result['entry_number']} (₦".number_format($result['total'], 2).').');
+
+        return back()->with('success', "Opening balances posted as {$result['entry_number']} — ₦".number_format($result['total'], 2).' across '.$result['lines'].' lines. Control accounts are now reconciled.');
     }
 
     // ---------------------------------------------------------------- Audit Trail

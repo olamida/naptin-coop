@@ -50,19 +50,19 @@ Route::get('/about', [HomeController::class, 'about'])->name('about');
 Route::get('/health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()->timestamp]))->name('health');
 
 Route::middleware('guest')->group(function () {
-    Route::get('login', [SessionController::class, 'create'])->name('login');
+    Route::get('login', [SessionController::class, 'create'])->name('login')->middleware('prevent-cache');
     Route::post('login', [SessionController::class, 'store'])->middleware('throttle:login');
 
-    Route::get('register', [RegistrationController::class, 'create'])->name('register');
+    Route::get('register', [RegistrationController::class, 'create'])->name('register')->middleware('prevent-cache');
     Route::post('register', [RegistrationController::class, 'store'])->name('register.store');
 
-    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request')->middleware('prevent-cache');
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:password-reset')->name('password.email');
-    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset')->middleware('prevent-cache');
     Route::post('reset-password', [NewPasswordController::class, 'store'])->middleware('throttle:password-reset')->name('password.update');
 });
 
-Route::match(['get', 'post'], 'logout', [SessionController::class, 'destroy'])->name('logout');
+Route::match(['get', 'post'], 'logout', [SessionController::class, 'destroy'])->name('logout')->middleware('prevent-cache');
 
 Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(function () {
     Route::get('force-password-change', [ProfileController::class, 'forcePasswordForm'])->name('password.force');
@@ -299,6 +299,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('/loan-aging', [FinanceController::class, 'loanAging'])->name('loan-aging');
         Route::post('/provision/calculate', [FinanceController::class, 'calculateProvision'])->name('provision.calculate');
         Route::get('/control-reconciliation', [FinanceController::class, 'controlReconciliation'])->name('control-reconciliation');
+        Route::post('/sync-opening-balances', [FinanceController::class, 'syncOpeningBalances'])->name('sync-opening-balances');
         Route::get('/audit-trail', [FinanceController::class, 'auditTrail'])->name('audit-trail');
     });
 
