@@ -435,6 +435,65 @@ class FinanceController extends Controller
         return back()->with('success', "Cash count for {$cashCount->count_date} verified.");
     }
 
+    // ---------------------------------------------------------------- Savings Control (Report 6)
+
+    public function savingsControl(Request $request)
+    {
+        $validated = $request->validate([
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+        ]);
+
+        $from = $validated['from'] ?? null;
+        $to = $validated['to'] ?? now()->toDateString();
+
+        $ledger = new LedgerService;
+        $subLedgerTotal = (float) SavingsAccount::sum('balance');
+        $ledgerBalance = $ledger->getBalance(LedgerService::MEMBERS_SAVINGS);
+        $controlVariance = round($subLedgerTotal - $ledgerBalance, 2);
+
+        $rows = SavingsAccount::with('member')->orderBy('account_number')->get()
+            ->map(function ($account) use ($from, $to) {
+                $query = $account->transactions()
+                    ->where('status', 'completed')
+                    ->whereDate('transaction_date', '<=', $to);
+
+                if ($from) {
+                    $query->whereDate('transaction_date', '>=', $from);
+                }
+
+                $transactions = $query->get();
+
+                $closing = (float) $account->balance;
+                $netMovement = $transactions->sum(fn ($t) => (float) $t->balance_after - (float) $t->balance_before);
+                $opening = round($closing - $netMovement, 2);
+
+                $sumByType = fn (string $type) => round((float) $transactions->where('type', $type)->sum('amount'), 2);
+
+                // All-time check: member balance vs the sum of every completed transaction delta.
+                $expected = (float) $account->transactions()
+                    ->where('status', 'completed')
+                    ->get()
+                    ->sum(fn ($t) => (float) $t->balance_after - (float) $t->balance_before);
+                $variance = round($closing - $expected, 2);
+
+                return [
+                    'member' => $account->member,
+                    'account_number' => $account->account_number,
+                    'opening' => $opening,
+                    'deposits' => $sumByType('deposit'),
+                    'withdrawals' => $sumByType('withdrawal'),
+                    'interest' => $sumByType('interest'),
+                    'transfers' => $sumByType('transfer'),
+                    'reversals' => $sumByType('reversal'),
+                    'closing' => $closing,
+                    'variance' => $variance,
+                ];
+            });
+
+        return view('finance.savings-control', compact('rows', 'subLedgerTotal', 'ledgerBalance', 'controlVariance', 'from', 'to'));
+    }
+
     // ---------------------------------------------------------------- Ledger Sync
 
     public function syncOpeningBalances()

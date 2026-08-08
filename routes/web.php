@@ -302,6 +302,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('/cash-count', [FinanceController::class, 'cashCount'])->name('cash-count');
         Route::post('/cash-count', [FinanceController::class, 'cashCountStore'])->name('cash-count.store');
         Route::post('/cash-count/{cashCount}/verify', [FinanceController::class, 'cashCountVerify'])->name('cash-count.verify');
+        Route::get('/reports/savings-control', [FinanceController::class, 'savingsControl'])->name('savings-control');
         Route::post('/sync-opening-balances', [FinanceController::class, 'syncOpeningBalances'])->name('sync-opening-balances');
         Route::get('/audit-trail', [FinanceController::class, 'auditTrail'])->name('audit-trail');
     });

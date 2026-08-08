@@ -31,6 +31,7 @@
                     ['route' => 'finance.loan-aging', 'icon' => 'fact_check', 'color' => 'bg-amber-100', 'icon_color' => 'text-amber-600', 'title' => 'Loan Aging', 'desc' => 'IFRS 9 aging buckets + provisioning'],
                     ['route' => 'finance.control-reconciliation', 'icon' => 'balance', 'color' => 'bg-violet-100', 'icon_color' => 'text-violet-600', 'title' => 'Control Reconciliation', 'desc' => 'Ledger vs sub-ledger variance check'],
                     ['route' => 'finance.cash-count', 'icon' => 'payments', 'color' => 'bg-teal-100', 'icon_color' => 'text-teal-600', 'title' => 'Daily Cash Count', 'desc' => 'Report 8 — daily physical cash reconciliation'],
+                    ['route' => 'finance.savings-control', 'icon' => 'savings', 'color' => 'bg-orange-100', 'icon_color' => 'text-orange-600', 'title' => 'Savings Control', 'desc' => 'Report 6 — member savings vs ledger 2001'],
                     ['route' => 'finance.audit-trail', 'icon' => 'verified_user', 'color' => 'bg-rose-100', 'icon_color' => 'text-rose-600', 'title' => 'Audit Trail', 'desc' => 'Activity logs + ledger hash verification'],
                 ];
             @endphp
