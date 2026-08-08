@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.10.0
+> **Version:** 3.11.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.11 | **CBN compliance rules (audit P1 #7):** **period-close appropriations** — closing a period now posts the statutory reserve (25% of net profit → `3003` General Reserve) and education fund (2.5% → `3002`) appropriations against retained earnings (`3001`) once per period (re-closing never double-appropriates; skipped when the period shows no profit); **dividend-declaration gating** — a dividend cannot be declared unless the posted trial balance is balanced and, whenever the loan book has outstanding balances, loan-loss provision coverage is ≥ 100% (gate lives in `DividendController::assertDividendEligible()`); **CBN single-obligor limit** — `LoanService::validateLoanProduct()` blocks any new loan that would push one member's total exposure over 5% of the current outstanding loan portfolio (skipped while the portfolio is empty). New `LedgerService` helpers: `periodNetProfit()`, `postPeriodAppropriations()` and `trialBalanceIsBalanced()`; new `3003 General Reserve` equity account (chart now 36 accounts). New `tests/Feature/CbnComplianceTest.php` (7 tests). |
 | 3.10 | **Finance report exports (Excel + QR-stamped PDF):** every financial report — Trial Balance, P&L, Balance Sheet, Cash Flow, Loan Aging, Savings Control and Audit Trail — now has **Excel** and **PDF** download buttons that preserve the active filters. PDFs are rendered by **DomPDF** (`barryvdh/laravel-dompdf`) with the company header and footer, and every export embeds a **QR code containing the report's SHA-256 hash** (computed over the canonical dataset) plus the plain hash text for verification. New `ReportExportService` (canonical hash + GD-backed PNG QR via bacon-qr-code `GDLibRenderer`), generic `FinanceReportExport` Excel class, and a shared `StreamsReportExports` controller trait. Export routes: `/ledger/trial-balance/export` and `/finance/{profit-loss,balance-sheet,cash-flow,loan-aging,audit-trail}/export` + `/finance/reports/savings-control/export`, all `?format=xlsx|pdf`. |
 | 3.9.1 | **Members Savings Control Report (Report 6):** new **Finance → Savings Control** page (`/finance/reports/savings-control`) — member-by-member savings ledger (opening balance, deposits, withdrawals, interest, transfers, closing balance) with a per-member ledger-variance check and an overall control comparison of `sum(savings_accounts.balance)` vs the `2001` Members Savings Liability control account, with optional date-range filter. |
 | 3.9 | **Daily Cash Count (audit P2 #4, Report 8):** new **Finance → Daily Cash Count** page — record the physical cash on hand each day (one count per date); the system balance is read live from ledger account `1001`, variance is auto-calculated and any imbalance posts a journal to `1005` Cash Suspense (excess → Dr Cash / Cr Suspense, shortage → Dr Suspense / Cr Cash); counts carry a `counted_by`/`verified_by` two-step trail with an in-page Verify action, and history is listed with status badges (balanced/shortage/excess). New `cash_counts` table + `CashCount` model + `LedgerService::postCashVariance()`. |
@@ -170,7 +171,7 @@ naptin-coop/
 │   └── Services/                       # Business logic layer (fat models → thin)
 │       ├── BrandingService.php         # Branding assets, GD size variants, cache, favicon/PWA sync
 │       ├── CartService.php             # Cart resolution, checkout processing, order numbers
-│       ├── LedgerService.php           # Double-entry posting, hash-chained immutability, reversal, reconciliation
+│       ├── LedgerService.php           # Double-entry posting, hash-chained immutability, reversal, reconciliation, period-close appropriations, trial-balance checks
 │       ├── LedgerSyncService.php       # One-click conversion: posts opening balances so the ledger matches sub-ledgers
 │       ├── LoanService.php             # Interest calculation, loan number generation, product validation
 │       ├── ProvisioningService.php     # IFRS 9 / CBN loan loss provisioning buckets
@@ -182,7 +183,7 @@ naptin-coop/
 │   └── seeders/
 │       ├── BrandingAssetSeeder.php     # Seeds the 6 branding assets from resources/branding/seed
 │       ├── DatabaseSeeder.php          # Main seeder: regions, positions, roles, admin, 5 members, loan products, products
-│       ├── LedgerAccountsSeeder.php    # Full CBN chart of accounts (35 accounts, idempotent, data-safe)
+│       ├── LedgerAccountsSeeder.php    # Full CBN chart of accounts (36 accounts, idempotent, data-safe)
 │       ├── PermissionsSeeder.php        # 35 permissions across 12 groups, 7 roles
 │       └── DemoDataSeeder.php          # Demo loans, savings, payroll data
 │
@@ -482,6 +483,7 @@ pending → approved → disbursed → repaying → completed
 - Checks `max_total_amount_per_member` limit
 - Validates amount within min/max range
 - Validates tenure within max term
+- **CBN single-obligor limit:** a member's total exposure (existing outstanding + new amount) may not exceed 5% of the current outstanding loan portfolio (skipped while the portfolio is empty)
 
 **Monthly Repayment Calculation:**
 ```
@@ -584,6 +586,8 @@ The system automatically splits each repayment into principal and interest porti
 ```
 draft → calculated → approved → completed
 ```
+
+**CBN declaration gate** (`DividendController::assertDividendEligible()`): a dividend cannot be declared unless the posted trial balance is balanced and — whenever the loan book has outstanding balances — loan-loss provision coverage (provision held ÷ required provision) is ≥ 100%. Run Finance → Loan Aging → Calculate Provision to satisfy the gate.
 
 **Calculation Logic:**
 `per_member_amount = (member_shares / total_shares) × total_profit`
@@ -712,10 +716,18 @@ The provisioning run posts the **net movement** (not the gross total) so repeate
 **Period Close:**
 ```
 Close → pre-checks pass (balanced entries + no pending savings)
+     → CBN appropriations posted on FIRST close only (once per period):
+         25% of net profit → Dr Retained Earnings (3001) / Cr General Reserve (3003)
+         2.5% of net profit → Dr Retained Earnings (3001) / Cr Education Fund (3002)
+         (skipped when the period shows no profit; re-closing is a no-op)
      → PeriodClose row (is_closed = true, closed_at/by)
      → New postings to that period are rejected
 Reopen → reason required → is_closed = false, reopened_at/by, reopen_reason
 ```
+
+**CBN compliance gates:**
+- **Dividend declaration** (`DividendController::assertDividendEligible()`): blocked unless the posted trial balance is balanced **and** — whenever the loan book has outstanding balances — loan-loss provision coverage (provision held ÷ required provision) is ≥ 100%. Run Finance → Loan Aging → Calculate Provision to satisfy the gate.
+- **Single obligor limit** (`LoanService::validateLoanProduct()`): a member's total loan exposure (existing outstanding + new amount) may not exceed 5% of the current outstanding loan portfolio; the check is skipped while the portfolio is empty so first loans are not blocked.
 
 ---
 
@@ -899,8 +911,12 @@ PERIOD CLOSE (Finance → Period Close, on/after month-end):
    → No unbalanced posted journal entries in the period
    → No pending savings transactions in the period
 3. Admin clicks Close → PeriodClose row created (is_closed = true)
-4. All new ledger postings to that period are now rejected
-5. If an error is found: Admin reopens with a reason (logged to activity trail)
+4. On the FIRST close of a period, CBN appropriations are posted once:
+   → 25% of net profit → Dr Retained Earnings (3001) / Cr General Reserve (3003)
+   → 2.5% of net profit → Dr Retained Earnings (3001) / Cr Education Fund (3002)
+   → Skipped when the period shows no profit; re-closing never double-appropriates
+5. All new ledger postings to that period are now rejected
+6. If an error is found: Admin reopens with a reason (logged to activity trail)
 
 LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
 1. System ages every outstanding loan into an IFRS 9 bucket (0–30 / 31–60 / 61–90 / 91–180 / >180 days)

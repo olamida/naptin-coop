@@ -61,18 +61,30 @@ class FinanceController extends Controller
             return back()->withErrors(['error' => $checks['message']]);
         }
 
-        PeriodClose::updateOrCreate(
-            ['period' => $validated['period']],
-            [
-                'is_closed' => true,
-                'closed_at' => now(),
-                'closed_by' => auth()->id(),
-                'notes' => $validated['notes'] ?? null,
-                'reopened_at' => null,
-                'reopened_by' => null,
-                'reopen_reason' => null,
-            ]
-        );
+        $ledger = new LedgerService;
+        $firstClose = ! PeriodClose::where('period', $validated['period'])->exists();
+
+        DB::transaction(function () use ($validated, $ledger, $firstClose) {
+            // CBN appropriations: 25% statutory reserve + 2.5% education fund, posted
+            // once per period on the first close (re-closing is a no-op to avoid
+            // double-appropriating an immutable, already-locked period).
+            if ($firstClose) {
+                $ledger->postPeriodAppropriations($validated['period'], $ledger->periodNetProfit($validated['period']));
+            }
+
+            PeriodClose::updateOrCreate(
+                ['period' => $validated['period']],
+                [
+                    'is_closed' => true,
+                    'closed_at' => now(),
+                    'closed_by' => auth()->id(),
+                    'notes' => $validated['notes'] ?? null,
+                    'reopened_at' => null,
+                    'reopened_by' => null,
+                    'reopen_reason' => null,
+                ]
+            );
+        });
 
         ActivityLog::log('period.close', "Closed financial period {$validated['period']}.");
 

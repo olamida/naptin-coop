@@ -50,9 +50,20 @@ class Company extends Model
 
     public static function instance(): static
     {
-        return static::firstOrCreate([], [
+        $company = static::query()->firstOrCreate([], [
             'name' => 'NAPTIN Staff Thrift Cooperative',
         ]);
+
+        // firstOrCreate() with empty attributes inserts only the explicitly set
+        // columns, so DB-defaulted flags (shares_enabled, dividends_enabled, etc.)
+        // are absent from the in-memory model and read back as null. Reload the
+        // freshly created row so module gating and company settings work on the
+        // very first request that bootstraps the singleton company row.
+        if ($company->wasRecentlyCreated) {
+            $company->refresh();
+        }
+
+        return $company;
     }
 
     public function moduleEnabled(string $module): bool

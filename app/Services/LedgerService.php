@@ -7,6 +7,7 @@ use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Models\PeriodClose;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -44,6 +45,8 @@ class LedgerService
     public const RETAINED_EARNINGS = '3001';     // Retained Earnings (equity, credit normal)
 
     public const EDUCATION_FUND = '3002';        // Education Fund (equity, credit normal)
+
+    public const GENERAL_RESERVE = '3003';       // General Reserve / Statutory Reserve (equity, credit normal)
 
     public const INTEREST_INCOME = '4001';       // Interest Income (income, credit normal)
 
@@ -86,6 +89,7 @@ class LedgerService
         self::SHARE_CAPITAL => ['name' => 'Share Capital', 'type' => 'equity', 'normal_side' => 'credit'],
         self::RETAINED_EARNINGS => ['name' => 'Retained Earnings', 'type' => 'equity', 'normal_side' => 'credit'],
         self::EDUCATION_FUND => ['name' => 'Education Fund', 'type' => 'equity', 'normal_side' => 'credit'],
+        self::GENERAL_RESERVE => ['name' => 'General Reserve', 'type' => 'equity', 'normal_side' => 'credit', 'subtype' => 'reserve', 'allow_manual_entry' => false],
         self::INTEREST_INCOME => ['name' => 'Interest Income', 'type' => 'income', 'normal_side' => 'credit'],
         self::SALES_REVENUE => ['name' => 'Sales Revenue', 'type' => 'income', 'normal_side' => 'credit'],
         self::PROCESSING_FEES_INCOME => ['name' => 'Processing Fees Income', 'type' => 'income', 'normal_side' => 'credit'],
@@ -105,6 +109,7 @@ class LedgerService
      * @param  string|null  $referenceType  e.g. savings, loan
      * @param  int|null  $referenceId  id of the originating record
      * @param  array  $lines  [{account_code, debit, credit, description?}, ...]
+     * @param  string|null  $entryDate  optional entry date (defaults to today); the period is derived from it
      */
     public function post(
         string $description,
@@ -112,9 +117,10 @@ class LedgerService
         ?int $referenceId,
         array $lines,
         ?int $reversalOfId = null,
-        ?string $reversalReason = null
+        ?string $reversalReason = null,
+        ?string $entryDate = null
     ): JournalEntry {
-        $entryDate = now()->toDateString();
+        $entryDate = $entryDate ?? now()->toDateString();
         $period = substr($entryDate, 0, 7);
 
         if (PeriodClose::isClosed($period)) {
@@ -296,6 +302,92 @@ class LedgerService
     public function isPeriodClosed(string $period): bool
     {
         return PeriodClose::isClosed($period);
+    }
+
+    /**
+     * Net profit realised in a single financial period (income credits minus expense
+     * debits on posted entries dated within the period).
+     */
+    public function periodNetProfit(string $period): float
+    {
+        $start = $period.'-01';
+        $end = date('Y-m-t', strtotime($start));
+
+        $totals = DB::table('journal_entry_lines as jel')
+            ->join('journal_entries as je', 'je.id', '=', 'jel.journal_entry_id')
+            ->join('chart_of_accounts as coa', 'coa.id', '=', 'jel.account_id')
+            ->where('je.status', 'posted')
+            ->whereBetween('je.entry_date', [$start, $end])
+            ->whereIn('coa.type', ['income', 'expense'])
+            ->selectRaw('COALESCE(SUM(jel.credit), 0) as c, COALESCE(SUM(jel.debit), 0) as d')
+            ->first();
+
+        return round((float) ($totals->c ?? 0) - (float) ($totals->d ?? 0), 2);
+    }
+
+    /**
+     * Post the CBN statutory reserve (25%) and education fund (2.5%) appropriations of a
+     * period's net profit, debiting retained earnings (3001) into the reserve accounts.
+     * Posts at the period's month-end so the appropriation lands in the closed period.
+     * Caller is responsible for idempotency (only appropriate on the first close of a period).
+     *
+     * @return array{statutory: ?JournalEntry, education: ?JournalEntry, net_profit: float}
+     */
+    public function postPeriodAppropriations(string $period, float $netProfit): array
+    {
+        $netProfit = round($netProfit, 2);
+
+        if ($netProfit <= 0) {
+            return ['statutory' => null, 'education' => null, 'net_profit' => 0.0];
+        }
+
+        $entryDate = date('Y-m-t', strtotime($period.'-01'));
+
+        $statutory = round($netProfit * 0.25, 2);
+        $education = round($netProfit * 0.025, 2);
+
+        $statutoryEntry = $this->post(
+            "Statutory reserve appropriation for {$period}: 25% of net profit (₦".number_format($statutory, 2).')',
+            'period_close',
+            null,
+            [
+                ['account_code' => self::RETAINED_EARNINGS, 'debit' => $statutory, 'credit' => 0],
+                ['account_code' => self::GENERAL_RESERVE, 'debit' => 0, 'credit' => $statutory],
+            ],
+            null,
+            null,
+            $entryDate
+        );
+
+        $educationEntry = $this->post(
+            "Education fund appropriation for {$period}: 2.5% of net profit (₦".number_format($education, 2).')',
+            'period_close',
+            null,
+            [
+                ['account_code' => self::RETAINED_EARNINGS, 'debit' => $education, 'credit' => 0],
+                ['account_code' => self::EDUCATION_FUND, 'debit' => 0, 'credit' => $education],
+            ],
+            null,
+            null,
+            $entryDate
+        );
+
+        return ['statutory' => $statutoryEntry, 'education' => $educationEntry, 'net_profit' => $netProfit];
+    }
+
+    /**
+     * Is the trial balance balanced (total posted debits equal total posted credits)?
+     * Used as a dividend-declaration gate and general ledger sanity check.
+     */
+    public function trialBalanceIsBalanced(): bool
+    {
+        $totals = DB::table('journal_entry_lines as jel')
+            ->join('journal_entries as je', 'je.id', '=', 'jel.journal_entry_id')
+            ->where('je.status', 'posted')
+            ->selectRaw('COALESCE(SUM(jel.debit), 0) as d, COALESCE(SUM(jel.credit), 0) as c')
+            ->first();
+
+        return round((float) $totals->d, 2) === round((float) $totals->c, 2);
     }
 
     /**

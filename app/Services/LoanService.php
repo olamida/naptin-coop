@@ -87,6 +87,26 @@ class LoanService
             return "Tenure exceeds the maximum of {$product->max_term_months} months for {$product->name}.";
         }
 
+        // CBN single obligor limit: a member's total loan exposure may not exceed 5% of
+        // the current loan portfolio. Skipped while the portfolio is empty so the very
+        // first loans in a greenfield cooperative are not blocked.
+        $portfolio = Loan::whereIn('status', ['disbursed', 'repaying', 'defaulted'])
+            ->where('outstanding', '>', 0)
+            ->sum('outstanding');
+
+        if ($portfolio > 0) {
+            $limit = round((float) $portfolio * 0.05, 2);
+            $memberExposure = Loan::where('member_id', $memberId)
+                ->whereIn('status', ['pending', 'approved', 'disbursed', 'repaying'])
+                ->sum('outstanding') + $amount;
+
+            if ($memberExposure > $limit) {
+                return 'CBN single obligor limit exceeded: this member\'s exposure of ₦'
+                    .number_format($memberExposure, 2).' would exceed 5% of the loan portfolio (₦'
+                    .number_format($limit, 2).').';
+            }
+        }
+
         return null;
     }
 

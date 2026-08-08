@@ -25,7 +25,7 @@ class LedgerChartOfAccountsTest extends TestCase
     {
         $this->seed(LedgerAccountsSeeder::class);
 
-        $this->assertSame(35, ChartOfAccount::count());
+        $this->assertSame(36, ChartOfAccount::count());
 
         // Control accounts carry the right module flags.
         $this->assertTrue(ChartOfAccount::where('code', '1301')->value('is_control_account'));
@@ -42,6 +42,8 @@ class LedgerChartOfAccountsTest extends TestCase
         // Income/expense/equity breadth required by the pending features.
         $this->assertSame('income', ChartOfAccount::where('code', '4004')->value('type'));
         $this->assertSame('equity', ChartOfAccount::where('code', '3002')->value('type'));
+        $this->assertSame('equity', ChartOfAccount::where('code', '3003')->value('type'));
+        $this->assertSame('reserve', ChartOfAccount::where('code', '3003')->value('subtype'));
         $this->assertSame('asset', ChartOfAccount::where('code', '1005')->value('type'));
     }
 
@@ -59,7 +61,7 @@ class LedgerChartOfAccountsTest extends TestCase
 
         $this->seed(LedgerAccountsSeeder::class);
 
-        $this->assertSame(36, ChartOfAccount::count());
+        $this->assertSame(37, ChartOfAccount::count());
         $this->assertSame('Legacy Operational Account', ChartOfAccount::where('code', '9999')->value('name'));
 
         // Existing CBN-coded accounts keep their operational names, not spec names.

@@ -8,6 +8,8 @@ use App\Actions\Dividends\DeclareDividend;
 use App\Actions\Dividends\DistributeDividend;
 use App\Models\Dividend;
 use App\Models\DividendDistribution;
+use App\Services\LedgerService;
+use App\Services\ProvisioningService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -41,6 +43,8 @@ class DividendController extends Controller
         ]);
 
         try {
+            $this->assertDividendEligible();
+
             $dividend = DeclareDividend::run($validated);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
@@ -48,6 +52,34 @@ class DividendController extends Controller
 
         return redirect()->route('dividends.show', $dividend)
             ->with('success', 'Dividend record created. Now calculate distributions.');
+    }
+
+    /**
+     * CBN compliance gates for declaring a dividend:
+     *  - the trial balance must be balanced
+     *  - loan loss provision coverage must be >= 100% (provisioning run completed)
+     */
+    private function assertDividendEligible(): void
+    {
+        $ledger = new LedgerService;
+
+        if (! $ledger->trialBalanceIsBalanced()) {
+            throw new \RuntimeException('Cannot declare a dividend: the trial balance is not balanced.');
+        }
+
+        $report = ProvisioningService::agingReport();
+
+        if ($report['total_outstanding'] > 0 && $report['total_provision'] > 0) {
+            $provisionHeld = $ledger->getBalance(LedgerService::LOAN_LOSS_PROVISION);
+            $coverage = round(($provisionHeld / $report['total_provision']) * 100, 2);
+
+            if ($coverage < 100.0) {
+                throw new \RuntimeException(
+                    'Cannot declare a dividend: loan loss provision coverage is '.number_format($coverage, 2)
+                    .'% (minimum 100%). Run Finance → Loan Aging → Calculate Provision first.'
+                );
+            }
+        }
     }
 
     public function show(Dividend $dividend): View

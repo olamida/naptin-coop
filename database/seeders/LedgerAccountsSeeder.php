@@ -19,12 +19,14 @@ use Illuminate\Database\Seeder;
  * Documented deviations (existing operational codes win over spec duplicates):
  *   - 1201 stays "Purchase Receivables" (spec: Loan Portfolio - Regular)
  *   - 2002 stays "Dividends Payable" (spec: Members Savings - Target)
- *   - 3001 stays "Retained Earnings" (spec: General Reserve); 3003 not duplicated
+ *   - 3001 stays "Retained Earnings" (spec: General Reserve); the CBN statutory
+ *     reserve appropriation posts to a dedicated 3003 General Reserve account
  *   - 4002 stays "Sales Revenue" (spec: Interest Income - Emergency)
  *   - 5001 stays "Procurement & General Expenses" (spec: Bank Charges)
  * These avoid two accounts serving one purpose; new features use the spec codes
  * (2201 Dividend Payable, 1301 Inventory, 1501 Payroll Receivable, 4004 Fees,
- * 4005 Sales Margin, 3002 Education Fund, 1005 Cash Suspense, etc.).
+ * 4005 Sales Margin, 3002 Education Fund, 3003 General Reserve, 1005 Cash
+ * Suspense, etc.).
  */
 class LedgerAccountsSeeder extends Seeder
 {
@@ -54,6 +56,7 @@ class LedgerAccountsSeeder extends Seeder
         // -------------------------------------------------------------- Equity
         ['code' => '3001', 'name' => 'Retained Earnings', 'type' => 'equity', 'normal_side' => 'credit', 'subtype' => 'reserve', 'is_control_account' => false, 'control_module' => null, 'allow_manual_entry' => true],
         ['code' => '3002', 'name' => 'Education Fund', 'type' => 'equity', 'normal_side' => 'credit', 'subtype' => 'reserve', 'is_control_account' => false, 'control_module' => null, 'allow_manual_entry' => false],
+        ['code' => '3003', 'name' => 'General Reserve', 'type' => 'equity', 'normal_side' => 'credit', 'subtype' => 'reserve', 'is_control_account' => false, 'control_module' => null, 'allow_manual_entry' => false],
 
         // --------------------------------------------------------------- Income
         ['code' => '4001', 'name' => 'Interest Income - Regular Loans', 'type' => 'income', 'normal_side' => 'credit', 'subtype' => 'operating_income', 'is_control_account' => false, 'control_module' => null, 'allow_manual_entry' => false],

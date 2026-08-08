@@ -1,0 +1,223 @@
+================================================================================
+NAPTIN STAFF THRIFT COOPERATIVE SOCIETY — PENDING (UNIMPLEMENTED) TASKS
+================================================================================
+Generated from a full audit of the two planning specs against the codebase.
+Specs compared:
+  - Full-CBN-Accounting-Prompt-31KB.txt        (CBN / IFRS double-entry spec)
+  - Full-World-Class-Audit-Prompt.txt          (identical to NAPTIN_COOP_WORLD_CLASS_AUDIT_AND_PROMPT.txt)
+
+Legend:  [MISSING]  = not implemented at all
+         [PARTIAL]  = implemented but incomplete vs. spec
+
+PRIORITIZATION
+--------------
+Priority 1 = Finance/Compliance correctness (audit-critical)
+Priority 2 = Money-flow integrity (ledger coverage)
+Priority 3 = Operational workflow (approvals, reports, exports)
+Priority 4 = Security hardening
+Priority 5 = Automation (scheduled jobs)
+Priority 6 = Housekeeping / dead code
+
+--------------------------------------------------------------------------------
+P1 — FINANCE & COMPLIANCE (audit-critical)
+--------------------------------------------------------------------------------
+1. [MISSING] FULL CBN CHART OF ACCOUNTS + SEEDER
+   - Spec: "Seed these exact accounts - Do not change codes" (1001–5008 with subtypes).
+   - Current: only 12 codes are auto-created on demand by LedgerService::ensureAccount
+     (1001,1101,1201,1205,2001,2002,2101,3001,4001,4002,5001,5004).
+   - Missing accounts: 1002 Bank, 1003 Petty Cash, 1301 Inventory, 1401/1402,
+     1501 Payroll Deductions Receivable, 2201 Dividend Payable, 3002 Statutory
+     Reserve, 3003 Education Fund, 4004 Processing Fees Income, 4005 Sales Margin,
+     4006/4007 income, 5002/5003/5005–5008 expenses.
+   - TODO: create database/seeders/LedgerAccountsSeeder.php and register in DatabaseSeeder;
+     extend LedgerService::DEFAULTS with the same codes (keep codes EXACT).
+
+2. [PARTIAL] CHART_OF_ACCOUNTS SCHEMA
+   - Spec columns missing: subtype, is_control_account, control_module, allow_manual_entry.
+   - TODO: new migration adding these columns to chart_of_accounts; backfill control-account
+     flags for 1001, 1101, 1201, 1301, 1501, 2001, 2101, 2201, 3001.
+
+3. [MISSING] MAKER-CHECKER APPROVAL WORKFLOWS
+   - Spec: approval_workflows migration + ApprovalService::requiresApproval() + PendingApprovals.
+   - TODO: migrations (approval_workflows, pending_approvals), ApprovalService with sequential
+     role workflow, and wire high-risk actions (loan disbursement, dividend, withdrawals > limit).
+
+4. [MISSING] DAILY CASH COUNT / RECONCILIATION  ->  Report 8: /finance/cash-count
+   - Spec: cash_counts migration; "Report 8: Daily Cash Reconciliation" with variance to 1005
+     Cash Suspense.
+   - TODO: cash_counts table, FinanceController::cashCount(), view, and a 1005 Cash Suspense
+     account + variance journal.
+
+5. [MISSING] REPORT EXPORTS (Excel / PDF + QR + hash verification)
+   - All finance/ledger reports are print-only. No DomPDF package.
+   - TODO: add Excel export (Maatwebsite) + PDF export (barryvdh/laravel-dompdf) with a QR code
+     of the report hash on Trial Balance, P&L, Balance Sheet, Cash Flow, Loan Aging, Audit Trail.
+
+6. [MISSING] MEMBERS SAVINGS CONTROL REPORT
+   - Spec "Report 6: /finance/reports/savings-control" (member-by-member savings ledger + closing
+     balance).
+   - TODO: route + FinanceController::savingsControl() + view.
+
+7. [DONE] CBN COMPLIANCE RULES  (landed in version 3.11.0)
+   a. Statutory Reserve: auto-transfer 25% of net profit to 3001 at period close.
+      -> DONE: 25% of net profit posts Dr 3001 / Cr 3003 General Reserve on the first
+         close of a period (LedgerService::postPeriodAppropriations(), never double-appropriates).
+   b. Education Fund: 2.5% to 3002.
+      -> DONE: Dr 3001 / Cr 3002 on the first close (same method as 7a).
+   c. Dividend gating: cannot declare a dividend unless provision coverage >= 100% AND trial
+      balance is balanced (gate in DividendController::store()).
+      -> DONE: DividendController::assertDividendEligible() + LedgerService::trialBalanceIsBalanced().
+   d. Single-obligor limit: loan to one member <= 5% of total portfolio (add to
+      LoanService::validateLoanProduct()).
+      -> DONE: LoanService::validateLoanProduct() blocks exposure > 5% of the outstanding
+         portfolio (skipped while the portfolio is empty).
+   Regression coverage: tests/Feature/CbnComplianceTest.php (7 tests).
+
+8. [PARTIAL] PERIOD CLOSE CHECKS
+   - Spec: close requires (a) Trial Balance balanced, (b) cash counts balanced, (c) no pending
+     approvals, (d) control accounts reconciled.
+   - Current periodCloseChecks() only checks unbalanced entries + pending savings.
+   - TODO: extend periodCloseChecks().
+
+9. [PARTIAL] PERIOD REOPEN NEEDS DUAL APPROVAL
+   - Spec: reopen requires President + Auditor approval with reason logged.
+   - Current: free-text reason only.
+   - TODO: multi-role approval flow on period-close.reopen.
+
+--------------------------------------------------------------------------------
+P2 — MONEY-FLOW / LEDGER COVERAGE
+--------------------------------------------------------------------------------
+10. [PARTIAL] LOAN PROCESSING FEE
+    - Spec: on disbursement post Dr 1101 (or 1002) / Cr 4004 Processing Fees Income.
+    - Current: DisburseLoan posts principal only; no processing_fee column on loans.
+    - TODO: loans.processing_fee column, capture on apply/disburse, post fee journal, add 4004.
+
+11. [PARTIAL] DIVIDEND ACCRUAL AT DECLARATION
+    - Spec: Dr 3003 Retained Earnings / Cr 2201 Dividend Payable at declaration.
+    - Current: nothing posted until distribution (Dr Retained Earnings / Cr Cash).
+    - TODO: post accrual in DeclareDividend/CalculateDividend; add 2201 Dividend Payable.
+
+12. [PARTIAL] INVENTORY / COGS POSTING
+    - Spec: cash sale posts Dr 1001 / Cr 1301 Inventory + Cr 4005 Sales Margin.
+    - Current: posts Dr Cash / Cr 4002 Sales Revenue only; stock decrement is non-ledger.
+    - TODO: add 1301 Inventory and 4005 Sales Margin, post COGS/valuation on sale.
+
+13. [PARTIAL] HIRE-PURCHASE SCHEDULE
+    - Spec: hire purchase creates a loan-like repayment schedule with per-instalment journals.
+    - Current: flat monthly_repayment field; only the initial sale entry posts.
+    - TODO: hire_purchase_schedules table + per-instalment posting on collection.
+
+14. [PARTIAL] PAYROLL POSTS TO LEDGER
+    - Spec: 1501 Receivable – Payroll Deductions Expected control account; expected deductions
+      posted when compiling.
+    - Current: payroll compile only creates payroll_deductions rows; no journal entries.
+    - TODO: 1501 account + journal on compile (Dr 1501 / Cr savings/loan/share/purchase controls).
+
+15. [PARTIAL] getBalance() DATE RANGE + HELPER METHODS
+    - Spec: getBalance(string $code, ?fromDate, ?toDate); isPeriodClosed();
+      validateControlAccounts(): array.
+    - TODO: add optional date range to LedgerService::getBalance(), implement
+      validateControlAccounts().
+
+16. [PARTIAL] BCMATH FOR MONEY
+    - Spec: use bcmath for calculations.
+    - Current: all arithmetic uses PHP float.
+    - TODO: introduce a Money helper (bcadd/bcsub/bcmul) used in LedgerService,
+      ProvisioningService, LoanService, SavingsService.
+
+17. [PARTIAL] DIRECT TRACEABILITY FROM TRANSACTIONS
+    - Spec: savings_transactions.journal_entry_id; loan_repayments.fees_portion;
+      import_batch_id + external_reference on ALL financial tables.
+    - Current: linkage is via reference_type/reference_id; import_batch_id only on
+      savings_transactions, loan_repayments, members, share_transactions.
+    - TODO: add journal_entry_id to savings_transactions; fees_portion to loan_repayments;
+      import_batch_id + external_reference to loans, purchase_orders, dividends.
+
+18. [PARTIAL] IMMUTABLE journal_entries STRUCTURE
+    - Spec: NO updated_at on journal_entries (structural immutability).
+    - Current: timestamps() present; immutability enforced by MySQL triggers only.
+    - TODO: decision needed — leave triggers (safer) or drop updated_at (breaking change).
+
+--------------------------------------------------------------------------------
+P3 — OPERATIONAL WORKFLOW & REPORTS
+--------------------------------------------------------------------------------
+19. [PARTIAL] SMART LOAN WIZARD — SERVER-SIDE RULES
+    - Spec: max eligible live = 3x savings, enforced server-side; guarantor exposure cap
+      (prevent > 500k); amortization Chart.js line chart.
+    - Current: Alpine-only client math; no server enforcement of 3x or guarantor exposure.
+    - TODO: enforce in LoanService::validateLoanProduct() + wizard chart step.
+
+20. [PARTIAL] LOAN DETAIL TIMELINE
+    - Spec: loan lifecycle timeline over tables.
+    - Current: approval-log tables on loan show page.
+    - TODO: avatar/vertical timeline UI on loans/show.blade.php.
+
+21. [PARTIAL] KEYBOARD SHORTCUTS
+    - Spec: A approve, R reject, N new member, / search.
+    - Current: only ?K/⌘K command palette.
+    - TODO: global key bindings.
+
+22. [PARTIAL] STATUS BADGE CONSISTENCY
+    - Spec: all statuses render dot + label via enum color().
+    - TODO: apply status-badge component consistently across every table.
+
+23. [MISSING] LIVE WIRE REPORTS
+    - Spec: "All reports must be Livewire with filters".
+    - Current: plain Blade + GET filters.
+    - TODO: either add Livewire (large change) or document a decision to keep Blade.
+
+--------------------------------------------------------------------------------
+P4 — SECURITY HARDENING
+--------------------------------------------------------------------------------
+24. [MISSING] NO BACK-DATING MIDDLEWARE
+    - Spec: txn_date cannot be before last closed period or a future date.
+    - TODO: app/Http/Middleware/NoBackDating.php + register on money routes.
+
+25. [MISSING] DATABASE CHECK CONSTRAINTS
+    - Spec: CHECK amount > 0, debit != credit.
+    - TODO: migration adding CHECK constraints on money columns.
+
+26. [MISSING] IP WHITELIST FOR TREASURER
+    - Spec: IP whitelist for treasurer role.
+    - TODO: config + middleware.
+
+27. [PARTIAL] ROLE-FORCED 2FA
+    - Spec: 2FA required for president, treasurer, financial_secretary.
+    - Current: Google2FA TOTP is opt-in per user.
+    - TODO: enforce in RequireTwoFactor middleware for those roles.
+
+28. [PARTIAL] DEDICATED RATE LIMITING ON FINANCE ROUTES
+    - Spec: rate limit on /ledger and /finance.
+    - TODO: stricter limiter on financial routes.
+
+--------------------------------------------------------------------------------
+P5 — SCHEDULED JOBS (routes/console.php / app/Console/Commands)
+--------------------------------------------------------------------------------
+29. [MISSING] 02:00  Backup ledger to S3 ENCRYPTED (manual backup exists, not scheduled, not encrypted).
+30. [MISSING] 04:00  VerifyLedgerHashChain — alert (email) if tampered.
+31. [MISSING] 06:00  CalculateProvisioning on month-end.
+32. [MISSING] 23:00  ReconcileControlAccounts — email Auditor if variance.
+    (Existing daily jobs: app:detect-loan-arrears, ExpireGuarantorInvites.)
+
+--------------------------------------------------------------------------------
+P6 — HOUSEKEEPING / DEAD CODE / ARCHITECTURE
+--------------------------------------------------------------------------------
+33. [PARTIAL] DELETE LEGACY AdminController.php
+    - Spec: split god-controller into User/Stock/Backup/Statistics controllers (done) AND delete
+      the old AdminController (NOT done — ~230 lines dead code remain).
+    - TODO: verify no routes reference it, then delete + run tests.
+
+34. [MISSING] REPOSITORY PATTERN FOR LEDGER QUERIES
+    - Spec: repository layer.
+    - TODO: app/Repositories/LedgerRepository.php (optional, architectural).
+
+35. [MISSING] app/Traits/HasDoubleEntry.php
+    - Spec: trait.
+    - TODO: optional trait that posts via the model.
+
+================================================================================
+HOW TO VERIFY EACH ITEM
+================================================================================
+- After each feature: php artisan test, vendor/bin/pint, update APP-GUIDE.md changelog,
+  then commit + push (DoD ritual in AGENTS.md).
+- Regression tests live in tests/Feature/ (mirror LedgerSyncTest / ProvisioningTest style).
