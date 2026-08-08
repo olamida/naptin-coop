@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\CashCount;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\Loan;
@@ -362,6 +363,76 @@ class FinanceController extends Controller
         $reports = compact('savings', 'loans', 'shares', 'purchases');
 
         return view('finance.control-reconciliation', compact('reports', 'savingsLedger', 'loansLedger', 'sharesLedger', 'purchasesLedger'));
+    }
+
+    // ---------------------------------------------------------------- Cash Count
+
+    public function cashCount()
+    {
+        $counts = CashCount::with(['countedBy', 'verifiedBy'])->latest('count_date')->paginate(25);
+        $systemBalance = (new LedgerService)->getBalance(LedgerService::CASH);
+
+        return view('finance.cash-count', compact('counts', 'systemBalance'));
+    }
+
+    public function cashCountStore(Request $request)
+    {
+        $validated = $request->validate([
+            'count_date' => 'required|date|before_or_equal:today',
+            'physical_count' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        if (CashCount::whereDate('count_date', $validated['count_date'])->exists()) {
+            return back()->withErrors(['count_date' => 'A cash count already exists for this date.']);
+        }
+
+        $ledger = new LedgerService;
+        $systemBalance = $ledger->getBalance(LedgerService::CASH);
+        $variance = round((float) $validated['physical_count'] - $systemBalance, 2);
+
+        $status = $variance == 0
+            ? CashCount::STATUS_BALANCED
+            : ($variance > 0 ? CashCount::STATUS_EXCESS : CashCount::STATUS_SHORTAGE);
+
+        try {
+            $count = DB::transaction(function () use ($validated, $systemBalance, $variance, $status) {
+                $count = CashCount::create([
+                    'count_date' => $validated['count_date'],
+                    'system_balance' => $systemBalance,
+                    'physical_count' => $validated['physical_count'],
+                    'variance' => $variance,
+                    'status' => $status,
+                    'counted_by' => auth()->id(),
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+
+                if ($status !== CashCount::STATUS_BALANCED) {
+                    app(LedgerService::class)->postCashVariance($count->id, $variance);
+                }
+
+                return $count;
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        ActivityLog::log('cash-count.store', "Recorded daily cash count for {$count->count_date}: ₦".number_format($count->physical_count, 2).' (variance ₦'.number_format($variance, 2).').');
+
+        return back()->with('success', "Cash count recorded for {$count->count_date} — variance ₦".number_format($variance, 2).'.');
+    }
+
+    public function cashCountVerify(CashCount $cashCount)
+    {
+        if ($cashCount->verified_by) {
+            return back()->withErrors(['error' => 'This cash count is already verified.']);
+        }
+
+        $cashCount->update(['verified_by' => auth()->id()]);
+
+        ActivityLog::log('cash-count.verify', "Verified daily cash count for {$cashCount->count_date}.");
+
+        return back()->with('success', "Cash count for {$cashCount->count_date} verified.");
     }
 
     // ---------------------------------------------------------------- Ledger Sync

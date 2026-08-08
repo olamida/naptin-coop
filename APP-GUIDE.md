@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.8.0
+> **Version:** 3.9.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.9 | **Daily Cash Count (audit P2 #4, Report 8):** new **Finance → Daily Cash Count** page — record the physical cash on hand each day (one count per date); the system balance is read live from ledger account `1001`, variance is auto-calculated and any imbalance posts a journal to `1005` Cash Suspense (excess → Dr Cash / Cr Suspense, shortage → Dr Suspense / Cr Cash); counts carry a `counted_by`/`verified_by` two-step trail with an in-page Verify action, and history is listed with status badges (balanced/shortage/excess). New `cash_counts` table + `CashCount` model + `LedgerService::postCashVariance()`. |
 | 3.8 | **Loan processing fees + dividend accrual (audit P1 #10, #11):** loan products gained `processing_fee_pct`; `loans.processing_fee` is captured at application (amount × pct); disbursement now posts Dr Loans Receivable (1101) / Cr Cash (1001, net = principal − fee) / Cr Processing Fees Income (4004) via `LedgerService::postLoanDisbursement(loanId, amount, fee)`; **dividend accrual** — `CalculateDividend` posts the liability immediately (Dr Retained Earnings 3001 / Cr Dividend Payable 2201) so the payable exists at declaration/calculation time, and `DistributeDividend` clears the payable (Dr 2201 / Cr Cash) instead of hitting retained earnings at payout. |
 | 3.7 | **Full CBN Chart of Accounts (audit P1 #1–#2 + #15):** new `LedgerAccountsSeeder` seeds the complete CBN MFB chart (35 accounts: 1001–1501 assets incl. 1301 Inventory, 1401/1402 fixed assets & depreciation, 1501 Payroll Deductions Receivable; 2001–2401 liabilities incl. 2003 Fixed Deposit, 2201 Dividend Payable, 2301 Audit Fees; 3001/3002 equity incl. Education Fund; 4001–4007 income incl. 4004 Processing Fees, 4005 Sales Margin; 5001–5008 expenses) — idempotent and data-safe, preserving the existing operational codes (1101 Loans Receivable, 1201 Purchase Receivables, 3001 Retained Earnings, etc.); `chart_of_accounts` gained `subtype`, `is_control_account`, `control_module`, `allow_manual_entry` columns with control-flag backfill; `LedgerService::ensureAccount` now creates any CBN code on demand with matching flags and `DEFAULTS` was extended to the full chart (Dividends Payable moved to spec code `2201`); new helpers `LedgerService::getBalance(code, ?from, ?to)` (date-range), `isPeriodClosed()`, and `validateControlAccounts()` (returns variance rows for every control account) power the upcoming compliance and report work. |
 | 3.5 | **Module toggles, sidebar slim-down, login + JS hardening:** new **Settings → Modules** tab to enable/disable **Shares** and **Dividends** modules (hides sidebar entries, gates routes via `module.enabled` middleware, redirects direct access); **compact sidebar** rework — Savings/Loans/Shares/Purchases/Dividends/Payroll folded into a collapsible **Accounts** dropdown, standalone **Reporting** section (Reports), and new **Finance & Accounting** group (Finance + Ledger); **login page simplified** to a single static brand panel (removed rotating hero carousel); **combobox `x-data` fix** (`@json` → `Js::from`) so member-search widgets work on every form; **image-fit policy** enforced (product previews `object-contain`, avatars/banners `object-cover`); **TALL cleanup** — removed duplicate legacy `alpine-components.js` that overrode `window.memberFormSearch`, added the missing member-portal toast component, and standardized AJAX event dispatch (`cart-updated` on document, `toast` on window). |
@@ -113,11 +114,12 @@ naptin-coop/
 │   │   ├── PurchaseImport.php
 │   │   └── SavingsImport.php
 │   │
-│   ├── Models/                         # 34 Eloquent models
+│   ├── Models/                         # 35 Eloquent models
 │   │   ├── ActivityLog.php
 │   │   ├── BrandingAsset.php
 │   │   ├── BroadcastMessage.php
 │   │   ├── Cart.php
+│   │   ├── CashCount.php
 │   │   ├── ChartOfAccount.php
 │   │   ├── Company.php
 │   │   ├── Dividend.php
@@ -172,7 +174,7 @@ naptin-coop/
 │       └── SavingsService.php          # Atomic deposit/withdrawal with row locking
 │
 ├── database/
-│   ├── migrations/                     # 45 migration files
+│   ├── migrations/                     # 46 migration files
 │   └── seeders/
 │       ├── BrandingAssetSeeder.php     # Seeds the 6 branding assets from resources/branding/seed
 │       ├── DatabaseSeeder.php          # Main seeder: regions, positions, roles, admin, 5 members, loan products, products
@@ -649,7 +651,7 @@ compiled → deducted → completed
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/finance` | GET | Finance hub (7 tiles + **Sync Opening Balances** action: Period Close, P&L, Balance Sheet, Cash Flow, Loan Aging, Control Reconciliation, Audit Trail) |
+| `/finance` | GET | Finance hub (8 tiles + **Sync Opening Balances** action: Period Close, P&L, Balance Sheet, Cash Flow, Loan Aging, Control Reconciliation, Daily Cash Count, Audit Trail) |
 | `/finance/period-close` | GET | 12-month period grid with close/reopen buttons |
 | `/finance/period-close` | POST | Close a period (pre-checks: no unbalanced posted entries, no pending savings transactions) |
 | `/finance/period-close/{period}/reopen` | POST | Reopen a closed period (reason required) |
@@ -659,6 +661,9 @@ compiled → deducted → completed
 | `/finance/loan-aging` | GET | Loan aging report with IFRS 9 buckets and provision coverage |
 | `/finance/provision/calculate` | POST | Calculate & post the loan loss provision movement to the ledger |
 | `/finance/control-reconciliation` | GET | Ledger control accounts vs sub-ledger totals (savings, loans, shares, **purchase receivables** — variance badges) |
+| `/finance/cash-count` | GET | **Daily Cash Reconciliation (Report 8)** — record physical cash vs system balance (1001), auto variance, history with verify action |
+| `/finance/cash-count` | POST | Record a daily count (one per date); imbalance posts a 1005 Cash Suspense journal |
+| `/finance/cash-count/{count}/verify` | POST | Verify a recorded count (second-step `verified_by` trail) |
 | `/finance/audit-trail` | GET | Filterable activity logs + ledger hash-chain integrity verification |
 | `/finance/sync-opening-balances` | POST | **Ledger conversion:** post opening-balance journal entries so the ledger matches every sub-ledger (idempotent, delta-based) |
 

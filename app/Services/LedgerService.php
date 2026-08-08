@@ -539,4 +539,27 @@ class LedgerService
             $amount
         );
     }
+
+    /**
+     * Convenience: post a daily cash-count variance against Cash Suspense (1005).
+     * Excess (physical > system): debit Cash, credit Cash Suspense.
+     * Shortage (physical < system): debit Cash Suspense, credit Cash.
+     */
+    public function postCashVariance(int $cashCountId, float $variance): JournalEntry
+    {
+        if (abs($variance) < 0.005) {
+            throw new \RuntimeException('No variance to post for a balanced cash count.');
+        }
+
+        $isExcess = $variance > 0;
+
+        return $this->postSimple(
+            'Daily cash count #'.$cashCountId.($isExcess ? ' — excess' : ' — shortage'),
+            'cash_count',
+            $cashCountId,
+            $isExcess ? self::CASH : self::CASH_SUSPENSE,
+            $isExcess ? self::CASH_SUSPENSE : self::CASH,
+            abs($variance)
+        );
+    }
 }

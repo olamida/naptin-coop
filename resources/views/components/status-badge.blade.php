@@ -21,6 +21,8 @@
             'rejected', 'declined', 'defaulted', 'danger' => 'danger',
             'disbursed', 'repaying', 'deducted', 'blue' => 'blue',
             'guarantor_pending', 'indigo' => 'indigo',
+            'balanced', 'success' => 'success',
+            'excess', 'shortage' => 'warning',
             'inactive', 'retired', 'suspended', 'gray' => 'gray',
             'emerald' => 'emerald',
             'purple' => 'purple',

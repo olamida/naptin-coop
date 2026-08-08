@@ -299,6 +299,9 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('/loan-aging', [FinanceController::class, 'loanAging'])->name('loan-aging');
         Route::post('/provision/calculate', [FinanceController::class, 'calculateProvision'])->name('provision.calculate');
         Route::get('/control-reconciliation', [FinanceController::class, 'controlReconciliation'])->name('control-reconciliation');
+        Route::get('/cash-count', [FinanceController::class, 'cashCount'])->name('cash-count');
+        Route::post('/cash-count', [FinanceController::class, 'cashCountStore'])->name('cash-count.store');
+        Route::post('/cash-count/{cashCount}/verify', [FinanceController::class, 'cashCountVerify'])->name('cash-count.verify');
         Route::post('/sync-opening-balances', [FinanceController::class, 'syncOpeningBalances'])->name('sync-opening-balances');
         Route::get('/audit-trail', [FinanceController::class, 'auditTrail'])->name('audit-trail');
     });
