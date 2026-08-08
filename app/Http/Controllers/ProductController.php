@@ -8,6 +8,7 @@ use App\Models\Member;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Services\CartService;
+use App\Services\HirePurchaseService;
 use App\Services\LedgerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,6 +56,7 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'unit_price' => 'required|numeric|min:0',
+            'cost_price' => 'nullable|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
             'image' => 'nullable|image|max:2048',
         ]);
@@ -84,6 +86,7 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'unit_price' => 'required|numeric|min:0',
+            'cost_price' => 'nullable|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
             'enabled' => 'boolean',
             'image' => 'nullable|image|max:2048',
@@ -141,7 +144,7 @@ class ProductController extends Controller
 
     public function showOrderGroup(string $orderGroup): View
     {
-        $orders = PurchaseOrder::with(['member', 'product', 'approvedBy'])
+        $orders = PurchaseOrder::with(['member', 'product', 'approvedBy', 'schedules'])
             ->where('order_group', $orderGroup)
             ->get();
 
@@ -215,6 +218,7 @@ class ProductController extends Controller
                 $ledger->postCashSale($order->id, $totalAmount);
             } else {
                 $ledger->postHirePurchaseSale($order->id, $totalAmount);
+                app(HirePurchaseService::class)->generateSchedule($order);
             }
         });
 
@@ -248,6 +252,29 @@ class ProductController extends Controller
         ]);
 
         return back()->with('success', 'Product collected successfully.');
+    }
+
+    public function recordPayment(Request $request, PurchaseOrder $order): RedirectResponse
+    {
+        if ($order->payment_type !== 'hire_purchase') {
+            return back()->withErrors(['error' => 'Only hire-purchase orders have instalment schedules.']);
+        }
+
+        if (! in_array($order->status, ['approved', 'active'])) {
+            return back()->withErrors(['error' => 'Order must be approved and collected before repayments are recorded.']);
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        try {
+            app(HirePurchaseService::class)->applyPayment($order, (float) $validated['amount']);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Hire-purchase repayment recorded.');
     }
 
     public function adjustStock(Request $request, Product $product): RedirectResponse
@@ -299,8 +326,8 @@ class ProductController extends Controller
     public function downloadTemplate(): StreamedResponse
     {
         $filename = 'products_template.csv';
-        $headers = ['name', 'description', 'unit_price', 'stock_quantity', 'enabled'];
-        $sample = ['Widget A', 'A useful widget', '1500.00', '100', 'yes'];
+        $headers = ['name', 'description', 'unit_price', 'cost_price', 'stock_quantity', 'enabled'];
+        $sample = ['Widget A', 'A useful widget', '1500.00', '1200.00', '100', 'yes'];
 
         return response()->stream(function () use ($headers, $sample) {
             $handle = fopen('php://output', 'w');

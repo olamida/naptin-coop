@@ -15,6 +15,7 @@ use App\Models\Member;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
 use App\Notifications\DepositRecordedNotification;
+use App\Services\ApprovalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -166,8 +167,18 @@ class SavingsController extends Controller
             $amount,
             $validated['notes'] ?? null,
             'manual',
-            $evidencePath
+            $evidencePath,
+            auth()->id()
         );
+
+        $approvals = new ApprovalService;
+        if ($approvals->requiresApproval('savings_withdrawal', $amount)) {
+            $approvals->request('savings_withdrawal', $transaction, auth()->id());
+
+            return redirect()->route('savings.accounts')
+                ->with('success', 'High-value withdrawal request of ₦'.number_format($amount, 2)
+                    .' submitted. It requires maker-checker approval before funds can be released. Reference: '.$transaction->reference);
+        }
 
         return redirect()->route('savings.accounts')
             ->with('success', 'Withdrawal request of ₦'.number_format($amount, 2).' submitted for approval. Reference: '.$transaction->reference);
@@ -218,7 +229,28 @@ class SavingsController extends Controller
 
     public function approveWithdrawal(SavingsTransaction $transaction): RedirectResponse
     {
+        $approvals = new ApprovalService;
+
         try {
+            if ($approvals->requiresApproval('savings_withdrawal', (float) $transaction->amount)) {
+                if ($approvals->outstanding($transaction, 'savings_withdrawal') > 0) {
+                    $slot = $approvals->nextApprovableSlot($transaction, 'savings_withdrawal', auth()->user());
+                    if (! $slot) {
+                        return back()->withErrors(['error' => 'You are not eligible to approve this high-value withdrawal (requester and approvers must be distinct).']);
+                    }
+
+                    $approvals->approve($slot, auth()->id());
+
+                    if (! $approvals->isFullyApproved($transaction, 'savings_withdrawal')) {
+                        return back()->with('success', 'Maker-checker approval recorded. The withdrawal will be processed once all required approvals are granted.');
+                    }
+                }
+            }
+
+            if ($transaction->requested_by !== null && $transaction->requested_by === auth()->id()) {
+                return back()->withErrors(['error' => 'You cannot approve a withdrawal request you created (maker-checker rule).']);
+            }
+
             $transaction = ApproveWithdrawal::run($transaction);
 
             return back()->with('success', 'Withdrawal of ₦'.number_format($transaction->amount, 2).' approved and processed successfully.');

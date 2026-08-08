@@ -102,7 +102,10 @@
                         <div class="flex items-center justify-between mb-3">
                             <span class="text-sm font-bold text-[#0F172A]">₦{{ number_format($product->unit_price, 2) }}</span>
                             @if ($isAdmin)
-                                <span class="text-xs text-slate-500">Stock: <span class="font-semibold {{ $product->stock_quantity <= 0 ? 'text-red-600' : '' }}">{{ $product->stock_quantity }}</span></span>
+                                <div class="text-right text-xs text-slate-500">
+                                    <div>Cost: <span class="font-semibold">₦{{ number_format($product->cost_price, 2) }}</span></div>
+                                    <div>Stock: <span class="font-semibold {{ $product->stock_quantity <= 0 ? 'text-red-600' : '' }}">{{ $product->stock_quantity }}</span></div>
+                                </div>
                             @endif
                         </div>
                         @if (! $isAdmin || $memberId)

@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.11.0
+> **Version:** 3.12.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.12 | **Maker-checker + money-flow ledger coverage (audit P1 #3, #8, #9; P2 #12–#14):** **maker-checker approval workflows** — new `approval_workflows` + `pending_approvals` tables and a workflow-key-driven `ApprovalService` (`requiresApproval`/`request`/`approve`/`isFullyApproved`/`approverEligible` with a `required_permission` gate and distinct-approver rule); seeded workflows for loan disbursement (treasurer + auditor), dividend declaration (president + auditor), period reopen and high-value savings withdrawals (> ₦100,000), all with in-page Approve actions; **period-close checks** extended (balanced entries, no pending savings, no pending approvals, cash counts reconciled, control accounts reconciled); **period reopen dual approval** — reopening posts a `period_reopen` approval and the period stays closed until fully approved; **inventory/COGS** — products gained `cost_price` (defaults to unit price) and store sales now post Dr Cash/Purchase Receivables / Cr `1301` Inventory at cost / Cr `4005` Sales Margin; **payroll posts to ledger** — compiling posts Dr `1501` Payroll Deductions Expected / Cr `2001` savings (incl. arrears), `1101` loans, `2101` shares, `1201` purchases via `postPayrollCompilation()`; **hire-purchase schedules** — `hire_purchase_schedules` table, `HirePurchaseService` generates a flat-principal schedule on order creation and `applyPayment()` posts per-instalment journals (Dr 1001 / Cr 1201) with a Record Repayment form on the order page. New `LedgerService::postHirePurchaseInstalment()`; new tests: `MakerCheckerTest`, `PeriodCloseChecksTest`, `PeriodReopenApprovalTest`, `PayrollLedgerPostingTest`, `HirePurchaseScheduleTest` (24 tests). |
 | 3.11 | **CBN compliance rules (audit P1 #7):** **period-close appropriations** — closing a period now posts the statutory reserve (25% of net profit → `3003` General Reserve) and education fund (2.5% → `3002`) appropriations against retained earnings (`3001`) once per period (re-closing never double-appropriates; skipped when the period shows no profit); **dividend-declaration gating** — a dividend cannot be declared unless the posted trial balance is balanced and, whenever the loan book has outstanding balances, loan-loss provision coverage is ≥ 100% (gate lives in `DividendController::assertDividendEligible()`); **CBN single-obligor limit** — `LoanService::validateLoanProduct()` blocks any new loan that would push one member's total exposure over 5% of the current outstanding loan portfolio (skipped while the portfolio is empty). New `LedgerService` helpers: `periodNetProfit()`, `postPeriodAppropriations()` and `trialBalanceIsBalanced()`; new `3003 General Reserve` equity account (chart now 36 accounts). New `tests/Feature/CbnComplianceTest.php` (7 tests). |
 | 3.10 | **Finance report exports (Excel + QR-stamped PDF):** every financial report — Trial Balance, P&L, Balance Sheet, Cash Flow, Loan Aging, Savings Control and Audit Trail — now has **Excel** and **PDF** download buttons that preserve the active filters. PDFs are rendered by **DomPDF** (`barryvdh/laravel-dompdf`) with the company header and footer, and every export embeds a **QR code containing the report's SHA-256 hash** (computed over the canonical dataset) plus the plain hash text for verification. New `ReportExportService` (canonical hash + GD-backed PNG QR via bacon-qr-code `GDLibRenderer`), generic `FinanceReportExport` Excel class, and a shared `StreamsReportExports` controller trait. Export routes: `/ledger/trial-balance/export` and `/finance/{profit-loss,balance-sheet,cash-flow,loan-aging,audit-trail}/export` + `/finance/reports/savings-control/export`, all `?format=xlsx|pdf`. |
 | 3.9.1 | **Members Savings Control Report (Report 6):** new **Finance → Savings Control** page (`/finance/reports/savings-control`) — member-by-member savings ledger (opening balance, deposits, withdrawals, interest, transfers, closing balance) with a per-member ledger-variance check and an overall control comparison of `sum(savings_accounts.balance)` vs the `2001` Members Savings Liability control account, with optional date-range filter. |
@@ -118,7 +119,7 @@ naptin-coop/
 │   │   ├── PurchaseImport.php
 │   │   └── SavingsImport.php
 │   │
-│   ├── Models/                         # 35 Eloquent models
+│   ├── Models/                         # 38 Eloquent models
 │   │   ├── ActivityLog.php
 │   │   ├── BrandingAsset.php
 │   │   ├── BroadcastMessage.php
@@ -171,6 +172,7 @@ naptin-coop/
 │   └── Services/                       # Business logic layer (fat models → thin)
 │       ├── BrandingService.php         # Branding assets, GD size variants, cache, favicon/PWA sync
 │       ├── CartService.php             # Cart resolution, checkout processing, order numbers
+│       ├── HirePurchaseService.php     # Flat-principal hire-purchase schedules + per-instalment payments
 │       ├── LedgerService.php           # Double-entry posting, hash-chained immutability, reversal, reconciliation, period-close appropriations, trial-balance checks
 │       ├── LedgerSyncService.php       # One-click conversion: posts opening balances so the ledger matches sub-ledgers
 │       ├── LoanService.php             # Interest calculation, loan number generation, product validation
@@ -179,8 +181,9 @@ naptin-coop/
 │       └── SavingsService.php          # Atomic deposit/withdrawal with row locking
 │
 ├── database/
-│   ├── migrations/                     # 46 migration files
+│   ├── migrations/                     # 51 migration files
 │   └── seeders/
+│       ├── ApprovalWorkflowSeeder.php  # 4 maker-checker workflows (period_reopen, loan_disbursement, dividend_declaration, savings_withdrawal)
 │       ├── BrandingAssetSeeder.php     # Seeds the 6 branding assets from resources/branding/seed
 │       ├── DatabaseSeeder.php          # Main seeder: regions, positions, roles, admin, 5 members, loan products, products
 │       ├── LedgerAccountsSeeder.php    # Full CBN chart of accounts (36 accounts, idempotent, data-safe)
@@ -249,7 +252,7 @@ naptin-coop/
 | QR Codes | bacon/bacon-qr-code (GD `GDLibRenderer`) | 3.x |
 | Auth | Laravel Breeze (session) | — |
 | Alpine.js | Via CDN | 3.x |
-| Services | Service Layer | 7 classes |
+| Services | Service Layer | 9 classes |
 
 ### Sidebar Navigation
 
@@ -441,7 +444,7 @@ A dedicated migration (`2026_07_26_000001_add_performance_indexes.php`) adds com
 
 **Transaction Reference Format:** `SAV/DEP/XXXXXXXX` (deposit), `SAV/WTH/XXXXXXXX` (withdrawal)
 
-**Withdrawal Workflow:** Admin/teller withdrawal → status `pending` → treasurer approves → status `completed` + balance deducted. Reject option with reason.
+**Withdrawal Workflow:** Admin/teller withdrawal → status `pending` → treasurer approves → status `completed` + balance deducted. Reject option with reason. **High-value withdrawals (> ₦100,000) also trigger a maker-checker approval** (`savings_withdrawal` workflow, requested_by recorded) — a second, distinct authorised approver must approve the withdrawal before the balance is deducted.
 
 **Deposit Workflow (Admin/Teller):** Record deposit → status `completed` + balance credited immediately. Optional payment evidence uploaded.
 
@@ -462,7 +465,8 @@ A dedicated migration (`2026_07_26_000001_add_performance_indexes.php`) adds com
 | `/loans/{id}/approve` | POST | Approve pending loan (checks all guarantors accepted) |
 | `/loans/{id}/reject` | POST | Reject pending loan (with rejection reason) |
 | `/loans/{id}/note` | POST | Add admin notes |
-| `/loans/{id}/disburse` | POST | Disburse approved loan (sets maturity date) |
+| `/loans/{id}/disburse` | POST | Request disbursement (**maker-checker**: posts a `loan_disbursement` approval, requester excluded; the first approver auto-disburses on the final approval) |
+| `/loans/{id}/disburse/approve` | POST | Approve a pending loan disbursement (auto-disburses once fully approved) |
 | `/loans/{id}/guarantors/{gid}` | POST | Update guarantor status (admin can accept/decline) |
 | `/loans/{id}/repayment` | GET | Repayment form |
 | `/loans/{id}/repayment` | POST | Record repayment (splits principal/interest, updates outstanding) |
@@ -533,9 +537,10 @@ The system automatically splits each repayment into principal and interest porti
 | `/products/orders` | GET | List all purchase orders — **sub-nav tabs** |
 | `/products/orders/create` | GET | New purchase order form |
 | `/products/orders` | POST | Create order |
-| `/products/orders/{group}` | GET | View order group detail |
+| `/products/orders/{group}` | GET | View order group detail (incl. **repayment schedule** for hire purchase) |
 | `/products/orders/{id}/approve` | POST | Approve pending order |
 | `/products/orders/{id}/collect` | POST | Mark product as collected |
+| `/products/orders/{id}/payment` | POST | **Record hire-purchase repayment** (posts Dr Cash / Cr Purchase Receivables) |
 | `/invoices/purchase/{id}` | GET | **Printable invoice** (new window, print button) |
 
 **Shopping Cart (Admin Side):**
@@ -562,7 +567,7 @@ The system automatically splits each repayment into principal and interest porti
 
 **Payment Types:**
 - **Cash:** Order auto-approved, member pays and collects immediately
-- **Hire Purchase:** Order starts as pending → approved → active → completed (monthly repayment)
+- **Hire Purchase:** Order starts as pending → approved → active → completed (monthly repayment). Creating a hire-purchase order generates a **flat-principal repayment schedule** (`hire_purchase_schedules`); recording a repayment marks instalments paid and posts **Dr Cash (1001) / Cr Purchase Receivables (1201)** per instalment via `LedgerService::postHirePurchaseInstalment()`, completing the order once fully settled.
 
 **Stock Management:** Stock is automatically decremented when an order is created.
 
@@ -578,7 +583,8 @@ The system automatically splits each repayment into principal and interest porti
 | `/dividends/create` | GET | Declare new dividend (year + total profit) |
 | `/dividends` | POST | Create dividend record |
 | `/dividends/{id}` | GET | View dividend + distribution details |
-| `/dividends/{id}/calculate` | POST | Calculate per-member distributions (pro-rata by shares) |
+| `/dividends/{id}/calculate` | POST | Calculate per-member distributions (pro-rata by shares; blocked until the `dividend_declaration` maker-checker approval is fully approved) |
+| `/dividends/{id}/approve-declaration` | POST | **Approve a dividend declaration** (maker-checker: two distinct approvers) |
 | `/dividends/{id}/approve` | POST | Approve calculated dividend |
 | `/dividends/{id}/distribute` | POST | Mark all as paid |
 
@@ -622,6 +628,8 @@ draft → calculated → approved → completed
 | Loan Repayment | Active loan's monthly_repayment (if any) |
 | Purchase Repayment | Active hire purchase's monthly_repayment (if any) |
 
+**Ledger posting on compile:** compiling posts one balanced journal via `LedgerService::postPayrollCompilation()` — **Dr `1501` Payroll Deductions Expected** (grand total) / **Cr `2001` Members Savings** (savings + arrears shortfalls), **Cr `1101` Loans Receivable**, **Cr `2101` Share Capital**, **Cr `1201` Purchase Receivables**. The payroll already exists check prevents double-posting.
+
 **Payroll Lifecycle:**
 ```
 compiled → deducted → completed
@@ -663,8 +671,9 @@ compiled → deducted → completed
 |-------|--------|--------|
 | `/finance` | GET | Finance hub (9 tiles + **Sync Opening Balances** action: Period Close, P&L, Balance Sheet, Cash Flow, Loan Aging, Control Reconciliation, Daily Cash Count, Savings Control, Audit Trail) |
 | `/finance/period-close` | GET | 12-month period grid with close/reopen buttons |
-| `/finance/period-close` | POST | Close a period (pre-checks: no unbalanced posted entries, no pending savings transactions) |
-| `/finance/period-close/{period}/reopen` | POST | Reopen a closed period (reason required) |
+| `/finance/period-close` | POST | Close a period (pre-checks: balanced entries, no pending savings, no pending approvals, cash counts reconciled, control accounts reconciled) |
+| `/finance/period-close/{period}/reopen` | POST | Request a period reopen (**maker-checker** `period_reopen` approval; reason required; period stays closed until fully approved) |
+| `/finance/period-close/{period}/reopen/approve` | POST | Approve a pending period-reopen request (dual approval: two distinct approvers) |
 | `/finance/profit-loss` | GET | Income statement (income/expense accounts, net profit, date-range filter) |
 | `/finance/profit-loss/export` | GET | Download P&L as Excel or PDF (`?format=xlsx\|pdf`, preserves date filters) |
 | `/finance/balance-sheet` | GET | Balance sheet as of a date (Assets = Liabilities + Equity variance check; contra-asset provision nets against assets) |
@@ -715,14 +724,18 @@ The provisioning run posts the **net movement** (not the gross total) so repeate
 
 **Period Close:**
 ```
-Close → pre-checks pass (balanced entries + no pending savings)
+Close → pre-checks pass (balanced entries + no pending savings
+        + no pending approvals + cash counts reconciled
+        + control accounts reconciled)
      → CBN appropriations posted on FIRST close only (once per period):
          25% of net profit → Dr Retained Earnings (3001) / Cr General Reserve (3003)
          2.5% of net profit → Dr Retained Earnings (3001) / Cr Education Fund (3002)
          (skipped when the period shows no profit; re-closing is a no-op)
      → PeriodClose row (is_closed = true, closed_at/by)
      → New postings to that period are rejected
-Reopen → reason required → is_closed = false, reopened_at/by, reopen_reason
+Reopen → reason required → period_reopen approval requested (requester excluded)
+     → period stays closed until fully approved by two distinct approvers
+     → is_closed = false, reopened_at/by, reopen_reason
 ```
 
 **CBN compliance gates:**
@@ -981,20 +994,23 @@ LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
 | Approve Withdrawal | Savings → Pending Withdrawals → Approve/Reject |
 | Apply for Loan | Loans → "+ New Loan" → select product → enter details |
 | Approve/Reject Loan | Loans → click loan → Approve or Reject (with reason) |
-| Disburse Loan | Loans → click loan → Disburse |
+| Disburse Loan | Loans → click loan → Disburse (requests maker-checker approval; a second authorised approver clicks Approve Disbursement) |
 | Record Repayment | Loans → click loan → Repayment → enter payment |
 | Import Loan Repayments | Loans → Import → upload Excel |
 | Purchase Shares | Shares → Purchase → select member → enter quantity |
 | Shopping Cart | Products → add to cart → checkout → select member + payment type |
 | Create Purchase Order | Products → Orders → "+ New Order" |
 | Print Invoice | Products → Orders → click order → "Invoice" → print |
+| Record Hire-Purchase Repayment | Products → Orders → click order → "Record Repayment" → enter amount |
 | Compile Payroll | Payroll → "+ Compile Payroll" → select year/month |
 | Upload Payroll Actuals | Payroll → click payroll → Upload → download template → fill → upload |
 | View Sub-Reports | Payroll → click payroll → Savings/Loans/Purchases/Shares/Summary reports |
 | Declare Dividend | Dividends → "+ New Dividend" → enter year + profit |
+| Approve Dividend Declaration | Dividends → click dividend → Approve Declaration (maker-checker: two distinct approvers, then Calculate unlocks) |
 | Calculate/Approve/Distribute | Dividends → click dividend → Calculate → Approve → Distribute |
 | Generate Member Report | Reports → select member → printable report → print |
 | View Period Grid | Finance → Period Close → close/reopen periods |
+| Request Period Reopen | Finance → Period Close → Reopen on a closed month (reason required; awaits dual approval) |
 | Review P&L | Finance → Profit & Loss → filter date range |
 | Review Balance Sheet | Finance → Balance Sheet → as-of date |
 | Review Cash Flow | Finance → Cash Flow → direct method |
@@ -1210,18 +1226,18 @@ When a member is created with an email address, a `WelcomeEmail` is sent contain
 | Members | 15 | `/members` |
 | Next of Kin | 2 | `/members/{id}/next-of-kin` |
 | Savings | 12 | `/savings` |
-| Loans | 15 | `/loans` |
+| Loans | 16 | `/loans` |
 | Shares | 5 | `/shares` |
-| Products | 11 | `/products` |
+| Products | 12 | `/products` |
 | Cart | 7 | `/cart` |
 | Purchases | 5 | `/purchases` |
-| Dividends | 7 | `/dividends` |
+| Dividends | 8 | `/dividends` |
 | Payroll | 11 | `/payroll` |
 | Receipts | 8 | `/receipts` |
 | Invoices | 1 | `/invoices/purchase/{id}` |
 | Reports | 2 | `/reports` |
 | Ledger | 12 | `/ledger` |
-| Finance | 22 | `/finance` |
+| Finance | 24 | `/finance` |
 | Admin (Users) | 7 | `/admin/users` |
 | Admin (Loan Products) | 6 | `/admin/loan-products` |
 | Admin (Roles) | 5 | `/admin/roles` |

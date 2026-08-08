@@ -10,7 +10,7 @@ Legend:  [MISSING]  = not implemented at all
          [PARTIAL]  = implemented but incomplete vs. spec
 
 PRIORITIZATION
---------------
+-------------
 Priority 1 = Finance/Compliance correctness (audit-critical)
 Priority 2 = Money-flow integrity (ledger coverage)
 Priority 3 = Operational workflow (approvals, reports, exports)
@@ -18,10 +18,19 @@ Priority 4 = Security hardening
 Priority 5 = Automation (scheduled jobs)
 Priority 6 = Housekeeping / dead code
 
+PROGRESS SUMMARY (as of version 3.11.0)
+--------------------------------------
+DONE: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15  (15 items)
+OPEN: 16-35                                             (20 items)
+Next recommended: P2 clean-ups (16 bcmath, 17 traceability), then P4
+security and P5 scheduled jobs.
+
+--------------------------------------------------------------------------------
+P1 - FINANCE & COMPLIANCE (audit-critical)
 --------------------------------------------------------------------------------
 P1 — FINANCE & COMPLIANCE (audit-critical)
 --------------------------------------------------------------------------------
-1. [MISSING] FULL CBN CHART OF ACCOUNTS + SEEDER
+1. [DONE] FULL CBN CHART OF ACCOUNTS + SEEDER  (landed in version 3.7.0)
    - Spec: "Seed these exact accounts - Do not change codes" (1001–5008 with subtypes).
    - Current: only 12 codes are auto-created on demand by LedgerService::ensureAccount
      (1001,1101,1201,1205,2001,2002,2101,3001,4001,4002,5001,5004).
@@ -31,32 +40,52 @@ P1 — FINANCE & COMPLIANCE (audit-critical)
      4006/4007 income, 5002/5003/5005–5008 expenses.
    - TODO: create database/seeders/LedgerAccountsSeeder.php and register in DatabaseSeeder;
      extend LedgerService::DEFAULTS with the same codes (keep codes EXACT).
+   -> DONE: LedgerAccountsSeeder seeds the full CBN MFB chart (now 36 accounts incl. the
+      3003 General Reserve added for statutory-reserve appropriation); registered in
+      DatabaseSeeder; LedgerService::DEFAULTS extended to the full chart.
 
-2. [PARTIAL] CHART_OF_ACCOUNTS SCHEMA
+2. [DONE] CHART_OF_ACCOUNTS SCHEMA  (landed in version 3.7.0)
    - Spec columns missing: subtype, is_control_account, control_module, allow_manual_entry.
    - TODO: new migration adding these columns to chart_of_accounts; backfill control-account
      flags for 1001, 1101, 1201, 1301, 1501, 2001, 2101, 2201, 3001.
+   -> DONE: migration adds the four columns with control-flag backfill; seeder syncs them
+     idempotently on re-run.
 
-3. [MISSING] MAKER-CHECKER APPROVAL WORKFLOWS
+3. [DONE] MAKER-CHECKER APPROVAL WORKFLOWS
    - Spec: approval_workflows migration + ApprovalService::requiresApproval() + PendingApprovals.
    - TODO: migrations (approval_workflows, pending_approvals), ApprovalService with sequential
      role workflow, and wire high-risk actions (loan disbursement, dividend, withdrawals > limit).
+   -> DONE: approval_workflows + pending_approvals tables; ApprovalService is workflow-key driven
+     (requiresApproval/request/approve/isFullyApproved/approverEligible with required_permission
+     gate and distinct-approver rule); ApprovalWorkflowSeeder (4 workflows: period_reopen,
+     loan_disbursement [treasurer+auditor], dividend_declaration [president+auditor],
+     savings_withdrawal threshold 100000). Wired: loan disbursement (maker requests, approver
+     auto-disburses), dividend declaration approval, high-value savings withdrawals.
+     MakerCheckerTest: 7 tests.
 
-4. [MISSING] DAILY CASH COUNT / RECONCILIATION  ->  Report 8: /finance/cash-count
+4. [DONE] DAILY CASH COUNT / RECONCILIATION  ->  Report 8: /finance/cash-count  (landed in version 3.9.0)
    - Spec: cash_counts migration; "Report 8: Daily Cash Reconciliation" with variance to 1005
      Cash Suspense.
    - TODO: cash_counts table, FinanceController::cashCount(), view, and a 1005 Cash Suspense
      account + variance journal.
+   -> DONE: cash_counts table + CashCount model, FinanceController::cashCount() with
+     counted_by/verified_by trail, view, and LedgerService::postCashVariance() posting to
+     1005 Cash Suspense.
 
-5. [MISSING] REPORT EXPORTS (Excel / PDF + QR + hash verification)
+5. [DONE] REPORT EXPORTS (Excel / PDF + QR + hash verification)  (landed in version 3.10.0)
    - All finance/ledger reports are print-only. No DomPDF package.
    - TODO: add Excel export (Maatwebsite) + PDF export (barryvdh/laravel-dompdf) with a QR code
      of the report hash on Trial Balance, P&L, Balance Sheet, Cash Flow, Loan Aging, Audit Trail.
+   -> DONE: ReportExportService (canonical SHA-256 hash + GD PNG QR), generic
+     FinanceReportExport Excel class, StreamsReportExports trait, Excel + QR-stamped PDF
+     buttons on every finance/ledger report.
 
-6. [MISSING] MEMBERS SAVINGS CONTROL REPORT
+6. [DONE] MEMBERS SAVINGS CONTROL REPORT  (landed in version 3.9.1)
    - Spec "Report 6: /finance/reports/savings-control" (member-by-member savings ledger + closing
      balance).
    - TODO: route + FinanceController::savingsControl() + view.
+   -> DONE: /finance/reports/savings-control with per-member ledger, closing balances, and
+     2001 control comparison.
 
 7. [DONE] CBN COMPLIANCE RULES  (landed in version 3.11.0)
    a. Statutory Reserve: auto-transfer 25% of net profit to 3001 at period close.
@@ -73,51 +102,77 @@ P1 — FINANCE & COMPLIANCE (audit-critical)
          portfolio (skipped while the portfolio is empty).
    Regression coverage: tests/Feature/CbnComplianceTest.php (7 tests).
 
-8. [PARTIAL] PERIOD CLOSE CHECKS
+8. [DONE] PERIOD CLOSE CHECKS
    - Spec: close requires (a) Trial Balance balanced, (b) cash counts balanced, (c) no pending
      approvals, (d) control accounts reconciled.
    - Current periodCloseChecks() only checks unbalanced entries + pending savings.
    - TODO: extend periodCloseChecks().
+   -> DONE: periodCloseChecks() now verifies (a) no unbalanced posted entries, (b) no pending
+     savings transactions, (c) no pending approvals, (d) cash counts reconciled, (e) control
+     accounts reconciled. tests/Feature/PeriodCloseChecksTest.php (7 tests).
 
-9. [PARTIAL] PERIOD REOPEN NEEDS DUAL APPROVAL
+9. [DONE] PERIOD REOPEN NEEDS DUAL APPROVAL
    - Spec: reopen requires President + Auditor approval with reason logged.
    - Current: free-text reason only.
    - TODO: multi-role approval flow on period-close.reopen.
+   -> DONE: reopening now requests a period_reopen approval (approval_workflows, requester
+     excluded); period stays closed until fully approved; approve button on the period grid.
+     PeriodReopenApprovalTest: 7 tests.
 
 --------------------------------------------------------------------------------
 P2 — MONEY-FLOW / LEDGER COVERAGE
 --------------------------------------------------------------------------------
-10. [PARTIAL] LOAN PROCESSING FEE
+10. [DONE] LOAN PROCESSING FEE  (landed in version 3.8.0)
     - Spec: on disbursement post Dr 1101 (or 1002) / Cr 4004 Processing Fees Income.
     - Current: DisburseLoan posts principal only; no processing_fee column on loans.
     - TODO: loans.processing_fee column, capture on apply/disburse, post fee journal, add 4004.
+    -> DONE: loans.processing_fee captured at application (amount × product processing_fee_pct);
+       LedgerService::postLoanDisbursement() posts Dr 1101 / Cr Cash (net) / Cr 4004.
 
-11. [PARTIAL] DIVIDEND ACCRUAL AT DECLARATION
+11. [DONE] DIVIDEND ACCRUAL AT DECLARATION  (landed in version 3.8.0)
     - Spec: Dr 3003 Retained Earnings / Cr 2201 Dividend Payable at declaration.
     - Current: nothing posted until distribution (Dr Retained Earnings / Cr Cash).
     - TODO: post accrual in DeclareDividend/CalculateDividend; add 2201 Dividend Payable.
+    -> DONE: CalculateDividend posts the liability immediately (Dr 3001 / Cr 2201);
+       DistributeDividend clears the payable (Dr 2201 / Cr Cash).
 
-12. [PARTIAL] INVENTORY / COGS POSTING
+12. [DONE] INVENTORY / COGS POSTING
     - Spec: cash sale posts Dr 1001 / Cr 1301 Inventory + Cr 4005 Sales Margin.
     - Current: posts Dr Cash / Cr 4002 Sales Revenue only; stock decrement is non-ledger.
     - TODO: add 1301 Inventory and 4005 Sales Margin, post COGS/valuation on sale.
+    -> DONE: products gained cost_price (migration, nullable, backfilled to unit_price);
+       postCashSale/postHirePurchaseSale post 3-line journals (Dr Cash/Purchase Receivables /
+       Cr 1301 Inventory at COGS / Cr 4005 Sales Margin residual); CartService computes COGS
+       (cost_price x qty); cost_price captured in product create/edit forms, import + CSV
+       template; zero-margin sales post full amount to Inventory. SocietyExpenseTest: 5 tests.
 
-13. [PARTIAL] HIRE-PURCHASE SCHEDULE
+13. [DONE] HIRE-PURCHASE SCHEDULE
     - Spec: hire purchase creates a loan-like repayment schedule with per-instalment journals.
     - Current: flat monthly_repayment field; only the initial sale entry posts.
     - TODO: hire_purchase_schedules table + per-instalment posting on collection.
+    -> DONE: hire_purchase_schedules table + HirePurchaseSchedule model; HirePurchaseService
+       generates a flat-principal schedule on order creation (CartService checkout + standalone
+       order) and applyPayment() marks instalments paid, posts per-instalment cash journals
+       (Dr 1001 / Cr 1201) and completes the order when settled; new Record Repayment route
+       + form on the order detail page. tests/Feature/HirePurchaseScheduleTest.php (5 tests).
 
-14. [PARTIAL] PAYROLL POSTS TO LEDGER
-    - Spec: 1501 Receivable – Payroll Deductions Expected control account; expected deductions
+14. [DONE] PAYROLL POSTS TO LEDGER
+    - Spec: 1501 Receivable - Payroll Deductions Expected control account; expected deductions
       posted when compiling.
     - Current: payroll compile only creates payroll_deductions rows; no journal entries.
     - TODO: 1501 account + journal on compile (Dr 1501 / Cr savings/loan/share/purchase controls).
+    -> DONE: LedgerService::postPayrollCompilation() posts on compile — Dr 1501 (grand total) /
+       Cr 2001 (savings + arrears shortfalls), Cr 1101 (loan repayments), Cr 2101 (shares),
+       Cr 1201 (purchases); zero lines skipped. tests/Feature/PayrollLedgerPostingTest.php (2 tests).
 
-15. [PARTIAL] getBalance() DATE RANGE + HELPER METHODS
+15. [DONE] getBalance() DATE RANGE + HELPER METHODS  (landed in version 3.7.0)
     - Spec: getBalance(string $code, ?fromDate, ?toDate); isPeriodClosed();
       validateControlAccounts(): array.
     - TODO: add optional date range to LedgerService::getBalance(), implement
       validateControlAccounts().
+    -> DONE: getBalance(code, ?from, ?to) honours date range; isPeriodClosed();
+       validateControlAccounts() returns per-account variance rows. Later helpers:
+       periodNetProfit(), postPeriodAppropriations(), trialBalanceIsBalanced() (3.11.0).
 
 16. [PARTIAL] BCMATH FOR MONEY
     - Spec: use bcmath for calculations.

@@ -17,6 +17,7 @@ use App\Models\Loan;
 use App\Models\LoanGuarantor;
 use App\Models\LoanProduct;
 use App\Models\Member;
+use App\Services\ApprovalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -119,7 +120,13 @@ class LoanController extends Controller
             'topupLoans',
         ]);
 
-        return view('loans.show', ['loan' => $loan]);
+        $approvals = new ApprovalService;
+
+        return view('loans.show', [
+            'loan' => $loan,
+            'disbursementPending' => $approvals->outstanding($loan, 'loan_disbursement'),
+            'disbursementApproved' => $approvals->isFullyApproved($loan, 'loan_disbursement'),
+        ]);
     }
 
     public function approve(Loan $loan): RedirectResponse
@@ -185,10 +192,54 @@ class LoanController extends Controller
     {
         $this->authorize('disburse', $loan);
 
+        $approvals = new ApprovalService;
+
         try {
+            if ($approvals->requiresApproval('loan_disbursement')) {
+                if ($approvals->outstanding($loan, 'loan_disbursement') === 0 && ! $approvals->isFullyApproved($loan, 'loan_disbursement')) {
+                    $approvals->request('loan_disbursement', $loan, auth()->id());
+
+                    return back()->with('success', 'Disbursement requires maker-checker approval. The request has been logged; a second senior user must approve it before funds are released.');
+                }
+
+                if (! $approvals->isFullyApproved($loan, 'loan_disbursement')) {
+                    return back()->withErrors(['error' => 'Disbursement awaits maker-checker approval before funds can be released.']);
+                }
+            }
+
             DisburseLoan::run($loan);
 
             return back()->with('success', 'Loan disbursed successfully.');
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function disburseApprove(Loan $loan): RedirectResponse
+    {
+        $this->authorize('disburse', $loan);
+
+        $approvals = new ApprovalService;
+
+        try {
+            if ($approvals->outstanding($loan, 'loan_disbursement') === 0) {
+                return back()->withErrors(['error' => 'No pending disbursement approval for this loan.']);
+            }
+
+            $slot = $approvals->nextApprovableSlot($loan, 'loan_disbursement', auth()->user());
+            if (! $slot) {
+                return back()->withErrors(['error' => 'You are not eligible to approve this disbursement (requester and approvers must be distinct).']);
+            }
+
+            $approvals->approve($slot, auth()->id());
+
+            if ($approvals->isFullyApproved($loan, 'loan_disbursement')) {
+                DisburseLoan::run($loan);
+
+                return back()->with('success', 'Disbursement approved by checker and loan disbursed.');
+            }
+
+            return back()->with('success', 'Disbursement approval recorded. A further senior approval is required before funds are released.');
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }

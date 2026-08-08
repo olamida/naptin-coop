@@ -15,6 +15,7 @@ class Product extends Model
         'description',
         'image_path',
         'unit_price',
+        'cost_price',
         'stock_quantity',
         'enabled',
     ];
@@ -24,6 +25,11 @@ class Product extends Model
         'stock_quantity' => 'integer',
         'enabled' => 'boolean',
     ];
+
+    public function getCostPriceAttribute($value): float
+    {
+        return $value !== null ? (float) $value : (float) $this->unit_price;
+    }
 
     public function purchaseOrders(): HasMany
     {

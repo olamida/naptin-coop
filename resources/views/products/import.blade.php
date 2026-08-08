@@ -22,9 +22,10 @@
                 </div>
                 <p class="text-xs text-blue-700 mb-2">Your Excel file must have these column headers in the first row:</p>
                 <code class="block bg-blue-100 rounded p-2 text-[11px] text-blue-900 font-mono">
-                    name, description, unit_price, stock_quantity, enabled
+                    name, description, unit_price, cost_price, stock_quantity, enabled
                 </code>
                 <p class="text-xs text-blue-600 mt-2"><strong>Required:</strong> name, unit_price</p>
+                <p class="text-xs text-blue-600"><strong>Optional:</strong> cost_price (defaults to unit price)</p>
                 <p class="text-xs text-blue-600"><strong>Enabled options:</strong> yes/no, true/false, 1/0, active/inactive</p>
                 <p class="text-xs text-blue-600">Existing products with the same name will be updated with the new values.</p>
             </div>

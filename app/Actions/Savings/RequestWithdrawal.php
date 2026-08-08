@@ -12,9 +12,9 @@ use Illuminate\Support\Str;
 
 class RequestWithdrawal extends Action
 {
-    public function handle(int $memberId, float $amount, ?string $notes = null, string $source = 'manual', ?string $evidencePath = null): SavingsTransaction
+    public function handle(int $memberId, float $amount, ?string $notes = null, string $source = 'manual', ?string $evidencePath = null, ?int $requestedBy = null): SavingsTransaction
     {
-        $transaction = DB::transaction(function () use ($memberId, $amount, $notes, $source, $evidencePath) {
+        $transaction = DB::transaction(function () use ($memberId, $amount, $notes, $source, $evidencePath, $requestedBy) {
             $account = SavingsAccount::where('member_id', $memberId)->lockForUpdate()->firstOrFail();
             $balanceBefore = $account->balance;
 
@@ -28,6 +28,7 @@ class RequestWithdrawal extends Action
                 'payment_evidence_path' => $evidencePath,
                 'source' => $source,
                 'notes' => $notes,
+                'requested_by' => $requestedBy,
                 'transaction_date' => now(),
                 'status' => 'pending',
             ]);

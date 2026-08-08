@@ -6,13 +6,16 @@ use App\Http\Controllers\Concerns\StreamsReportExports;
 use App\Models\ActivityLog;
 use App\Models\CashCount;
 use App\Models\ChartOfAccount;
+use App\Models\Dividend;
 use App\Models\JournalEntry;
 use App\Models\Loan;
 use App\Models\PeriodClose;
+use App\Models\PurchaseOrder;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
 use App\Models\ShareAccount;
 use App\Models\User;
+use App\Services\ApprovalService;
 use App\Services\LedgerService;
 use App\Services\LedgerSyncService;
 use App\Services\ProvisioningService;
@@ -36,13 +39,23 @@ class FinanceController extends Controller
 
     public function periodCloseIndex()
     {
-        $months = collect(range(0, 11))->map(function ($offset) {
+        $approvals = new ApprovalService;
+        $user = auth()->user();
+
+        $months = collect(range(0, 11))->map(function ($offset) use ($approvals, $user) {
             $date = now()->subMonths($offset)->startOfMonth();
+
+            $close = PeriodClose::where('period', $date->format('Y-m'))->first();
+            $reopen = $close ? $approvals->slotsFor($close, 'period_reopen') : collect();
 
             return [
                 'period' => $date->format('Y-m'),
                 'label' => $date->format('F Y'),
-                'close' => PeriodClose::where('period', $date->format('Y-m'))->first(),
+                'close' => $close,
+                'reopen_pending' => $close ? $approvals->outstanding($close, 'period_reopen') : 0,
+                'reopen_approved' => $close ? $approvals->isFullyApproved($close, 'period_reopen') : false,
+                'can_approve_reopen' => $close ? $approvals->approverEligible($close, 'period_reopen', $user) : false,
+                'reopen_reason' => $reopen->first()?->reason,
             ];
         });
 
@@ -98,47 +111,122 @@ class FinanceController extends Controller
         ]);
 
         $close = PeriodClose::where('period', $period)->where('is_closed', true)->firstOrFail();
+        $approvals = new ApprovalService;
 
-        $close->update([
-            'is_closed' => false,
-            'reopened_at' => now(),
-            'reopened_by' => auth()->id(),
-            'reopen_reason' => $validated['reason'],
-        ]);
+        if ($approvals->outstanding($close, 'period_reopen') > 0) {
+            return back()->withErrors(['error' => "A reopen request for period {$period} is already pending dual approval."]);
+        }
 
-        ActivityLog::log('period.reopen', "Reopened financial period {$period}. Reason: {$validated['reason']}");
+        if ($approvals->isFullyApproved($close, 'period_reopen')) {
+            return back()->withErrors(['error' => "Period {$period} has already been approved for reopening."]);
+        }
 
-        return back()->with('success', "Financial period {$period} reopened.");
+        $approvals->request('period_reopen', $close, auth()->id(), $validated['reason']);
+
+        ActivityLog::log('period.reopen.request', "Reopen requested for financial period {$period}. Reason: {$validated['reason']}");
+
+        return back()->with('success', "Reopen request for period {$period} logged. Two senior approvals are required (e.g. President + Auditor).");
+    }
+
+    public function periodCloseReopenApprove(Request $request, string $period)
+    {
+        $close = PeriodClose::where('period', $period)->where('is_closed', true)->firstOrFail();
+        $approvals = new ApprovalService;
+
+        if ($approvals->outstanding($close, 'period_reopen') === 0) {
+            return back()->withErrors(['error' => "No pending reopen request for period {$period}."]);
+        }
+
+        $slot = $approvals->nextApprovableSlot($close, 'period_reopen', $request->user());
+        if (! $slot) {
+            return back()->withErrors(['error' => 'You are not eligible to approve this reopen request (requester and approvers must be distinct).']);
+        }
+
+        $approvals->approve($slot, $request->user()->id);
+
+        if ($approvals->isFullyApproved($close, 'period_reopen')) {
+            $close->update([
+                'is_closed' => false,
+                'reopened_at' => now(),
+                'reopened_by' => $request->user()->id,
+                'reopen_reason' => $slot->reason,
+            ]);
+
+            ActivityLog::log('period.reopen', "Reopened financial period {$period} after dual approval. Reason: {$slot->reason}");
+
+            return back()->with('success', "Financial period {$period} reopened after dual approval.");
+        }
+
+        ActivityLog::log('period.reopen.approve', "Approved reopen of financial period {$period} (awaiting second approval).");
+
+        return back()->with('success', "Approval recorded for period {$period}. One more senior approval is required.");
     }
 
     private function periodCloseChecks(string $period): array
     {
         [$year, $month] = array_map('intval', explode('-', $period));
-        $start = "{$year}-{$month}-01";
+        $start = date('Y-m-01', strtotime("{$year}-{$month}-01"));
         $end = date('Y-m-t', strtotime($start));
 
+        // (a) Trial balance must be globally balanced.
+        if (! (new LedgerService)->trialBalanceIsBalanced()) {
+            return ['ok' => false, 'message' => 'Cannot close: the trial balance is not balanced. Reconcile the ledger before closing.'];
+        }
+
+        // Per-entry balance guard inside the period.
         $entries = JournalEntry::where('status', 'posted')
             ->whereBetween('entry_date', [$start, $end])
+            ->get()
+            ->filter(fn ($entry) => ! $entry->isBalanced())
             ->count();
 
         if ($entries > 0) {
-            $unbalanced = JournalEntry::where('status', 'posted')
-                ->whereBetween('entry_date', [$start, $end])
-                ->get()
-                ->filter(fn ($entry) => ! $entry->isBalanced())
-                ->count();
-
-            if ($unbalanced > 0) {
-                return ['ok' => false, 'message' => "Cannot close: {$unbalanced} unbalanced journal entries exist in this period."];
-            }
+            return ['ok' => false, 'message' => "Cannot close: {$entries} unbalanced journal entries exist in this period."];
         }
 
-        $pendingWithdrawals = SavingsTransaction::where('status', 'pending')
+        // (b) Cash counts for the period must be balanced (no open shortage/excess).
+        $imbalancedCounts = CashCount::whereBetween('count_date', [$start, $end])
+            ->where('status', '!=', CashCount::STATUS_BALANCED)
+            ->count();
+
+        if ($imbalancedCounts > 0) {
+            return ['ok' => false, 'message' => "Cannot close: {$imbalancedCounts} cash counts in this period have a shortage/excess variance. Resolve them before closing."];
+        }
+
+        // (c) No pending approvals across the operational modules.
+        $pendingSavings = SavingsTransaction::where('status', 'pending')
             ->whereBetween('created_at', ["{$start} 00:00:00", "{$end} 23:59:59"])
             ->count();
 
-        if ($pendingWithdrawals > 0) {
-            return ['ok' => false, 'message' => "Cannot close: {$pendingWithdrawals} pending savings transactions exist in this period."];
+        if ($pendingSavings > 0) {
+            return ['ok' => false, 'message' => "Cannot close: {$pendingSavings} pending savings transactions exist in this period."];
+        }
+
+        $pendingLoans = Loan::whereIn('status', ['pending', 'approved'])->count();
+        if ($pendingLoans > 0) {
+            return ['ok' => false, 'message' => "Cannot close: {$pendingLoans} loans await approval or disbursement."];
+        }
+
+        $pendingOrders = PurchaseOrder::where('status', 'pending')->count();
+        if ($pendingOrders > 0) {
+            return ['ok' => false, 'message' => "Cannot close: {$pendingOrders} purchase orders await approval."];
+        }
+
+        $draftDividends = Dividend::where('status', 'draft')->count();
+        if ($draftDividends > 0) {
+            return ['ok' => false, 'message' => "Cannot close: {$draftDividends} dividend declaration(s) have not been calculated/approved."];
+        }
+
+        // (d) Every control account must reconcile against its sub-ledger.
+        $unreconciled = collect((new LedgerService)->validateControlAccounts())
+            ->filter(fn ($row) => ! $row['reconciled'])
+            ->values();
+
+        if ($unreconciled->isNotEmpty()) {
+            $codes = $unreconciled->pluck('code')->implode(', ');
+            $message = "Cannot close: control account(s) {$codes} are out of balance with their sub-ledgers. Run Finance → Sync Opening Balances first.";
+
+            return ['ok' => false, 'message' => $message];
         }
 
         return ['ok' => true, 'message' => ''];

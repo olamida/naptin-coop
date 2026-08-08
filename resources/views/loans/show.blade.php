@@ -27,6 +27,17 @@
                     @endcan
                 @endif
                 @if ($loan->status === 'approved')
+                    @if ($disbursementPending > 0)
+                        <span class="bg-orange-100 text-orange-700 text-xs font-medium px-3 py-2 rounded-[10px]">Disbursement awaits maker-checker approval ({{ $disbursementPending }}/2)</span>
+                        @can('disburse-loans')
+                            <form method="POST" action="{{ route('loans.disburse.approve', $loan) }}">
+                                @csrf
+                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-[10px] text-sm transition">Approve Disbursement</button>
+                            </form>
+                        @endcan
+                    @elseif ($disbursementApproved)
+                        <span class="bg-green-100 text-green-700 text-xs font-medium px-3 py-2 rounded-[10px]">Disbursement approved</span>
+                    @endif
                     @can('disburse-loans')
                         <form method="POST" action="{{ route('loans.disburse', $loan) }}">
                             @csrf

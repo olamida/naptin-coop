@@ -9,6 +9,7 @@ use App\Models\MonthlyPayroll;
 use App\Models\PayrollArrear;
 use App\Models\PayrollDeduction;
 use App\Models\PurchaseOrder;
+use App\Services\LedgerService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -107,6 +108,15 @@ class CompileAndLockPayroll extends Action
                     'monthly_payroll_id' => $payroll->id,
                 ]));
             }
+
+            app(LedgerService::class)->postPayrollCompilation(
+                $payroll->id,
+                $totalSavings,
+                $totalLoanRepayments,
+                $totalShareContributions,
+                $totalPurchases,
+                $totalArrears
+            );
 
             return $payroll;
         });

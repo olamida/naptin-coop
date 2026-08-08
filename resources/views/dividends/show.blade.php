@@ -56,6 +56,21 @@
         </div>
 
         <div class="flex items-center gap-2">
+            @if ($dividend->status === 'draft' && $declarationPending > 0)
+                <span class="px-3 py-2 text-xs font-medium rounded-[10px] bg-orange-100 text-orange-700">
+                    Declaration awaits maker-checker approval ({{ $declarationPending }}/2)
+                </span>
+                <form method="POST" action="{{ route('dividends.approve-declaration', $dividend) }}">
+                    @csrf
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition">
+                        Approve Declaration
+                    </button>
+                </form>
+            @elseif ($dividend->status === 'draft' && $declarationApproved)
+                <span class="px-3 py-2 text-xs font-medium rounded-[10px] bg-green-100 text-green-700">
+                    Declaration approved
+                </span>
+            @endif
             @if ($dividend->status === 'draft')
                 <form method="POST" action="{{ route('dividends.calculate', $dividend) }}">
                     @csrf

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\Loans\CreateLoan;
 use App\Actions\Loans\DisburseLoan;
+use App\Models\ApprovalWorkflow;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Models\Loan;
@@ -25,10 +26,24 @@ class CbnComplianceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        ApprovalWorkflow::create([
+            'key' => 'period_reopen',
+            'name' => 'Period Reopen',
+            'required_permission' => 'manage-users',
+            'required_roles' => ['president', 'auditor'],
+            'threshold_amount' => null,
+            'enabled' => true,
+        ]);
+    }
+
     private function admin(): array
     {
         $admin = User::factory()->create();
-        $admin->assignRole(Role::create(['name' => 'super-admin']));
+        $admin->assignRole(Role::firstOrCreate(['name' => 'super-admin']));
         Permission::firstOrCreate(['name' => 'manage-users']);
         $admin->givePermissionTo('manage-users');
         $token = 'test-session-'.uniqid();
@@ -130,15 +145,30 @@ class CbnComplianceTest extends TestCase
 
     public function test_reclosing_period_does_not_double_appropriate(): void
     {
-        [$admin, $token] = $this->admin();
-        $this->actingAs($admin)->withSession(['active_session_token' => $token]);
+        [$requester, $token] = $this->admin();
+        $this->actingAs($requester)->withSession(['active_session_token' => $token]);
 
         $this->postIncomeAndExpense(100000, 10000);
         $period = now()->format('Y-m');
 
         $this->post(route('finance.period-close.store'), ['period' => $period])->assertSessionHas('success');
         $this->post(route('finance.period-close.reopen', $period), ['reason' => 'Correction needed'])->assertSessionHas('success');
-        $this->post(route('finance.period-close.store'), ['period' => $period])->assertSessionHas('success');
+
+        [$approverA, $tokenA] = $this->admin();
+        $this->actingAs($approverA)->withSession(['active_session_token' => $tokenA])
+            ->post(route('finance.period-close.reopen.approve', $period))
+            ->assertSessionHas('success');
+
+        [$approverB, $tokenB] = $this->admin();
+        $this->actingAs($approverB)->withSession(['active_session_token' => $tokenB])
+            ->post(route('finance.period-close.reopen.approve', $period))
+            ->assertSessionHas('success');
+
+        $this->assertFalse(PeriodClose::isClosed($period));
+
+        $this->actingAs($requester)->withSession(['active_session_token' => $token])
+            ->post(route('finance.period-close.store'), ['period' => $period])
+            ->assertSessionHas('success');
 
         $ledger = new LedgerService;
 

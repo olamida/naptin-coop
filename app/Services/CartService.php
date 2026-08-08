@@ -193,6 +193,7 @@ class CartService
 
                 $orderNumber = $this->generateOrderNumber();
                 $totalAmount = round($quantity * $product->unit_price, 2);
+                $cogs = round($quantity * $product->cost_price, 2);
                 $status = $paymentType === 'cash' ? 'approved' : 'pending';
 
                 $order = PurchaseOrder::create([
@@ -215,9 +216,10 @@ class CartService
                 if ($isSocietyExpense) {
                     $ledger->postSocietyExpense($order->id, $totalAmount);
                 } elseif ($paymentType === 'cash') {
-                    $ledger->postCashSale($order->id, $totalAmount);
+                    $ledger->postCashSale($order->id, $totalAmount, $cogs);
                 } else {
-                    $ledger->postHirePurchaseSale($order->id, $totalAmount);
+                    $ledger->postHirePurchaseSale($order->id, $totalAmount, $cogs);
+                    app(HirePurchaseService::class)->generateSchedule($order);
                 }
 
                 $orders[] = $order;

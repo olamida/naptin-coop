@@ -123,6 +123,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::post('loans/{loan}/reject', [LoanController::class, 'reject'])->name('loans.reject');
         Route::post('loans/{loan}/note', [LoanController::class, 'addNote'])->name('loans.note');
         Route::post('loans/{loan}/disburse', [LoanController::class, 'disburse'])->name('loans.disburse');
+        Route::post('loans/{loan}/disburse/approve', [LoanController::class, 'disburseApprove'])->name('loans.disburse.approve');
         Route::post('loans/{loan}/guarantors/{guarantor}', [LoanController::class, 'updateGuarantor'])->name('loans.guarantor.update');
         Route::get('loans/{loan}/repayment', [LoanController::class, 'repayment'])->name('loans.repayment');
         Route::post('loans/{loan}/repayment', [LoanController::class, 'storeRepayment'])->name('loans.repayment.store');
@@ -195,6 +196,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::post('/orders', [ProductController::class, 'storeOrder'])->name('orders.store');
             Route::post('/orders/{order}/approve', [ProductController::class, 'approveOrder'])->name('orders.approve');
             Route::post('/orders/{order}/collect', [ProductController::class, 'collectOrder'])->name('orders.collect');
+            Route::post('/orders/{order}/payment', [ProductController::class, 'recordPayment'])->name('orders.payment');
             Route::get('/orders/group/{orderGroup}', [ProductController::class, 'showOrderGroup'])->name('orders.show');
             Route::post('/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('adjust-stock');
         });
@@ -205,6 +207,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::post('/', [DividendController::class, 'store'])->name('store');
             Route::get('/{dividend}', [DividendController::class, 'show'])->name('show');
             Route::post('/{dividend}/calculate', [DividendController::class, 'calculate'])->name('calculate');
+            Route::post('/{dividend}/approve-declaration', [DividendController::class, 'approveDeclaration'])->name('approve-declaration');
             Route::post('/{dividend}/approve', [DividendController::class, 'approve'])->name('approve');
             Route::post('/{dividend}/distribute', [DividendController::class, 'distribute'])->name('distribute');
         });
@@ -294,6 +297,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('/period-close', [FinanceController::class, 'periodCloseIndex'])->name('period-close');
         Route::post('/period-close', [FinanceController::class, 'periodCloseStore'])->name('period-close.store');
         Route::post('/period-close/{period}/reopen', [FinanceController::class, 'periodCloseReopen'])->name('period-close.reopen');
+        Route::post('/period-close/{period}/reopen/approve', [FinanceController::class, 'periodCloseReopenApprove'])->name('period-close.reopen.approve');
         Route::get('/profit-loss', [FinanceController::class, 'profitLoss'])->name('profit-loss');
         Route::get('/profit-loss/export', [FinanceController::class, 'exportProfitLoss'])->name('export.profit-loss');
         Route::get('/balance-sheet', [FinanceController::class, 'balanceSheet'])->name('balance-sheet');

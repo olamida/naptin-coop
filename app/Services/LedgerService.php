@@ -539,6 +539,47 @@ class LedgerService
     }
 
     /**
+     * Record the expected payroll deductions when a payroll is compiled.
+     * Debits the Receivable - Payroll Deductions Expected control account
+     * (1501) for the grand total and credits the sub-ledger controls that
+     * will be settled when the salary deductions land: Members Savings
+     * (2001, incl. arrears shortfalls), Loans Receivable (1101), Share
+     * Capital (2101) and Purchase Receivables (1201).
+     */
+    public function postPayrollCompilation(
+        int $payrollId,
+        float $savings = 0.0,
+        float $loanRepayments = 0.0,
+        float $shares = 0.0,
+        float $purchases = 0.0,
+        float $arrears = 0.0
+    ): JournalEntry {
+        $lines = [
+            ['account_code' => self::PAYROLL_RECEIVABLE, 'debit' => round($savings + $loanRepayments + $shares + $purchases + $arrears, 2), 'credit' => 0],
+        ];
+
+        $credits = [
+            [self::MEMBERS_SAVINGS, round($savings + $arrears, 2)],
+            [self::LOANS_RECEIVABLE, $loanRepayments],
+            [self::SHARE_CAPITAL, $shares],
+            [self::PURCHASE_RECEIVABLES, $purchases],
+        ];
+
+        foreach ($credits as [$code, $amount]) {
+            if ($amount > 0) {
+                $lines[] = ['account_code' => $code, 'debit' => 0, 'credit' => $amount];
+            }
+        }
+
+        return $this->post(
+            'Payroll compilation #'.$payrollId.' - expected deductions',
+            'payroll',
+            $payrollId,
+            $lines
+        );
+    }
+
+    /**
      * Convenience: record a loan repayment split between principal and interest.
      */
     public function postLoanRepayment(int $loanId, int $repaymentId, float $principal, float $interest): JournalEntry
@@ -556,32 +597,57 @@ class LedgerService
     }
 
     /**
-     * Convenience: record a cash product sale (debit cash, credit sales revenue).
+     * Record a cash product sale with COGS: debit cash at selling price,
+     * credit inventory at cost, and recognise the residual as Sales Margin
+     * (4005). When no cost is known the cost defaults to the selling price,
+     * so the margin is nil and the full sale flows through Inventory.
      */
-    public function postCashSale(int $orderId, float $amount): JournalEntry
+    public function postCashSale(int $orderId, float $amount, float $cogs = 0.0): JournalEntry
     {
-        return $this->postSimple(
+        $cogs = min($cogs > 0 ? $cogs : $amount, $amount);
+        $margin = round($amount - $cogs, 2);
+
+        $lines = [
+            ['account_code' => self::CASH, 'debit' => $amount, 'credit' => 0],
+            ['account_code' => self::INVENTORY, 'debit' => 0, 'credit' => $cogs],
+        ];
+
+        if ($margin > 0) {
+            $lines[] = ['account_code' => self::SALES_MARGIN, 'debit' => 0, 'credit' => $margin];
+        }
+
+        return $this->post(
             'Cash sale #'.$orderId,
             'purchase',
             $orderId,
-            self::CASH,
-            self::SALES_REVENUE,
-            $amount
+            $lines
         );
     }
 
     /**
-     * Convenience: record a hire-purchase sale (debit purchase receivables, credit sales revenue).
+     * Record a hire-purchase sale with COGS: debit purchase receivables at
+     * selling price, credit inventory at cost, residual recognised as Sales
+     * Margin (4005).
      */
-    public function postHirePurchaseSale(int $orderId, float $amount): JournalEntry
+    public function postHirePurchaseSale(int $orderId, float $amount, float $cogs = 0.0): JournalEntry
     {
-        return $this->postSimple(
+        $cogs = min($cogs > 0 ? $cogs : $amount, $amount);
+        $margin = round($amount - $cogs, 2);
+
+        $lines = [
+            ['account_code' => self::PURCHASE_RECEIVABLES, 'debit' => $amount, 'credit' => 0],
+            ['account_code' => self::INVENTORY, 'debit' => 0, 'credit' => $cogs],
+        ];
+
+        if ($margin > 0) {
+            $lines[] = ['account_code' => self::SALES_MARGIN, 'debit' => 0, 'credit' => $margin];
+        }
+
+        return $this->post(
             'Hire purchase sale #'.$orderId,
             'purchase',
             $orderId,
-            self::PURCHASE_RECEIVABLES,
-            self::SALES_REVENUE,
-            $amount
+            $lines
         );
     }
 
@@ -596,6 +662,22 @@ class LedgerService
             $orderId,
             self::PROCUREMENT_EXPENSE,
             self::CASH,
+            $amount
+        );
+    }
+
+    /**
+     * Convenience: record a hire-purchase instalment collection (debit cash,
+     * credit purchase receivables).
+     */
+    public function postHirePurchaseInstalment(int $orderId, int $scheduleId, float $amount): JournalEntry
+    {
+        return $this->postSimple(
+            "Hire purchase instalment #{$scheduleId} for order #{$orderId}",
+            'purchase',
+            $orderId,
+            self::CASH,
+            self::PURCHASE_RECEIVABLES,
             $amount
         );
     }

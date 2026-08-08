@@ -108,5 +108,59 @@
                 </form>
             @endif
         </div>
+
+        @php $hpOrder = $orders->first()->payment_type === 'hire_purchase' ? $orders->first() : null; @endphp
+        @if ($hpOrder)
+            <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-[#0F172A]">Repayment Schedule</h3>
+                    <span class="text-xs text-slate-500">Outstanding: <span class="font-semibold text-[#0F172A]">&#8358;{{ number_format($hpOrder->schedules->sum(fn ($s) => $s->principal_amount - $s->amount_paid), 2) }}</span></span>
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Due Date</th>
+                            <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                            <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Paid</th>
+                            <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @foreach ($hpOrder->schedules as $schedule)
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-5 py-2.5">{{ $schedule->installment_number }}</td>
+                                <td class="px-5 py-2.5">{{ $schedule->due_date->format('M Y') }}</td>
+                                <td class="px-5 py-2.5 text-right">&#8358;{{ number_format($schedule->principal_amount, 2) }}</td>
+                                <td class="px-5 py-2.5 text-right">&#8358;{{ number_format($schedule->amount_paid, 2) }}</td>
+                                <td class="px-5 py-2.5">
+                                    @if ($schedule->status === 'paid')
+                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Paid</span>
+                                    @else
+                                        <span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Pending</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                @if (in_array($hpOrder->status, ['approved', 'active']))
+                    <div class="px-5 py-4 border-t border-slate-200 bg-slate-50">
+                        <form method="POST" action="{{ route('products.orders.payment', $hpOrder) }}" class="flex items-end gap-3">
+                            @csrf
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Record Repayment (&#8358;)</label>
+                                <input type="number" name="amount" step="0.01" min="0.01" required placeholder="0.00"
+                                       class="w-48 px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium">Record Repayment</button>
+                        </form>
+                        @error('error')
+                            <p class="text-xs text-red-600 mt-2">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @endif
+            </div>
+        @endif
     </div>
 </x-app-layout>

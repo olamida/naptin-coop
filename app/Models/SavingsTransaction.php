@@ -19,6 +19,7 @@ class SavingsTransaction extends Model
         'balance_after',
         'status',
         'source',
+        'requested_by',
         'notes',
         'payment_evidence_path',
         'transaction_date',

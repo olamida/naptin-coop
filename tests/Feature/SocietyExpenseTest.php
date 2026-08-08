@@ -118,7 +118,7 @@ class SocietyExpenseTest extends TestCase
         $entry = JournalEntry::where('reference_type', 'purchase')->where('reference_id', $order->id)->firstOrFail();
         $lines = $entry->lines()->with('account')->get();
 
-        $this->assertNotNull($lines->firstWhere('account.code', '4002'), 'Sales Revenue should be credited for a normal sale');
+        $this->assertNotNull($lines->firstWhere('account.code', '1301'), 'Inventory should be credited at cost for a normal sale');
         $this->assertNull($lines->firstWhere('account.code', '5001'));
     }
 
@@ -150,5 +150,70 @@ class SocietyExpenseTest extends TestCase
 
         $this->assertNotNull($lines->firstWhere('account.code', '5001'));
         $this->assertNull($lines->firstWhere('account.code', '4002'));
+    }
+
+    public function test_cash_sale_with_cost_price_posts_inventory_and_margin(): void
+    {
+        [$admin, $token] = $this->admin();
+        $member = $this->member();
+        $product = Product::create([
+            'name' => 'Padded Chair',
+            'unit_price' => 50000,
+            'cost_price' => 30000,
+            'stock_quantity' => 5,
+            'enabled' => true,
+        ]);
+
+        $cartService = new CartService('admin', $admin->id);
+        $cartService->add($product->id, 1);
+
+        $this
+            ->withSession(['active_session_token' => $token])
+            ->actingAs($admin)
+            ->post(route('cart.process'), [
+                'member_id' => $member->id,
+                'payment_type' => 'cash',
+            ])
+            ->assertRedirect();
+
+        $order = $member->purchaseOrders()->firstOrFail();
+        $entry = JournalEntry::where('reference_type', 'purchase')->where('reference_id', $order->id)->firstOrFail();
+        $lines = $entry->lines()->with('account')->get();
+
+        $cash = $lines->firstWhere('account.code', '1001');
+        $inventory = $lines->firstWhere('account.code', '1301');
+        $margin = $lines->firstWhere('account.code', '4005');
+
+        $this->assertEquals(50000, $cash->debit);
+        $this->assertEquals(30000, $inventory->credit);
+        $this->assertEquals(20000, $margin->credit);
+        $this->assertNull($lines->firstWhere('account.code', '4002'));
+    }
+
+    public function test_cash_sale_without_cost_posts_full_amount_to_inventory(): void
+    {
+        [$admin, $token] = $this->admin();
+        $member = $this->member();
+        $product = $this->product(); // no cost_price → cost defaults to unit_price
+
+        $cartService = new CartService('admin', $admin->id);
+        $cartService->add($product->id, 1);
+
+        $this
+            ->withSession(['active_session_token' => $token])
+            ->actingAs($admin)
+            ->post(route('cart.process'), [
+                'member_id' => $member->id,
+                'payment_type' => 'cash',
+            ])
+            ->assertRedirect();
+
+        $order = $member->purchaseOrders()->firstOrFail();
+        $entry = JournalEntry::where('reference_type', 'purchase')->where('reference_id', $order->id)->firstOrFail();
+        $lines = $entry->lines()->with('account')->get();
+
+        $inventory = $lines->firstWhere('account.code', '1301');
+        $this->assertEquals(50000, $inventory->credit);
+        $this->assertNull($lines->firstWhere('account.code', '4005'));
     }
 }

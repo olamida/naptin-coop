@@ -47,7 +47,22 @@
                             <td class="px-5 py-3 text-slate-600">{{ $month['close']?->closedBy?->name ?? '—' }}</td>
                             <td class="px-5 py-3 text-right">
                                 @if ($month['close']?->is_closed)
-                                    <button x-data x-on:click="$dispatch('open-modal', 'reopen-{{ $month['period'] }}')" class="text-xs text-amber-600 hover:text-amber-700 font-medium">Reopen</button>
+                                    @if ($month['reopen_pending'] > 0)
+                                        <div class="flex flex-col items-end gap-1">
+                                            <span class="px-2 py-0.5 text-[10px] font-medium rounded-full bg-orange-100 text-orange-700">Reopen requested ({{ $month['reopen_pending'] }}/2)</span>
+                                            @if ($month['can_approve_reopen'] && ! $month['reopen_approved'])
+                                                <form method="POST" action="{{ route('finance.period-close.reopen.approve', $month['period']) }}">
+                                                    @csrf
+                                                    <button type="submit" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Approve</button>
+                                                </form>
+                                            @endif
+                                            @if ($month['reopen_approved'])
+                                                <button x-data x-on:click="$dispatch('open-modal', 'reopen-{{ $month['period'] }}')" class="text-xs text-amber-600 hover:text-amber-700 font-medium">Reopen Period</button>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <button x-data x-on:click="$dispatch('open-modal', 'reopen-{{ $month['period'] }}')" class="text-xs text-amber-600 hover:text-amber-700 font-medium">Reopen</button>
+                                    @endif
                                 @else
                                     <button x-data x-on:click="$dispatch('open-modal', 'close-{{ $month['period'] }}')" class="text-xs text-[#0F172A] hover:text-slate-600 font-medium">Close</button>
                                 @endif
@@ -86,7 +101,7 @@
             <div class="fixed inset-0 bg-black/40" x-on:click="open = false"></div>
             <div class="bg-white rounded-[16px] shadow-xl p-6 w-full max-w-md relative z-10">
                 <h3 class="text-sm font-bold text-[#0F172A] mb-1">Reopen {{ $month['label'] }}</h3>
-                <p class="text-xs text-slate-500 mb-4">Reopening is logged for audit. Provide a reason.</p>
+                <p class="text-xs text-slate-500 mb-4">Reopening is logged for audit and requires two senior approvals (e.g. President + Auditor). Provide a reason.</p>
                 <form method="POST" action="{{ route('finance.period-close.reopen', $month['period']) }}" class="space-y-3">
                     @csrf
                     <div>

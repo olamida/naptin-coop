@@ -8,6 +8,7 @@ use App\Actions\Dividends\DeclareDividend;
 use App\Actions\Dividends\DistributeDividend;
 use App\Models\Dividend;
 use App\Models\DividendDistribution;
+use App\Services\ApprovalService;
 use App\Services\LedgerService;
 use App\Services\ProvisioningService;
 use Illuminate\Http\RedirectResponse;
@@ -46,12 +47,44 @@ class DividendController extends Controller
             $this->assertDividendEligible();
 
             $dividend = DeclareDividend::run($validated);
+
+            if ((new ApprovalService)->requiresApproval('dividend_declaration')) {
+                (new ApprovalService)->request('dividend_declaration', $dividend, auth()->id());
+            }
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
 
         return redirect()->route('dividends.show', $dividend)
-            ->with('success', 'Dividend record created. Now calculate distributions.');
+            ->with('success', 'Dividend record created. The declaration requires maker-checker approval before distributions can be calculated.');
+    }
+
+    public function approveDeclaration(Dividend $dividend): RedirectResponse
+    {
+        $this->authorize('approve-dividends');
+
+        $approvals = new ApprovalService;
+
+        try {
+            if ($approvals->outstanding($dividend, 'dividend_declaration') === 0) {
+                return back()->withErrors(['error' => 'No pending dividend-declaration approval.']);
+            }
+
+            $slot = $approvals->nextApprovableSlot($dividend, 'dividend_declaration', auth()->user());
+            if (! $slot) {
+                return back()->withErrors(['error' => 'You are not eligible to approve this declaration (requester and approvers must be distinct).']);
+            }
+
+            $approvals->approve($slot, auth()->id());
+
+            if ($approvals->isFullyApproved($dividend, 'dividend_declaration')) {
+                return back()->with('success', 'Dividend declaration approved by all required checkers.');
+            }
+
+            return back()->with('success', 'Declaration approval recorded. A further senior approval is required.');
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -86,14 +119,24 @@ class DividendController extends Controller
     {
         $dividend->load(['distributions.member', 'approvedBy']);
 
-        return view('dividends.show', ['dividend' => $dividend]);
+        $approvals = new ApprovalService;
+        $declarationApproved = $approvals->isFullyApproved($dividend, 'dividend_declaration');
+        $declarationPending = $approvals->outstanding($dividend, 'dividend_declaration');
+
+        return view('dividends.show', compact('dividend', 'declarationApproved', 'declarationPending'));
     }
 
     public function calculate(Dividend $dividend): RedirectResponse
     {
         $this->authorize('calculate-dividends');
 
+        $approvals = new ApprovalService;
+
         try {
+            if ($approvals->requiresApproval('dividend_declaration') && ! $approvals->isFullyApproved($dividend, 'dividend_declaration')) {
+                return back()->withErrors(['error' => 'Cannot calculate distributions: the dividend declaration still awaits maker-checker approval.']);
+            }
+
             CalculateDividend::run($dividend);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
