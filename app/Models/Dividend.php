@@ -20,6 +20,8 @@ class Dividend extends Model
         'status',
         'notes',
         'approved_by',
+        'import_batch_id',
+        'external_reference',
     ];
 
     protected $casts = [

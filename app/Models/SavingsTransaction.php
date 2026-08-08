@@ -28,6 +28,7 @@ class SavingsTransaction extends Model
         'rejection_reason',
         'import_batch_id',
         'external_reference',
+        'journal_entry_id',
     ];
 
     protected $casts = [
@@ -46,5 +47,10 @@ class SavingsTransaction extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function journalEntry(): BelongsTo
+    {
+        return $this->belongsTo(JournalEntry::class);
     }
 }

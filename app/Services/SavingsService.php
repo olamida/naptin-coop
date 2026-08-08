@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Member;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -46,7 +47,8 @@ class SavingsService
                     'approved_at' => now(),
                 ]);
 
-                app(LedgerService::class)->postSavingsDeposit($txn->id, $amount);
+                $entry = app(LedgerService::class)->postSavingsDeposit($txn->id, $amount);
+                $txn->update(['journal_entry_id' => $entry->id]);
 
                 ActivityLog::create([
                     'user_id' => null,
@@ -87,7 +89,7 @@ class SavingsService
     {
         $limit = (float) (Company::instance()->auto_approve_deposit_limit ?? self::DEFAULT_AUTO_APPROVE_LIMIT);
 
-        if ($amount > $limit) {
+        if (Money::gt($amount, $limit)) {
             return false;
         }
 
@@ -140,7 +142,7 @@ class SavingsService
             ->whereIn('status', ['disbursed', 'repaying', 'arrears'])
             ->sum('outstanding');
 
-        return round($savingsBalance / max($outstandingLoans, 1) * 100, 1);
+        return round(Money::mul(Money::div($savingsBalance, Money::max($outstandingLoans, 1)), 100), 1);
     }
 
     /**
@@ -151,7 +153,7 @@ class SavingsService
         return DB::transaction(function () use ($transaction) {
             $account = SavingsAccount::where('id', $transaction->savings_account_id)->lockForUpdate()->firstOrFail();
 
-            if ($transaction->amount > $account->balance) {
+            if (Money::gt($transaction->amount, $account->balance)) {
                 throw new \RuntimeException('Insufficient balance for withdrawal.');
             }
 
@@ -165,7 +167,9 @@ class SavingsService
                 'approved_at' => now(),
             ]);
 
-            app(LedgerService::class)->postSavingsWithdrawal($transaction->id, $transaction->amount);
+            $entry = app(LedgerService::class)->postSavingsWithdrawal($transaction->id, $transaction->amount);
+
+            $transaction->update(['journal_entry_id' => $entry->id]);
 
             return $transaction->fresh();
         });
@@ -189,7 +193,9 @@ class SavingsService
                 'approved_at' => now(),
             ]);
 
-            app(LedgerService::class)->postSavingsDeposit($transaction->id, $transaction->amount);
+            $entry = app(LedgerService::class)->postSavingsDeposit($transaction->id, $transaction->amount);
+
+            $transaction->update(['journal_entry_id' => $entry->id]);
 
             return $transaction->fresh();
         });

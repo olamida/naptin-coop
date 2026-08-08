@@ -18,12 +18,12 @@ Priority 4 = Security hardening
 Priority 5 = Automation (scheduled jobs)
 Priority 6 = Housekeeping / dead code
 
-PROGRESS SUMMARY (as of version 3.11.0)
+PROGRESS SUMMARY (as of version 3.12.0)
 --------------------------------------
-DONE: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15  (15 items)
-OPEN: 16-35                                             (20 items)
-Next recommended: P2 clean-ups (16 bcmath, 17 traceability), then P4
-security and P5 scheduled jobs.
+DONE: 1-18                          (18 items)
+OPEN: 19-35                         (17 items)
+Next recommended: P3 workflow/report polish (19 loan wizard server rules,
+20 loan detail timeline), then P4 security and P5 scheduled jobs.
 
 --------------------------------------------------------------------------------
 P1 - FINANCE & COMPLIANCE (audit-critical)
@@ -174,24 +174,43 @@ P2 — MONEY-FLOW / LEDGER COVERAGE
        validateControlAccounts() returns per-account variance rows. Later helpers:
        periodNetProfit(), postPeriodAppropriations(), trialBalanceIsBalanced() (3.11.0).
 
-16. [PARTIAL] BCMATH FOR MONEY
+16. [DONE] BCMATH FOR MONEY
     - Spec: use bcmath for calculations.
     - Current: all arithmetic uses PHP float.
     - TODO: introduce a Money helper (bcadd/bcsub/bcmul) used in LedgerService,
       ProvisioningService, LoanService, SavingsService.
+    -> DONE: new app/Support/Money.php — arbitrary-precision add/sub/mul/div/percent,
+       compare helpers (eq/gt/gte/lt/lte), abs/min/max/sum (two-decimal normalisation
+       before each bcmath op). Wired into LedgerService (entry balancing, balances,
+       appropriations, COGS margin, payroll totals, reversals, variance), LoanService
+       (monthly repayment, limits, split, schedules), SavingsService (auto-approve
+       limit, health score, withdrawal sufficiency) and ProvisioningService (aging,
+       coverage ratio, movement delta). tests/Unit/MoneyTest.php (8 tests).
 
-17. [PARTIAL] DIRECT TRACEABILITY FROM TRANSACTIONS
+17. [DONE] DIRECT TRACEABILITY FROM TRANSACTIONS
     - Spec: savings_transactions.journal_entry_id; loan_repayments.fees_portion;
       import_batch_id + external_reference on ALL financial tables.
     - Current: linkage is via reference_type/reference_id; import_batch_id only on
       savings_transactions, loan_repayments, members, share_transactions.
     - TODO: add journal_entry_id to savings_transactions; fees_portion to loan_repayments;
       import_batch_id + external_reference to loans, purchase_orders, dividends.
+    -> DONE: migration 2026_08_12_000001 adds savings_transactions.journal_entry_id (FK,
+       set by SavingsService after every posted deposit/withdrawal), loan_repayments.
+       fees_portion (default 0, captured in RecordRepayment + LoanRepaymentImport),
+       and import_batch_id + external_reference on loans, purchase_orders and dividends;
+       PurchaseImport stamps import_batch_id + external_reference on orders. Fillable +
+       SavingsTransaction::journalEntry() relation added.
+       tests/Feature/TraceabilityTest.php (5 tests).
 
-18. [PARTIAL] IMMUTABLE journal_entries STRUCTURE
+18. [DONE] IMMUTABLE journal_entries STRUCTURE
     - Spec: NO updated_at on journal_entries (structural immutability).
     - Current: timestamps() present; immutability enforced by MySQL triggers only.
     - TODO: decision needed — leave triggers (safer) or drop updated_at (breaking change).
+    -> DECISION (2026-08): KEEP the MySQL triggers (prevent_journal_entry_update / delete)
+       and KEEP the updated_at column. The triggers already reject any UPDATE/DELETE of
+       posted rows at the database level — raw SQL included — so no row can ever change
+       after posting; dropping updated_at would be a breaking schema change with zero
+       additional safety and would require disabling Eloquent's timestamp management.
 
 --------------------------------------------------------------------------------
 P3 — OPERATIONAL WORKFLOW & REPORTS

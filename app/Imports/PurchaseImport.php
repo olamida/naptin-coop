@@ -64,6 +64,8 @@ class PurchaseImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithVal
             'monthly_repayment' => 0,
             'amount_paid' => 0,
             'status' => 'pending',
+            'import_batch_id' => $this->batchId,
+            'external_reference' => $row['external_reference'] ?? null,
         ]);
 
         $this->markSuccess();
@@ -80,6 +82,7 @@ class PurchaseImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithVal
             'unit_price' => 'nullable|numeric|min:0',
             'payment_date' => 'nullable|date',
             'notes' => 'nullable|string|max:500',
+            'external_reference' => 'nullable|string|max:100',
         ];
     }
 }

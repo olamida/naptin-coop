@@ -17,6 +17,7 @@ class LoanRepayment extends Model
         'amount',
         'principal_portion',
         'interest_portion',
+        'fees_portion',
         'outstanding_after',
         'payment_method',
         'source',
@@ -30,6 +31,7 @@ class LoanRepayment extends Model
         'amount' => 'decimal:2',
         'principal_portion' => 'decimal:2',
         'interest_portion' => 'decimal:2',
+        'fees_portion' => 'decimal:2',
         'outstanding_after' => 'decimal:2',
         'payment_date' => 'date',
     ];

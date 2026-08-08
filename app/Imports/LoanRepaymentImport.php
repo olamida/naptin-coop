@@ -70,6 +70,7 @@ class LoanRepaymentImport implements SkipsOnFailure, ToModel, WithHeadingRow, Wi
                 'amount' => $amount,
                 'principal_portion' => $principalPortion,
                 'interest_portion' => $interestPortion,
+                'fees_portion' => 0,
                 'outstanding_after' => $outstandingAfter,
                 'payment_method' => 'salary_deduction',
                 'source' => 'salary_deduction',

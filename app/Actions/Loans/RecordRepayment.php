@@ -45,6 +45,7 @@ class RecordRepayment extends Action
                 'amount' => $amount,
                 'principal_portion' => $split['principal_portion'],
                 'interest_portion' => $split['interest_portion'],
+                'fees_portion' => 0,
                 'outstanding_after' => $outstandingAfter,
                 'payment_method' => $data['payment_method'],
                 'source' => 'manual',

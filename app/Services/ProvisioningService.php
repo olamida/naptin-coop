@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Loan;
 use App\Models\LoanLossProvision;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -68,7 +69,7 @@ class ProvisioningService
     {
         $repaidPrincipal = (float) $loan->repayments()->sum('principal_portion');
 
-        return round((float) $loan->amount - $repaidPrincipal, 2);
+        return Money::sub((float) $loan->amount, $repaidPrincipal);
     }
 
     /**
@@ -94,10 +95,10 @@ class ProvisioningService
             $outstanding = self::outstandingPrincipal($loan);
             $daysPastDue = self::daysPastDue($loan);
             $bucket = self::classify($daysPastDue);
-            $provision = round($outstanding * $bucket['rate'], 2);
+            $provision = Money::mul($outstanding, $bucket['rate']);
 
-            $totalOutstanding += $outstanding;
-            $totalProvision += $provision;
+            $totalOutstanding = Money::add($totalOutstanding, $outstanding);
+            $totalProvision = Money::add($totalProvision, $provision);
 
             $rows[] = [
                 'loan' => $loan,
@@ -111,13 +112,13 @@ class ProvisioningService
             ];
         }
 
-        $coverageRatio = $totalOutstanding > 0 ? round(($totalProvision / $totalOutstanding) * 100, 2) : 0.0;
+        $coverageRatio = Money::gt($totalOutstanding, 0) ? round(Money::mul(Money::div($totalProvision, $totalOutstanding), 100), 2) : 0.0;
 
         return [
             'period' => $period,
             'rows' => $rows,
-            'total_outstanding' => round($totalOutstanding, 2),
-            'total_provision' => round($totalProvision, 2),
+            'total_outstanding' => Money::add($totalOutstanding, 0),
+            'total_provision' => Money::add($totalProvision, 0),
             'coverage_ratio' => $coverageRatio,
         ];
     }
@@ -136,12 +137,12 @@ class ProvisioningService
         $result = DB::transaction(function () use ($report, $period, $requiredProvision) {
             $ledger = new LedgerService;
             $existingProvision = $ledger->getBalance(LedgerService::LOAN_LOSS_PROVISION);
-            $delta = round($requiredProvision - $existingProvision, 2);
+            $delta = Money::sub($requiredProvision, $existingProvision);
 
             $journalEntry = null;
 
-            if (abs($delta) >= 0.01) {
-                if ($delta > 0) {
+            if (Money::gte(Money::abs($delta), 0.01)) {
+                if (Money::gt($delta, 0)) {
                     $journalEntry = $ledger->post(
                         "Loan loss provision for {$period}",
                         'provision',
@@ -157,8 +158,8 @@ class ProvisioningService
                         'provision',
                         null,
                         [
-                            ['account_code' => LedgerService::LOAN_LOSS_PROVISION, 'debit' => abs($delta), 'credit' => 0],
-                            ['account_code' => LedgerService::LOAN_LOSS_EXPENSE, 'debit' => 0, 'credit' => abs($delta)],
+                            ['account_code' => LedgerService::LOAN_LOSS_PROVISION, 'debit' => Money::abs($delta), 'credit' => 0],
+                            ['account_code' => LedgerService::LOAN_LOSS_EXPENSE, 'debit' => 0, 'credit' => Money::abs($delta)],
                         ]
                     );
                 }

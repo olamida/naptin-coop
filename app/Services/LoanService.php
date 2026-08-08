@@ -6,6 +6,7 @@ use App\Models\Loan;
 use App\Models\LoanProduct;
 use App\Models\LoanRepaymentSchedule;
 use App\Models\Member;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 
 class LoanService
@@ -16,9 +17,9 @@ class LoanService
      */
     public function calculateMonthlyRepayment(float $amount, float $interestRate, int $tenureMonths): float
     {
-        $totalWithInterest = $amount * (1 + $interestRate / 100);
+        $totalWithInterest = Money::mul($amount, Money::add(1, Money::div($interestRate, 100)));
 
-        return round($totalWithInterest / $tenureMonths, 2);
+        return round(Money::div($totalWithInterest, $tenureMonths), 2);
     }
 
     /**
@@ -65,9 +66,9 @@ class LoanService
                 ->whereIn('status', ['pending', 'approved', 'disbursed', 'repaying'])
                 ->sum('outstanding');
 
-            $newTotal = $totalOutstanding + $amount;
-            if ($newTotal > $product->max_total_amount_per_member) {
-                $remaining = max(0, $product->max_total_amount_per_member - $totalOutstanding);
+            $newTotal = Money::add($totalOutstanding, $amount);
+            if (Money::gt($newTotal, $product->max_total_amount_per_member)) {
+                $remaining = Money::max(0, Money::sub($product->max_total_amount_per_member, $totalOutstanding));
 
                 return "This member's total outstanding for {$product->name} would be ₦".number_format($newTotal, 2)
                     .'. Maximum allowed: ₦'.number_format($product->max_total_amount_per_member, 2)
@@ -95,12 +96,15 @@ class LoanService
             ->sum('outstanding');
 
         if ($portfolio > 0) {
-            $limit = round((float) $portfolio * 0.05, 2);
-            $memberExposure = Loan::where('member_id', $memberId)
-                ->whereIn('status', ['pending', 'approved', 'disbursed', 'repaying'])
-                ->sum('outstanding') + $amount;
+            $limit = Money::percent($portfolio, 5);
+            $memberExposure = Money::add(
+                Loan::where('member_id', $memberId)
+                    ->whereIn('status', ['pending', 'approved', 'disbursed', 'repaying'])
+                    ->sum('outstanding'),
+                $amount
+            );
 
-            if ($memberExposure > $limit) {
+            if (Money::gt($memberExposure, $limit)) {
                 return 'CBN single obligor limit exceeded: this member\'s exposure of ₦'
                     .number_format($memberExposure, 2).' would exceed 5% of the loan portfolio (₦'
                     .number_format($limit, 2).').';
@@ -115,17 +119,17 @@ class LoanService
      */
     public function splitRepayment(float $amount, float $interestRatePercent): array
     {
-        $interestRate = $interestRatePercent / 100;
+        $interestRate = Money::div($interestRatePercent, 100);
 
-        if ($interestRate <= 0) {
+        if (Money::lte($interestRate, 0)) {
             return [
                 'principal_portion' => $amount,
                 'interest_portion' => 0.0,
             ];
         }
 
-        $interestPortion = round($amount * ($interestRate / (1 + $interestRate)), 2);
-        $principalPortion = round($amount - $interestPortion, 2);
+        $interestPortion = Money::mul($amount, Money::div($interestRate, Money::add(1, $interestRate)));
+        $principalPortion = Money::sub($amount, $interestPortion);
 
         return [
             'principal_portion' => $principalPortion,
@@ -143,8 +147,8 @@ class LoanService
         $rate = (float) $loan->interest_rate;
         $tenure = max(1, (int) $loan->tenure_months);
 
-        $monthlyPrincipal = round($amount / $tenure, 2);
-        $monthlyInterest = round(($amount * ($rate / 100)) / $tenure, 2);
+        $monthlyPrincipal = round(Money::div($amount, $tenure), 2);
+        $monthlyInterest = round(Money::div(Money::mul($amount, Money::div($rate, 100)), $tenure), 2);
 
         $balance = $amount;
         $rows = [];
@@ -152,10 +156,10 @@ class LoanService
             $principal = $monthlyPrincipal;
             $interest = $monthlyInterest;
             if ($i === $tenure) {
-                $principal = round($amount - $monthlyPrincipal * ($tenure - 1), 2);
-                $interest = round($amount * ($rate / 100) - $monthlyInterest * ($tenure - 1), 2);
+                $principal = round(Money::sub($amount, Money::mul($monthlyPrincipal, $tenure - 1)), 2);
+                $interest = round(Money::sub(Money::mul($amount, Money::div($rate, 100)), Money::mul($monthlyInterest, $tenure - 1)), 2);
             }
-            $balance = round($balance - $principal, 2);
+            $balance = Money::sub($balance, $principal);
 
             $rows[] = [
                 'loan_id' => $loan->id,
@@ -163,7 +167,7 @@ class LoanService
                 'due_date' => now()->addMonths($i)->startOfMonth()->toDateString(),
                 'principal_amount' => $principal,
                 'interest_amount' => $interest,
-                'total_amount' => round($principal + $interest, 2),
+                'total_amount' => Money::add($principal, $interest),
                 'balance_after' => $balance,
                 'status' => 'pending',
                 'amount_paid' => 0,
@@ -182,7 +186,7 @@ class LoanService
      */
     public function applyPrincipalToSchedules(Loan $loan, float $principalPaid, string $paymentDate): void
     {
-        $remaining = round($principalPaid, 2);
+        $remaining = Money::add($principalPaid, 0);
         $schedules = $loan->schedules()
             ->where('status', '!=', 'paid')
             ->orderBy('installment_number')
@@ -190,18 +194,18 @@ class LoanService
             ->get();
 
         foreach ($schedules as $schedule) {
-            if ($remaining <= 0) {
+            if (Money::lte($remaining, 0)) {
                 break;
             }
 
-            $owed = round((float) $schedule->principal_amount - (float) $schedule->amount_paid, 2);
-            if ($owed <= 0) {
+            $owed = Money::sub((float) $schedule->principal_amount, (float) $schedule->amount_paid);
+            if (Money::lte($owed, 0)) {
                 continue;
             }
 
-            $apply = min($remaining, $owed);
-            $newPaid = round((float) $schedule->amount_paid + $apply, 2);
-            $fullyPaid = $newPaid >= (float) $schedule->principal_amount;
+            $apply = Money::min($remaining, $owed);
+            $newPaid = Money::add((float) $schedule->amount_paid, $apply);
+            $fullyPaid = Money::gte($newPaid, (float) $schedule->principal_amount);
 
             $schedule->update([
                 'amount_paid' => $newPaid,
@@ -209,7 +213,7 @@ class LoanService
                 'paid_at' => $fullyPaid ? $paymentDate : $schedule->paid_at,
             ]);
 
-            $remaining = round($remaining - $apply, 2);
+            $remaining = Money::sub($remaining, $apply);
         }
     }
 }

@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.12.0
+> **Version:** 3.13.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.13 | **Money precision + transaction traceability (audit P2 #16–#18):** new **`App\Support\Money`** bcmath arithmetic helper (`add`/`sub`/`mul`/`div`/`percent`, compare helpers, `abs`/`min`/`max`/`sum`) — operands normalised to two-decimal strings and multiplied/divided at 10-decimal precision so ledgers never accumulate float drift; wired into `LedgerService`, `LoanService`, `SavingsService` and `ProvisioningService` (entry balancing, balances, appropriations, COGS margin, payroll totals, loan limits/splits/schedules, provisioning deltas); **direct traceability** — `savings_transactions` gained `journal_entry_id` (set by `SavingsService` after every posted deposit/withdrawal, linking the txn to its ledger entry), `loan_repayments` gained `fees_portion` (default 0, captured by `RecordRepayment` + `LoanRepaymentImport`), and `loans`/`purchase_orders`/`dividends` gained `import_batch_id` + `external_reference` (purchase imports stamp the batch + external reference on every order); **immutability decision** — documented: the MySQL `prevent_journal_entry_update`/`delete` triggers remain the enforcement mechanism and `updated_at` is retained (dropping the column would be a breaking change with no extra safety). New `tests/Unit/MoneyTest.php` (8) + `tests/Feature/TraceabilityTest.php` (5). |
 | 3.12 | **Maker-checker + money-flow ledger coverage (audit P1 #3, #8, #9; P2 #12–#14):** **maker-checker approval workflows** — new `approval_workflows` + `pending_approvals` tables and a workflow-key-driven `ApprovalService` (`requiresApproval`/`request`/`approve`/`isFullyApproved`/`approverEligible` with a `required_permission` gate and distinct-approver rule); seeded workflows for loan disbursement (treasurer + auditor), dividend declaration (president + auditor), period reopen and high-value savings withdrawals (> ₦100,000), all with in-page Approve actions; **period-close checks** extended (balanced entries, no pending savings, no pending approvals, cash counts reconciled, control accounts reconciled); **period reopen dual approval** — reopening posts a `period_reopen` approval and the period stays closed until fully approved; **inventory/COGS** — products gained `cost_price` (defaults to unit price) and store sales now post Dr Cash/Purchase Receivables / Cr `1301` Inventory at cost / Cr `4005` Sales Margin; **payroll posts to ledger** — compiling posts Dr `1501` Payroll Deductions Expected / Cr `2001` savings (incl. arrears), `1101` loans, `2101` shares, `1201` purchases via `postPayrollCompilation()`; **hire-purchase schedules** — `hire_purchase_schedules` table, `HirePurchaseService` generates a flat-principal schedule on order creation and `applyPayment()` posts per-instalment journals (Dr 1001 / Cr 1201) with a Record Repayment form on the order page. New `LedgerService::postHirePurchaseInstalment()`; new tests: `MakerCheckerTest`, `PeriodCloseChecksTest`, `PeriodReopenApprovalTest`, `PayrollLedgerPostingTest`, `HirePurchaseScheduleTest` (24 tests). |
 | 3.11 | **CBN compliance rules (audit P1 #7):** **period-close appropriations** — closing a period now posts the statutory reserve (25% of net profit → `3003` General Reserve) and education fund (2.5% → `3002`) appropriations against retained earnings (`3001`) once per period (re-closing never double-appropriates; skipped when the period shows no profit); **dividend-declaration gating** — a dividend cannot be declared unless the posted trial balance is balanced and, whenever the loan book has outstanding balances, loan-loss provision coverage is ≥ 100% (gate lives in `DividendController::assertDividendEligible()`); **CBN single-obligor limit** — `LoanService::validateLoanProduct()` blocks any new loan that would push one member's total exposure over 5% of the current outstanding loan portfolio (skipped while the portfolio is empty). New `LedgerService` helpers: `periodNetProfit()`, `postPeriodAppropriations()` and `trialBalanceIsBalanced()`; new `3003 General Reserve` equity account (chart now 36 accounts). New `tests/Feature/CbnComplianceTest.php` (7 tests). |
 | 3.10 | **Finance report exports (Excel + QR-stamped PDF):** every financial report — Trial Balance, P&L, Balance Sheet, Cash Flow, Loan Aging, Savings Control and Audit Trail — now has **Excel** and **PDF** download buttons that preserve the active filters. PDFs are rendered by **DomPDF** (`barryvdh/laravel-dompdf`) with the company header and footer, and every export embeds a **QR code containing the report's SHA-256 hash** (computed over the canonical dataset) plus the plain hash text for verification. New `ReportExportService` (canonical hash + GD-backed PNG QR via bacon-qr-code `GDLibRenderer`), generic `FinanceReportExport` Excel class, and a shared `StreamsReportExports` controller trait. Export routes: `/ledger/trial-balance/export` and `/finance/{profit-loss,balance-sheet,cash-flow,loan-aging,audit-trail}/export` + `/finance/reports/savings-control/export`, all `?format=xlsx|pdf`. |
@@ -179,9 +180,12 @@ naptin-coop/
 │       ├── ProvisioningService.php     # IFRS 9 / CBN loan loss provisioning buckets
 │       ├── ReportExportService.php     # Canonical report SHA-256 hash + GD PNG QR rendering for exports
 │       └── SavingsService.php          # Atomic deposit/withdrawal with row locking
+│   ├── Support/                        # Shared helpers
+│   │   ├── Money.php                   # bcmath money arithmetic (add/sub/mul/div/percent, compare, min/max/sum)
+│   │   └── NotificationLinks.php       # Action URLs for notifications (safe fallback to list pages)
 │
 ├── database/
-│   ├── migrations/                     # 51 migration files
+    │   ├── migrations/                     # 52 migration files
 │   └── seeders/
 │       ├── ApprovalWorkflowSeeder.php  # 4 maker-checker workflows (period_reopen, loan_disbursement, dividend_declaration, savings_withdrawal)
 │       ├── BrandingAssetSeeder.php     # Seeds the 6 branding assets from resources/branding/seed
@@ -311,14 +315,14 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `savings_accounts` | One per member | member_id, account_number, balance |
-| `savings_transactions` | All savings movements | savings_account_id, type, amount, balance_before, balance_after, reference, status, approved_by, approved_at, payment_evidence_path |
+| `savings_transactions` | All savings movements | savings_account_id, type, amount, balance_before, balance_after, reference, status, approved_by, approved_at, payment_evidence_path, **journal_entry_id** |
 
 #### Loans Domain
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `loan_products` | Configurable loan types | name, slug, min/max_amount, interest_rate, max_term_months, requires_guarantors, max_loans_per_member, max_total_amount_per_member |
-| `loans` | Individual loan records | member_id, loan_product_id, loan_number, type, amount, interest_rate, monthly_repayment, outstanding, status, admin_notes |
-| `loan_repayments` | Repayment transactions | loan_id, member_id, amount, principal_portion, interest_portion, payment_method |
+| `loans` | Individual loan records | member_id, loan_product_id, loan_number, type, amount, interest_rate, monthly_repayment, outstanding, status, admin_notes, **import_batch_id, external_reference** |
+| `loan_repayments` | Repayment transactions | loan_id, member_id, amount, principal_portion, interest_portion, **fees_portion**, payment_method |
 | `loan_repayment_schedules` | Amortization schedules | loan_id, installment_number, due_date, principal_amount, interest_amount, status |
 | `loan_guarantors` | Guarantor assignments | loan_id, member_id, status (pending/accepted/declined), responded_at |
 | `loan_approval_logs` | Full audit trail | loan_id, user_id, action, old_status, new_status, notes |
@@ -333,12 +337,12 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `products` | Available products | name, unit_price, stock_quantity, enabled, image_path |
-| `purchase_orders` | Member purchase orders | member_id, product_id, order_number, order_group, quantity, total_amount, payment_type, monthly_repayment, status |
+| `purchase_orders` | Member purchase orders | member_id, product_id, order_number, order_group, quantity, total_amount, payment_type, monthly_repayment, status, **import_batch_id, external_reference** |
 
 #### Dividends Domain
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `dividends` | Annual dividend records | year, total_profit, total_distributed, status |
+| `dividends` | Annual dividend records | year, total_profit, total_distributed, status, **import_batch_id, external_reference** |
 | `dividend_distributions` | Per-member payout | dividend_id, member_id, share_count, amount, status |
 
 #### Payroll Domain

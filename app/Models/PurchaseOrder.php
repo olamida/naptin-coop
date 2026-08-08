@@ -27,6 +27,8 @@ class PurchaseOrder extends Model
         'status',
         'collected_at',
         'approved_by',
+        'import_batch_id',
+        'external_reference',
     ];
 
     protected $casts = [

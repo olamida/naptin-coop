@@ -35,6 +35,8 @@ class Loan extends Model
         'rejection_reason',
         'admin_notes',
         'approved_by',
+        'import_batch_id',
+        'external_reference',
     ];
 
     protected $casts = [

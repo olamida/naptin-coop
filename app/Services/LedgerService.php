@@ -6,6 +6,7 @@ use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Models\PeriodClose;
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -148,8 +149,8 @@ class LedgerService
         foreach ($lines as $line) {
             $debit = round((float) ($line['debit'] ?? 0), 2);
             $credit = round((float) ($line['credit'] ?? 0), 2);
-            $totalDebit += $debit;
-            $totalCredit += $credit;
+            $totalDebit = Money::add($totalDebit, $debit);
+            $totalCredit = Money::add($totalCredit, $credit);
 
             $account = $this->ensureAccount($line['account_code']);
 
@@ -162,7 +163,7 @@ class LedgerService
             ]);
         }
 
-        if (round($totalDebit, 2) !== round($totalCredit, 2)) {
+        if (! Money::eq($totalDebit, $totalCredit)) {
             throw new \RuntimeException(
                 "Unbalanced journal entry: debit {$totalDebit} does not equal credit {$totalCredit}."
             );
@@ -293,7 +294,7 @@ class LedgerService
         $debit = (float) $totals->d;
         $credit = (float) $totals->c;
 
-        return $account->normal_side === 'debit' ? $debit - $credit : $credit - $debit;
+        return $account->normal_side === 'debit' ? Money::sub($debit, $credit) : Money::sub($credit, $debit);
     }
 
     /**
@@ -322,7 +323,7 @@ class LedgerService
             ->selectRaw('COALESCE(SUM(jel.credit), 0) as c, COALESCE(SUM(jel.debit), 0) as d')
             ->first();
 
-        return round((float) ($totals->c ?? 0) - (float) ($totals->d ?? 0), 2);
+        return Money::sub((float) ($totals->c ?? 0), (float) ($totals->d ?? 0));
     }
 
     /**
@@ -335,16 +336,16 @@ class LedgerService
      */
     public function postPeriodAppropriations(string $period, float $netProfit): array
     {
-        $netProfit = round($netProfit, 2);
+        $netProfit = Money::add($netProfit, 0);
 
-        if ($netProfit <= 0) {
+        if (Money::lte($netProfit, 0)) {
             return ['statutory' => null, 'education' => null, 'net_profit' => 0.0];
         }
 
         $entryDate = date('Y-m-t', strtotime($period.'-01'));
 
-        $statutory = round($netProfit * 0.25, 2);
-        $education = round($netProfit * 0.025, 2);
+        $statutory = Money::percent($netProfit, 25);
+        $education = Money::percent($netProfit, 2.5);
 
         $statutoryEntry = $this->post(
             "Statutory reserve appropriation for {$period}: 25% of net profit (₦".number_format($statutory, 2).')',
@@ -387,7 +388,7 @@ class LedgerService
             ->selectRaw('COALESCE(SUM(jel.debit), 0) as d, COALESCE(SUM(jel.credit), 0) as c')
             ->first();
 
-        return round((float) $totals->d, 2) === round((float) $totals->c, 2);
+        return Money::eq((float) $totals->d, (float) $totals->c);
     }
 
     /**
@@ -461,8 +462,8 @@ class LedgerService
             'code' => $code,
             'ledger_balance' => $ledgerBalance,
             'sub_ledger_balance' => $subLedgerBalance,
-            'variance' => round($ledgerBalance - $subLedgerBalance, 2),
-            'reconciled' => abs($ledgerBalance - $subLedgerBalance) < 0.01,
+            'variance' => Money::sub($ledgerBalance, $subLedgerBalance),
+            'reconciled' => Money::lt(Money::abs(Money::sub($ledgerBalance, $subLedgerBalance)), 0.01),
         ];
     }
 
@@ -509,7 +510,7 @@ class LedgerService
         ];
 
         if ($processingFee > 0) {
-            $lines[] = ['account_code' => self::CASH, 'debit' => 0, 'credit' => round($amount - $processingFee, 2)];
+            $lines[] = ['account_code' => self::CASH, 'debit' => 0, 'credit' => Money::sub($amount, $processingFee)];
             $lines[] = ['account_code' => self::PROCESSING_FEES_INCOME, 'debit' => 0, 'credit' => $processingFee];
         } else {
             $lines[] = ['account_code' => self::CASH, 'debit' => 0, 'credit' => $amount];
@@ -555,18 +556,18 @@ class LedgerService
         float $arrears = 0.0
     ): JournalEntry {
         $lines = [
-            ['account_code' => self::PAYROLL_RECEIVABLE, 'debit' => round($savings + $loanRepayments + $shares + $purchases + $arrears, 2), 'credit' => 0],
+            ['account_code' => self::PAYROLL_RECEIVABLE, 'debit' => Money::sum([$savings, $loanRepayments, $shares, $purchases, $arrears]), 'credit' => 0],
         ];
 
         $credits = [
-            [self::MEMBERS_SAVINGS, round($savings + $arrears, 2)],
+            [self::MEMBERS_SAVINGS, Money::add($savings, $arrears)],
             [self::LOANS_RECEIVABLE, $loanRepayments],
             [self::SHARE_CAPITAL, $shares],
             [self::PURCHASE_RECEIVABLES, $purchases],
         ];
 
         foreach ($credits as [$code, $amount]) {
-            if ($amount > 0) {
+            if (Money::gt($amount, 0)) {
                 $lines[] = ['account_code' => $code, 'debit' => 0, 'credit' => $amount];
             }
         }
@@ -589,7 +590,7 @@ class LedgerService
             'loan',
             $repaymentId,
             [
-                ['account_code' => self::CASH, 'debit' => $principal + $interest, 'credit' => 0],
+                ['account_code' => self::CASH, 'debit' => Money::add($principal, $interest), 'credit' => 0],
                 ['account_code' => self::LOANS_RECEIVABLE, 'debit' => 0, 'credit' => $principal],
                 ['account_code' => self::INTEREST_INCOME, 'debit' => 0, 'credit' => $interest],
             ]
@@ -604,8 +605,8 @@ class LedgerService
      */
     public function postCashSale(int $orderId, float $amount, float $cogs = 0.0): JournalEntry
     {
-        $cogs = min($cogs > 0 ? $cogs : $amount, $amount);
-        $margin = round($amount - $cogs, 2);
+        $cogs = Money::min($cogs > 0 ? $cogs : $amount, $amount);
+        $margin = Money::sub($amount, $cogs);
 
         $lines = [
             ['account_code' => self::CASH, 'debit' => $amount, 'credit' => 0],
@@ -631,8 +632,8 @@ class LedgerService
      */
     public function postHirePurchaseSale(int $orderId, float $amount, float $cogs = 0.0): JournalEntry
     {
-        $cogs = min($cogs > 0 ? $cogs : $amount, $amount);
-        $margin = round($amount - $cogs, 2);
+        $cogs = Money::min($cogs > 0 ? $cogs : $amount, $amount);
+        $margin = Money::sub($amount, $cogs);
 
         $lines = [
             ['account_code' => self::PURCHASE_RECEIVABLES, 'debit' => $amount, 'credit' => 0],
@@ -721,11 +722,11 @@ class LedgerService
      */
     public function postCashVariance(int $cashCountId, float $variance): JournalEntry
     {
-        if (abs($variance) < 0.005) {
+        if (Money::lt(Money::abs($variance), 0.005)) {
             throw new \RuntimeException('No variance to post for a balanced cash count.');
         }
 
-        $isExcess = $variance > 0;
+        $isExcess = Money::gt($variance, 0);
 
         return $this->postSimple(
             'Daily cash count #'.$cashCountId.($isExcess ? ' — excess' : ' — shortage'),
@@ -733,7 +734,7 @@ class LedgerService
             $cashCountId,
             $isExcess ? self::CASH : self::CASH_SUSPENSE,
             $isExcess ? self::CASH_SUSPENSE : self::CASH,
-            abs($variance)
+            Money::abs($variance)
         );
     }
 }
