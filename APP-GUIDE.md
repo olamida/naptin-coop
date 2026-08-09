@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.20 | **JS unit test coverage + command-palette module extraction (P-05):** the `window.commandPalette` factory moved out of `resources/js/app.js` into a testable ES module `resources/js/command-palette.js` (`app.js` now imports it and re-assigns `window.commandPalette`, so every Blade `x-data="commandPalette({...})"` binding is unchanged). New **Vitest + happy-dom** JS test harness (`npm run test:js`; `vite.config.js` gained a `test` block with the happy-dom environment; `package.json` gained the `test:js` script). `resources/js/__tests__/command-palette.test.js` covers **36 cases**: option defaults; `isTypingTarget` (modifier keys, input/textarea/select/contenteditable vs plain page targets); `handleGlobalKey` (`/` opens, `N` new-member navigation incl. the Shift guard and empty-URL no-op, `A`/`a` approve + `R`/`r` reject via the visibility-aware `firstShortcut`, and the open/typing early-returns); `firstShortcut` (visible-first ordering with all-hidden fallback and no-match null); `collectShortcuts`; `triggerShortcut` (form submit-button click, form-without-submit via `requestSubmit`/`submit`, direct element click, no-op when absent); `openPalette` (state reset + single initial search); `search` (endpoint + encode, reindex, failure clears state); `reindex`/`isSelected`/`goto`/`handleKey` (arrow clamping, Enter navigation, Escape close). No behaviour change. |
 | 3.19 | **Member portal keyboard shortcuts + member-scoped quick search (P-04):** the reusable `<x-command-palette>` is now mounted on the **portal layout** too — `/` (and `Ctrl/Cmd + K`) open a **member-scoped quick search** that searches only the signed-in member's own data (their loans by loan number, savings transactions by `SAV/…` reference, share transactions by `SHR/…` reference, purchase orders by order number/group) and, on an empty query, shows portal quick actions (Dashboard, Savings, Loans, Apply, Shares if the module is enabled, Purchases, Shop, Cart, Guarantors). `N` stays disabled on the portal. **`A` accepts / `R` declines** the first visible pending guarantor request on **My Guarantor Requests** (buttons carry `data-shortcut` + `(A)`/`(R)` hints; the decline confirmation dialog is preserved). Backed by the new `GET /my/search` (`portal.search`) JSON endpoint on `MemberPortalController::searchJson()`. New `tests/Feature/PortalSearchTest.php` (4 tests: guest redirect, quick actions, loan scoping, savings scoping). Route count is now **268 registered / 267 named**. |
 | 3.18.1 | **Registration & onboarding documentation corrections (P-02):** USER-GUIDE bumped to v1.1 with a new **§4.1.1 Onboarding Wizard** section (workbook structure, required/optional columns per sheet, one-transaction batch behaviour, Import Log) and an accurate public **member application** walkthrough — applications are reviewed manually (no auto-approve), approve activates the member + creates the portal login with a welcome email, reject marks the member `inactive` with **no portal login created**; APP-GUIDE corrected to match the code: the onboarding importer carries **members + opening_savings + shares** sheets only (position assignments are **not** imported, contradicting the previous 3.18 text), member reject sets status to `inactive` rather than "rejected with a reason", and the Member create form has no position field (removed from the USER-GUIDE add-member steps). |
 | 3.18 | **APP-GUIDE documentation refresh (P-01):** full guide brought back in line with the codebase — 71 migrations / 45 tables, **267 registered routes (266 named)**, 41 controllers, 28 Actions, 11 Services, 9 Imports, 8 Exports, 13 Notifications, 141 Blade views; architecture tree updated with the `Actions` layer, 8 custom middleware aliases, Console commands, `Support\Money` + `Support\BrandingImage`; new Module reference sections for the public site & self-registration, security & access (TOTP 2FA, single-session, force-password-change), bulk onboarding importer, member broadcasts, loan top-ups, public guarantee tokens and member-application approve/reject; tech-stack table corrected to Tailwind CSS 4 (Vite `@tailwindcss/vite`), Alpine.js 3.15 bundled via Vite (not CDN), PHP 8.3, Livewire 4 installed. |
@@ -256,7 +257,12 @@ naptin-coop/
 │       ├── PermissionsSeeder.php        # 35 permissions across 12 groups, 7 roles
 │       └── DemoDataSeeder.php          # Demo loans, savings, payroll data
 │
-├── resources/views/                    # 141 Blade templates
+├── resources/
+│   ├── js/
+│   │   ├── app.js                        # Vite entry: Alpine setup + all window.* Alpine factories
+│   │   ├── command-palette.js            # ES module: the commandPalette() factory (unit-tested)
+│   │   └── __tests__/command-palette.test.js  # Vitest + happy-dom unit tests (npm run test:js)
+│   └── views/                    # 141 Blade templates
 │   ├── admin/
 │   │   ├── branding/preview.blade.php          # Live branding preview (heroes, logos, theme colours)
 │   │   ├── broadcasts/                         # index, create
@@ -322,6 +328,7 @@ naptin-coop/
 | Fonts | Inter (Google Fonts) | — |
 | Icons | Material Symbols (Google) | — |
 | Database | MySQL | 8.x |
+| JS Tests | Vitest + happy-dom (harness: `npm run test:js`) | 4.1.x / 20.11.x |
 | Permissions | Spatie Laravel Permission | 8.3 |
 | Excel | Maatwebsite Excel | 3.x |
 | PDF | barryvdh/laravel-dompdf | 3.x |
