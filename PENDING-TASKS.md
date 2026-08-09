@@ -19,7 +19,7 @@
 | Item | Value |
 |------|-------|
 | APP-GUIDE version | 3.17.0 |
-| Last released commit | *(shipped with the shortcuts + docs commit — see Work Log)* |
+| Last released commit | `844a0c3` — "Command palette keyboard shortcuts and documentation set" |
 | Uncommitted WIP | **None** (as of this ledger update) |
 | Test suite | 36 Feature + 2 Unit test files, 176 tests / 710 assertions passing |
 | Active branch | `master` (tracking `origin/master`) |
@@ -58,7 +58,7 @@
 
 | Date | Commit | Feature |
 |------|--------|---------|
-| 2026-08-09 | *(filled after commit)* | Command-palette keyboard shortcuts (A/R/N) + documentation set (APP-GUIDE 3.17) |
+| 2026-08-09 | `844a0c3` | Command-palette keyboard shortcuts (A/R/N) + documentation set (APP-GUIDE 3.17) |
 | 2026-08-09 | `995f324` | Loan detail lifecycle timeline with avatars (APP-GUIDE 3.16) |
 | 2026-08-09 | `7f385fa` | Server-enforced loan wizard rules (3× savings cap, guarantor cap) + amortization chart (3.15) |
 | 2026-08-09 | `e2adf48` | Search autocomplete everywhere, sidebar rework, share receipt + member name fixes (3.14) |
