@@ -18,6 +18,7 @@ use App\Models\LoanGuarantor;
 use App\Models\LoanProduct;
 use App\Models\Member;
 use App\Services\ApprovalService;
+use App\Services\LoanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -88,7 +89,7 @@ class LoanController extends Controller
             ->where('status', 'active')->orderBy('first_name')->get();
         $loanProducts = LoanProduct::where('enabled', true)->orderBy('name')->get();
 
-        $guarantorLimit = 500000;
+        $guarantorLimit = LoanService::GUARANTOR_CAP;
         $guarantorExposure = LoanGuarantor::query()
             ->where('status', GuarantorStatus::Accepted->value)
             ->whereHas('loan', fn ($q) => $q->whereIn('status', ['approved', 'disbursed', 'repaying']))

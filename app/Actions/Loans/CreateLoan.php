@@ -29,7 +29,8 @@ class CreateLoan extends Action
                     $product,
                     $data['member_id'],
                     $data['amount'],
-                    $data['tenure_months']
+                    $data['tenure_months'],
+                    $data['guarantor_ids'] ?? []
                 );
                 if ($error) {
                     throw new \RuntimeException($error);

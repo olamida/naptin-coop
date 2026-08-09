@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\GuarantorStatus;
 use App\Models\Loan;
+use App\Models\LoanGuarantor;
 use App\Models\LoanProduct;
 use App\Models\LoanRepaymentSchedule;
 use App\Models\Member;
@@ -11,6 +13,21 @@ use Illuminate\Support\Facades\DB;
 
 class LoanService
 {
+    /**
+     * Global wizard ceiling for a member's live exposure (3× savings), matching the client.
+     */
+    public const SAVINGS_MULTIPLIER = 3;
+
+    /**
+     * Global wizard ceiling, matching the client slider hard-cap.
+     */
+    public const ABSOLUTE_CEILING = 5000000;
+
+    /**
+     * Maximum aggregate a single member may guarantee (sum of outstanding loans).
+     */
+    public const GUARANTOR_CAP = 500000;
+
     /**
      * Calculate monthly repayment including interest.
      * Formula: (amount × (1 + interest_rate / 100)) / tenure_months
@@ -47,8 +64,41 @@ class LoanService
      * Validate loan product constraints for a member.
      * Returns null on success, error message string on failure.
      */
-    public function validateLoanProduct(LoanProduct $product, int $memberId, float $amount, int $tenureMonths): ?string
+    public function validateLoanProduct(LoanProduct $product, int $memberId, float $amount, int $tenureMonths, array $guarantorIds = []): ?string
     {
+        // 3× savings eligibility (server-side enforcement of the wizard rule).
+        $member = Member::find($memberId);
+        $savingsBalance = (float) ($member?->savingsAccount?->balance ?? 0);
+        $maxEligible = Money::min(
+            Money::mul($savingsBalance, self::SAVINGS_MULTIPLIER),
+            self::ABSOLUTE_CEILING
+        );
+
+        if (Money::gt($amount, $maxEligible)) {
+            return 'This member\'s savings of ₦'.number_format($savingsBalance, 2)
+                .' supports a maximum eligible loan of ₦'.number_format($maxEligible, 2)
+                .' (3× savings).';
+        }
+
+        // Guarantor exposure cap: a member's aggregate guarantee cannot exceed the cap.
+        foreach ($guarantorIds as $guarantorId) {
+            $guaranteeing = (float) LoanGuarantor::query()
+                ->where('member_id', $guarantorId)
+                ->where('status', GuarantorStatus::Accepted->value)
+                ->whereHas('loan', fn ($q) => $q->whereIn('status', ['approved', 'disbursed', 'repaying']))
+                ->with('loan:id,outstanding')
+                ->get()
+                ->sum(fn ($g) => (float) $g->loan->outstanding);
+
+            $newExposure = Money::add($guaranteeing, $amount);
+            if (Money::gt($newExposure, self::GUARANTOR_CAP)) {
+                return 'Guarantor exposure cap exceeded: this member already guarantees ₦'
+                    .number_format($guaranteeing, 2).', so guaranteeing this loan (₦'
+                    .number_format($amount, 2).') would exceed the ₦'
+                    .number_format(self::GUARANTOR_CAP, 2).' limit.';
+            }
+        }
+
         if ($product->max_loans_per_member) {
             $activeCount = Loan::where('member_id', $memberId)
                 ->where('loan_product_id', $product->id)

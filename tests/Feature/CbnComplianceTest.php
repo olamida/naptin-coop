@@ -68,7 +68,11 @@ class CbnComplianceTest extends TestCase
             'last_name' => 'Member',
             'monthly_salary' => 250000,
             'status' => 'active',
-        ]);
+        ])->savingsAccount()->create([
+            'account_number' => 'SAV-'.$staffId,
+            'balance' => 2000000,
+            'status' => 'active',
+        ])->member;
     }
 
     private function makeProduct(): LoanProduct

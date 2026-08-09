@@ -292,6 +292,12 @@
 
                 {{-- Amortization Preview --}}
                 <div>
+                    <div class="bg-white border border-slate-200 rounded-[10px] p-4 mb-3">
+                        <p class="text-xs font-semibold text-slate-700 mb-2">Balance over time</p>
+                        <div style="position: relative; height: 200px;">
+                            <canvas x-ref="amortChart"></canvas>
+                        </div>
+                    </div>
                     <details class="group">
                         <summary class="text-xs font-medium text-blue-600 hover:text-blue-800 cursor-pointer">View Amortization Schedule</summary>
                         <div class="mt-3 overflow-x-auto max-h-64 overflow-y-auto border border-slate-200 rounded-[10px]">
@@ -359,16 +365,12 @@
                 maxEligible: 0,
                 selectedGuarantors: [],
                 schedule: [],
+                chart: null,
+                balances: [],
 
                 get amountFormatted() {
                     return this.amountRaw ? '₦' + Number(this.amountRaw).toLocaleString() : '₦0';
                 },
-
-                goToStep(i) { this.stepIndex = i; },
-
-                nextStep() { if (this.stepIndex < 3) this.stepIndex++; },
-
-                prevStep() { if (this.stepIndex > 0) this.stepIndex--; },
 
                 selectEligibleMember(m) {
                     this.selectedMemberData = m;
@@ -443,6 +445,7 @@
                     let balance = amount;
                     const today = new Date();
                     this.schedule = [];
+                    this.balances = [];
                     for (let i = 1; i <= months; i++) {
                         const due = new Date(today.getFullYear(), today.getMonth() + i, 1);
                         balance -= monthlyPrincipal;
@@ -454,8 +457,55 @@
                             total: Math.round(monthlyTotal),
                             balance: Math.max(0, Math.round(balance))
                         });
+                        this.balances.push(Math.max(0, Math.round(balance)));
                     }
                 },
+
+                renderChart() {
+                    if (this.chart) { this.chart.destroy(); this.chart = null; }
+                    const canvas = this.$refs.amortChart;
+                    if (!canvas || typeof Chart === 'undefined') return;
+                    this.chart = new Chart(canvas, {
+                        type: 'line',
+                        data: {
+                            labels: this.balances.map((_, i) => 'M' + i),
+                            datasets: [{
+                                label: 'Outstanding Balance',
+                                data: this.balances,
+                                borderColor: '#0F172A',
+                                backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                                fill: true,
+                                tension: 0.35,
+                                borderWidth: 2,
+                                pointRadius: 0,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: '#f1f5f9' },
+                                    ticks: {
+                                        callback: (v) => '\u20A6' + Math.round(v).toLocaleString()
+                                    }
+                                },
+                                x: { grid: { display: false } }
+                            }
+                        }
+                    });
+                },
+
+                goToStep(i) { this.stepIndex = i; this.$nextTick(() => this.renderChart()); },
+
+                nextStep() {
+                    if (this.stepIndex < 3) this.stepIndex++;
+                    this.$nextTick(() => this.renderChart());
+                },
+
+                prevStep() { if (this.stepIndex > 0) this.stepIndex--; },
 
                 init() {
                     if (this.amountRaw > 0) this.calculateRepayment();
