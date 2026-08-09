@@ -19,8 +19,8 @@
 | Item | Value |
 |------|-------|
 | APP-GUIDE version | 3.18.0 |
-| Last released commit | `844a0c3` — "Command palette keyboard shortcuts and documentation set" |
-| Uncommitted WIP | **APP-GUIDE 3.18 refresh (P-01) — pending commit** |
+| Last released commit | `eedc5f6` — "Documentation refresh: APP-GUIDE 3.18 brought in line with codebase" |
+| Uncommitted WIP | **None** (as of this ledger update) |
 | Test suite | 36 Feature + 2 Unit test files, 176 tests / 710 assertions passing |
 | Active branch | `master` (tracking `origin/master`) |
 
@@ -32,7 +32,7 @@
 **Shipped 2026-08-09.** Global admin shortcuts — `/` opens search, `N` jumps to New Member, `A` approves/confirms, `R` rejects the first visible pending item on approval pages (Loans, Dividends, Period-close reopen, Cash-count verify, Member approve/reject, Product-order approve, Savings pending approvals). `window.commandPalette` gained `shortcuts`/`collectShortcuts()`/`firstShortcut()` (visibility-aware) + `handleGlobalKey`. `triggerShortcut` clicks the form's submit button so the normal `confirm()` dialogs are preserved (no silent approvals on money movements). Verified: `composer test` green. Documented in `APP-GUIDE.md` 3.17 + `USER-GUIDE.md` §3.1.
 
 ### ✓ Done — P-01: Full APP-GUIDE refresh
-**Status:** DONE (2026-08-09) — commit pending the DoD ritual.
+**Status:** DONE — shipped `eedc5f6` (2026-08-09).
 
 `APP-GUIDE.md` bumped to **3.18.0** and brought back in line with the codebase:
 - tech stack corrected (Laravel 13.22, PHP 8.3, Tailwind CSS 4 via Vite, Alpine 3.15 bundled not CDN, Livewire 4 installed);
@@ -65,7 +65,7 @@ Verified counts via `php artisan route:list --json` (280 total − 13 framework 
 
 | Date | Commit | Feature |
 |------|--------|---------|
-| 2026-08-09 | (pending) | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
+| 2026-08-09 | `eedc5f6` | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
 | 2026-08-09 | `844a0c3` | Command-palette keyboard shortcuts (A/R/N) + documentation set (APP-GUIDE 3.17) |
 | 2026-08-09 | `995f324` | Loan detail lifecycle timeline with avatars (APP-GUIDE 3.16) |
 | 2026-08-09 | `7f385fa` | Server-enforced loan wizard rules (3× savings cap, guarantor cap) + amortization chart (3.15) |
