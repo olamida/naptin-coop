@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Loans\CreateLoan;
 use App\Actions\Loans\UpdateGuarantor;
 use App\Enums\GuarantorStatus;
+use App\Models\Company;
 use App\Models\Loan;
 use App\Models\LoanGuarantor;
 use App\Models\LoanProduct;
@@ -416,6 +417,123 @@ class MemberPortalController extends Controller
             'sublabel' => '₦'.number_format($p->unit_price, 2).' · '.($p->stock_quantity > 0 ? $p->stock_quantity.' in stock' : 'Out of stock'),
             'url' => null,
         ]));
+    }
+
+    public function searchJson(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->input('q', ''));
+        $member = $this->member();
+
+        if ($q === '') {
+            $company = Company::instance();
+            $actions = [
+                ['name' => 'Dashboard', 'sub' => 'My overview', 'url' => route('portal.dashboard'), 'icon' => 'dashboard'],
+                ['name' => 'My Savings', 'sub' => 'Statement & requests', 'url' => route('portal.savings'), 'icon' => 'savings'],
+                ['name' => 'My Loans', 'sub' => 'Active loans & repayments', 'url' => route('portal.loans'), 'icon' => 'account_balance'],
+                ['name' => 'Apply for Loan', 'sub' => 'New loan application', 'url' => route('portal.loan-apply'), 'icon' => 'request_quote'],
+            ];
+            if ($company->moduleEnabled('shares')) {
+                $actions[] = ['name' => 'My Shares', 'sub' => 'Share holdings', 'url' => route('portal.shares'), 'icon' => 'trending_up'];
+            }
+            $actions[] = ['name' => 'My Purchases', 'sub' => 'Order history', 'url' => route('portal.purchases'), 'icon' => 'receipt_long'];
+            $actions[] = ['name' => 'Shop', 'sub' => 'Browse products', 'url' => route('portal.products'), 'icon' => 'storefront'];
+            $actions[] = ['name' => 'My Cart', 'sub' => 'Checkout', 'url' => route('portal.cart'), 'icon' => 'shopping_cart'];
+            $actions[] = ['name' => 'Guarantor Requests', 'sub' => 'Review pending requests', 'url' => route('portal.guarantors'), 'icon' => 'group_add'];
+
+            return response()->json([[
+                'key' => 'actions',
+                'label' => 'Quick Actions',
+                'icon' => 'bolt',
+                'items' => $actions,
+            ]]);
+        }
+
+        $groups = [];
+
+        $loans = $member->loans()
+            ->where('loan_number', 'like', "%{$q}%")
+            ->latest()
+            ->limit(5)
+            ->get();
+        if ($loans->isNotEmpty()) {
+            $groups[] = [
+                'key' => 'loans',
+                'label' => 'Loans',
+                'icon' => 'account_balance',
+                'items' => $loans->map(fn ($l) => [
+                    'name' => $l->loan_number,
+                    'sub' => '₦'.number_format($l->amount, 2).' · '.ucfirst($l->status),
+                    'url' => route('portal.loan-detail', $l),
+                    'icon' => 'request_quote',
+                ])->values()->all(),
+            ];
+        }
+
+        if ($account = $member->savingsAccount) {
+            $savings = $account->transactions()
+                ->where('reference', 'like', "%{$q}%")
+                ->latest()
+                ->limit(5)
+                ->get();
+            if ($savings->isNotEmpty()) {
+                $groups[] = [
+                    'key' => 'savings',
+                    'label' => 'Savings',
+                    'icon' => 'savings',
+                    'items' => $savings->map(fn ($t) => [
+                        'name' => $t->reference,
+                        'sub' => '₦'.number_format($t->amount, 2).' · '.ucfirst($t->status),
+                        'url' => route('portal.savings'),
+                        'icon' => 'savings',
+                    ])->values()->all(),
+                ];
+            }
+        }
+
+        if ($shareAccount = $member->shareAccount) {
+            $shares = $shareAccount->transactions()
+                ->where('reference', 'like', "%{$q}%")
+                ->latest()
+                ->limit(5)
+                ->get();
+            if ($shares->isNotEmpty()) {
+                $groups[] = [
+                    'key' => 'shares',
+                    'label' => 'Shares',
+                    'icon' => 'trending_up',
+                    'items' => $shares->map(fn ($t) => [
+                        'name' => $t->reference,
+                        'sub' => number_format($t->shares).' shares · ₦'.number_format($t->amount, 2),
+                        'url' => route('portal.shares'),
+                        'icon' => 'trending_up',
+                    ])->values()->all(),
+                ];
+            }
+        }
+
+        $orders = $member->purchaseOrders()
+            ->where(function ($x) use ($q) {
+                $x->where('order_number', 'like', "%{$q}%")
+                    ->orWhere('order_group', 'like', "%{$q}%");
+            })
+            ->latest()
+            ->limit(5)
+            ->get();
+        if ($orders->isNotEmpty()) {
+            $groups[] = [
+                'key' => 'orders',
+                'label' => 'Purchase Orders',
+                'icon' => 'shopping_cart',
+                'items' => $orders->map(fn ($o) => [
+                    'name' => $o->order_number,
+                    'sub' => ($o->product?->name ?? '').' · '.ucfirst($o->status),
+                    'url' => route('portal.purchases'),
+                    'icon' => 'receipt_long',
+                ])->values()->all(),
+            ];
+        }
+
+        return response()->json($groups);
     }
 
     public function cart(): View

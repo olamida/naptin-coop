@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.18.1
+> **Version:** 3.19
 > **Platform:** Laravel 13 (13.22) + PHP 8.3 + Tailwind CSS 4 + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.19 | **Member portal keyboard shortcuts + member-scoped quick search (P-04):** the reusable `<x-command-palette>` is now mounted on the **portal layout** too — `/` (and `Ctrl/Cmd + K`) open a **member-scoped quick search** that searches only the signed-in member's own data (their loans by loan number, savings transactions by `SAV/…` reference, share transactions by `SHR/…` reference, purchase orders by order number/group) and, on an empty query, shows portal quick actions (Dashboard, Savings, Loans, Apply, Shares if the module is enabled, Purchases, Shop, Cart, Guarantors). `N` stays disabled on the portal. **`A` accepts / `R` declines** the first visible pending guarantor request on **My Guarantor Requests** (buttons carry `data-shortcut` + `(A)`/`(R)` hints; the decline confirmation dialog is preserved). Backed by the new `GET /my/search` (`portal.search`) JSON endpoint on `MemberPortalController::searchJson()`. New `tests/Feature/PortalSearchTest.php` (4 tests: guest redirect, quick actions, loan scoping, savings scoping). Route count is now **268 registered / 267 named**. |
 | 3.18.1 | **Registration & onboarding documentation corrections (P-02):** USER-GUIDE bumped to v1.1 with a new **§4.1.1 Onboarding Wizard** section (workbook structure, required/optional columns per sheet, one-transaction batch behaviour, Import Log) and an accurate public **member application** walkthrough — applications are reviewed manually (no auto-approve), approve activates the member + creates the portal login with a welcome email, reject marks the member `inactive` with **no portal login created**; APP-GUIDE corrected to match the code: the onboarding importer carries **members + opening_savings + shares** sheets only (position assignments are **not** imported, contradicting the previous 3.18 text), member reject sets status to `inactive` rather than "rejected with a reason", and the Member create form has no position field (removed from the USER-GUIDE add-member steps). |
 | 3.18 | **APP-GUIDE documentation refresh (P-01):** full guide brought back in line with the codebase — 71 migrations / 45 tables, **267 registered routes (266 named)**, 41 controllers, 28 Actions, 11 Services, 9 Imports, 8 Exports, 13 Notifications, 141 Blade views; architecture tree updated with the `Actions` layer, 8 custom middleware aliases, Console commands, `Support\Money` + `Support\BrandingImage`; new Module reference sections for the public site & self-registration, security & access (TOTP 2FA, single-session, force-password-change), bulk onboarding importer, member broadcasts, loan top-ups, public guarantee tokens and member-application approve/reject; tech-stack table corrected to Tailwind CSS 4 (Vite `@tailwindcss/vite`), Alpine.js 3.15 bundled via Vite (not CDN), PHP 8.3, Livewire 4 installed. |
 | 3.17 | **Command-palette keyboard shortcuts (A/R/N) + documentation set:** global admin shortcuts — `/` opens the search palette (already shipped), `N` jumps to the New Member form, **`A` approves/confirms** and **`R` rejects** the first visible pending item on approval pages (Loans, Dividends declaration/approval, Period-close reopen approval, Daily Cash Count verify, Member approve/reject, Product-order approve, Savings pending deposits/withdrawals). `window.commandPalette` gains `shortcuts`/`collectShortcuts()`/`firstShortcut()` (visibility-aware — never fires on hidden tabs) and `handleGlobalKey`; approval forms/buttons are tagged `data-shortcut="approve"`/`"reject"` with `(A)`/`(R)` button hints and palette footer chips. `A`/`R` trigger the submit button's normal `confirm()` dialogs (no silent approvals on money movements). Also shipped: the documentation set — `USER-GUIDE.md` (end-user manual), `PENDING-TASKS.md` (AI session-continuity ledger), `SYSTEM-DOCUMENTATION.md` (deep technical doc: request flow, layers, ledger internals, 45-table schema, 71 migrations, 248 routes, 41 controllers, 28 Actions, 11 Services) and an updated `AGENTS.md` documentation map + session-continuity protocol. |
@@ -1358,6 +1359,8 @@ The portal provides members with a self-service interface accessible at `/my`.
 | `/my/shares` | GET | Share account + transactions |
 | `/my/purchases` | GET | Purchase history |
 | `/my/products` | GET | Browse product catalog |
+| `/my/products/search` | GET | JSON product autocomplete for the portal catalog |
+| `/my/search` | GET | **Member-scoped quick search** (JSON for the portal command palette) |
 | `/my/cart` | GET | Shopping cart |
 | `/my/cart/add` | POST | Add to cart (returns JSON for AJAX) |
 | `/my/cart/update` | POST | Update cart quantity (returns JSON for AJAX) |
@@ -1373,6 +1376,7 @@ The portal provides members with a self-service interface accessible at `/my`.
 | `/my/notifications/read-all` | POST | Mark all notifications as read |
 
 ### Portal Features
+- **Keyboard Shortcuts:** the portal mounts the same command palette as the admin UI — `/` (or `Ctrl/Cmd + K`) opens a **member-scoped quick search** over the member's own loans, savings/share transactions and purchase orders (plus portal quick actions on an empty query); on **My Guarantor Requests**, `A` accepts and `R` declines the first visible pending request (the decline confirmation dialog is preserved). `N` is disabled on the portal.
 - **Savings Deposits:** Members request deposits with optional payment evidence → admin pending queue for approval
 - **Withdrawal Requests:** Members request withdrawals → go to admin pending queue
 - **Loan Applications:** Members apply for loans from portal with product selection, guarantors, auto-calculated repayment including interest
@@ -1449,7 +1453,7 @@ When a member is created with an email address, a `WelcomeEmail` is sent contain
 
 ## Appendix: Route Summary
 
-> **Verified counts** (via `php artisan route:list`, excluding framework `storage`/`livewire`/`up` routes): **267 registered routes** in `routes/web.php`, **266 named** (the sole unnamed route is `POST /login`). Each HTTP verb is counted separately (e.g. `GET /savings` + `POST /savings/deposit` are distinct rows).
+> **Verified counts** (via `php artisan route:list`, excluding framework `storage`/`livewire`/`up` routes): **268 registered routes** in `routes/web.php`, **267 named** (the sole unnamed route is `POST /login`). Each HTTP verb is counted separately (e.g. `GET /savings` + `POST /savings/deposit` are distinct rows).
 
 | Module | Routes | Prefix / Examples |
 |--------|--------|-------------------|
@@ -1472,5 +1476,5 @@ When a member is created with an email address, a `WelcomeEmail` is sent contain
 | Ledger | 12 | `/ledger/accounts`, `/ledger/journals`, `/ledger/trial-balance`, `/ledger/general-ledger` |
 | Finance | 23 | `/finance`, period-close, P&L / balance-sheet / cash-flow / loan-aging / savings-control (+exports), cash-count, audit-trail, sync-opening-balances |
 | Admin | 46 | `/admin/manage`, `/admin/settings`, `/admin/onboarding` (3), `/admin/broadcasts` (3), `/admin/branding` (4), `/admin/users` (7), loan-products (6), roles (6), regions (6), stock (2), data-import, backup, statistics, notifications (3) |
-| Member Portal | 25 | `/my`, `/my/savings`, `/my/loans/apply`, `/my/cart/*`, `/my/guarantors`, `/my/notifications/*` |
-| **Total** | **267** | 266 named + 1 unnamed (`POST /login`) |
+| Member Portal | 26 | `/my`, `/my/savings`, `/my/loans/apply`, `/my/cart/*`, `/my/search`, `/my/guarantors`, `/my/notifications/*` |
+| **Total** | **268** | 267 named + 1 unnamed (`POST /login`) |

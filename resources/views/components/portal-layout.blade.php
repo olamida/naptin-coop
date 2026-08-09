@@ -305,6 +305,9 @@
         </div>
     </nav>
 
+    {{-- Command Palette: '/' quick search + A/R shortcuts --}}
+    <x-command-palette :search-url="route('portal.search')" />
+
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

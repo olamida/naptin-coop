@@ -348,6 +348,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('/purchases', [MemberPortalController::class, 'purchases'])->name('purchases');
         Route::get('/products', [MemberPortalController::class, 'orderProducts'])->name('products');
         Route::get('/products/search', [MemberPortalController::class, 'productSearchJson'])->name('products.search');
+        Route::get('/search', [MemberPortalController::class, 'searchJson'])->name('search');
         Route::get('/cart', [MemberPortalController::class, 'cart'])->name('cart');
         Route::post('/cart/add', [MemberPortalController::class, 'add_to_cart'])->name('cart.add');
         Route::post('/cart/update', [MemberPortalController::class, 'update_cart'])->name('cart.update');

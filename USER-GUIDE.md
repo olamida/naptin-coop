@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — User Guide
 
-> **Version:** 1.1 (matches APP-GUIDE 3.18)
+> **Version:** 1.2 (matches APP-GUIDE 3.19)
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Companion docs:** `APP-GUIDE.md` (features & changelog), `SYSTEM-DOCUMENTATION.md` (technical), `PENDING-TASKS.md` (AI session ledger).
 
@@ -251,6 +251,19 @@ Members log in with the same login page and are taken to the **portal** (blue si
 | See my shares | **My Shares** (hidden if the module is disabled) |
 | Read notices | The **bell icon** (top-right) — recent notifications; **View All** for the full list |
 | Update my details | Your **profile** menu — name, email, password, photo |
+
+### 5.1 Portal Keyboard Shortcuts
+
+On any portal page (not while typing in a box):
+
+| Key | Action |
+|-----|--------|
+| `/` | Open a **quick search** over your own data — loans by loan number, savings/share transactions by reference, purchase orders by order number — plus shortcuts to your main pages |
+| `Ctrl + K` or `Cmd + K` | Open the same quick search |
+| `A` | **Accept** the first pending guarantor request on the **Guarantors** page |
+| `R` | **Decline** the first pending guarantor request on the **Guarantors** page |
+
+`R` shows the same "are you sure?" prompt as clicking **Decline** with your mouse, so there is no risk of accidental declines.
 
 ---
 

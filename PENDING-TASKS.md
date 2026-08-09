@@ -18,15 +18,24 @@
 
 | Item | Value |
 |------|-------|
-| APP-GUIDE version | 3.18.1 |
+| APP-GUIDE version | 3.19 |
 | Last released commit | `a69b441` — "Audit backlog reconciliation: FLAW v4.0 audit found in-repo, all items implemented" |
 | Uncommitted WIP | **None** (as of this ledger update) |
-| Test suite | 36 Feature + 2 Unit test files, 176 tests / 710 assertions passing |
+| Test suite | 37 Feature + 2 Unit test files, 180 tests / 729 assertions passing |
 | Active branch | `master` (tracking `origin/master`) |
 
 ---
 
 ## 3. NEXT UP (do this first)
+
+### ✓ Done — P-04: Member portal keyboard shortcuts + member-scoped quick search
+**Status:** DONE (2026-08-09) — commit hash recorded in the ledger follow-up.
+
+The reusable `<x-command-palette>` is now mounted on the **portal layout** (`portal-layout.blade.php`), so portal pages get:
+- `/` (or `Ctrl/Cmd + K`) opening a **member-scoped quick search** — new `GET /my/search` (`portal.search`) JSON endpoint on `MemberPortalController::searchJson()` searches **only the signed-in member's own data**: loans by `loan_number`, savings transactions by `SAV/…` reference, share transactions by `SHR/…` reference, purchase orders by `order_number`/`order_group`. An empty query returns portal quick actions (Dashboard, Savings, Loans, Apply, Shares if module enabled, Purchases, Shop, Cart, Guarantors). `N` stays disabled (no `newMemberUrl`).
+- **`A` accepts / `R` declines** the first visible pending guarantor request on **My Guarantor Requests** — the Accept/Decline forms carry `data-shortcut="approve"`/`"reject"` with `(A)`/`(R)` `<kbd>` hints; the decline `confirm()` dialog is preserved (same admin behavior).
+
+New `tests/Feature/PortalSearchTest.php` (4 tests / 19 assertions): guest redirect, quick actions on empty query, loan search scoped to the member's own loans, savings search scoped to the member's own account. Verified: `PortalSearchTest` (4/4), `PortalDashboardVerifyTest` (1/1 — also proves the layout with the mounted palette renders), `SearchAutocompleteTest` (7/7). Documented in `APP-GUIDE.md` **3.19** + `USER-GUIDE.md` **v1.2 §5.1**.
 
 ### ✓ Done — Command palette keyboard shortcuts (A / R / N)
 **Shipped 2026-08-09.** Global admin shortcuts — `/` opens search, `N` jumps to New Member, `A` approves/confirms, `R` rejects the first visible pending item on approval pages (Loans, Dividends, Period-close reopen, Cash-count verify, Member approve/reject, Product-order approve, Savings pending approvals). `window.commandPalette` gained `shortcuts`/`collectShortcuts()`/`firstShortcut()` (visibility-aware) + `handleGlobalKey`. `triggerShortcut` clicks the form's submit button so the normal `confirm()` dialogs are preserved (no silent approvals on money movements). Verified: `composer test` green. Documented in `APP-GUIDE.md` 3.17 + `USER-GUIDE.md` §3.1.
@@ -85,7 +94,6 @@ Reconciliation of every FLAW item against the codebase — **all implemented**:
 
 | # | Task | Why / Evidence | Effort |
 |---|------|----------------|--------|
-| P-04 | **Member portal keyboard access / accessibility pass** — command palette is admin-only; portal has no `A`/`R` shortcuts. Confirm whether shortcuts should extend to the portal or stay admin-only. | `command-palette` only in `app-layout` | Small |
 | P-05 | **Javascript test coverage** — the new `handleGlobalKey`/`firstShortcut` logic has no automated JS tests (no Playwright/Vitest present). Consider a light test harness. | Feature is logic-heavy, untested | Medium |
 
 ---
@@ -124,6 +132,6 @@ php artisan migrate:fresh --seed   # rebuild demo DB (destructive — data loss!
 php artisan branding:seed          # re-import branding assets
 ```
 
-**Key paths:** routes in `routes/web.php` (248 declarations, groups: public → guest → auth → admin → ledger/finance → portal). Views in `resources/views/`. Tests in `tests/Feature` / `tests/Unit`. Business logic split between `app/Services` (financial engine) and `app/Actions` (domain actions).
+**Key paths:** routes in `routes/web.php` (249 declarations, groups: public → guest → auth → admin → ledger/finance → portal). Views in `resources/views/`. Tests in `tests/Feature` / `tests/Unit`. Business logic split between `app/Services` (financial engine) and `app/Actions` (domain actions).
 
 **Read first:** `AGENTS.md` (DoD ritual) → this file → `APP-GUIDE.md` (features) → `SYSTEM-DOCUMENTATION.md` (how the code works).

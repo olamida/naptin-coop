@@ -87,21 +87,23 @@
                     @if ($request->status->value === 'pending')
                         <div class="px-5 py-3 bg-slate-50 border-t border-slate-200">
                             <div class="flex items-center gap-3 flex-wrap">
-                                <form method="POST" action="{{ route('portal.guarantor.update', $request) }}" class="flex items-center gap-2">
+                                <form method="POST" action="{{ route('portal.guarantor.update', $request) }}" class="flex items-center gap-2" data-shortcut="approve">
                                     @csrf
                                     <input type="hidden" name="status" value="accepted">
                                     <button type="submit" class="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition">
                                         <span class="material-symbols-outlined text-[16px]">check</span>
                                         Accept
+                                        <kbd class="bg-white/20 px-1.5 py-0.5 rounded font-mono text-[10px]">A</kbd>
                                     </button>
                                 </form>
-                                <form method="POST" action="{{ route('portal.guarantor.update', $request) }}" class="flex items-center gap-2">
+                                <form method="POST" action="{{ route('portal.guarantor.update', $request) }}" class="flex items-center gap-2" data-shortcut="reject">
                                     @csrf
                                     <input type="hidden" name="status" value="declined">
                                     <button type="submit" class="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition"
                                         onclick="return confirm('Are you sure you want to decline this guarantor request?')">
                                         <span class="material-symbols-outlined text-[16px]">close</span>
                                         Decline
+                                        <kbd class="bg-white/20 px-1.5 py-0.5 rounded font-mono text-[10px]">R</kbd>
                                     </button>
                                 </form>
                                 <span class="text-xs text-slate-400">Responded: {{ $request->responded_at?->format('d M Y H:i') ?? 'Not yet' }}</span>
