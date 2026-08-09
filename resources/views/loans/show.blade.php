@@ -429,7 +429,7 @@
                                         'declined' => 'bg-red-100 text-red-700',
                                     ];
                                 @endphp
-                                <div class="flex items-center justify-between p-3 rounded-[10px] {{ $guarantor->status === 'declined' ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-200' }}">
+                                <div class="flex items-center justify-between p-3 rounded-[10px] {{ $guarantor->status->value === 'declined' ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-200' }}">
                                     <div class="flex items-center gap-3">
                                         <div class="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
                                             {{ strtoupper(substr($guarantor->member->first_name ?? '?', 0, 1) . substr($guarantor->member->last_name ?? '?', 0, 1)) }}
@@ -450,7 +450,7 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <span class="px-2 py-1 text-[10px] font-semibold rounded-full {{ $statusColors[$guarantor->status] ?? 'bg-slate-100 text-slate-600' }}">
+                                        <span class="px-2 py-1 text-[10px] font-semibold rounded-full {{ $statusColors[$guarantor->status->value] ?? 'bg-slate-100 text-slate-600' }}">
                                             {{ $guarantor->status->label() }}
                                         </span>
                                         @if ($guarantor->status->value === 'pending' && in_array($loan->status, ['pending']))

@@ -10,6 +10,7 @@ use App\Models\PurchaseOrder;
 use App\Services\CartService;
 use App\Services\HirePurchaseService;
 use App\Services\LedgerService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,27 @@ class ProductController extends Controller
         $cartCount = (new CartService('admin', auth()->id()))->counts()['cart_count'];
 
         return view('products.index', ['products' => $products, 'isAdmin' => $isAdmin, 'memberId' => $memberId, 'orderMember' => $orderMember, 'cartCount' => $cartCount]);
+    }
+
+    public function searchJson(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        $products = Product::where('enabled', true)
+            ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            }))
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'name', 'unit_price', 'stock_quantity']);
+
+        return response()->json($products->map(fn ($p) => [
+            'id' => $p->id,
+            'label' => $p->name,
+            'sublabel' => '₦'.number_format($p->unit_price, 2).' · '.($p->stock_quantity > 0 ? $p->stock_quantity.' in stock' : 'Out of stock'),
+            'url' => null,
+        ]));
     }
 
     public function create(): View

@@ -140,6 +140,75 @@ window.memberFormSearch = (data, options = {}) => {
 
 window.memberSearch = (data, options = {}) => window.memberFormSearch(data, options);
 
+window.searchAutocomplete = (options = {}) => ({
+    query: options.value || '',
+    results: [],
+    open: false,
+    loading: false,
+    selected: -1,
+    endpoint: options.endpoint || '',
+    minChars: options.minChars || 2,
+    _timer: null,
+
+    async fetchResults() {
+        clearTimeout(this._timer);
+        const q = this.query.trim();
+        if (q.length < this.minChars) {
+            this.results = [];
+            this.open = false;
+            return;
+        }
+        this._timer = setTimeout(() => this._fetch(q), 300);
+    },
+
+    async _fetch(q) {
+        this.loading = true;
+        try {
+            const res = await fetch(this.endpoint + '?q=' + encodeURIComponent(q), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await res.json();
+            if (q !== this.query.trim()) return;
+            this.results = Array.isArray(json) ? json : [];
+            this.open = this.results.length > 0;
+            this.selected = this.results.length ? 0 : -1;
+        } catch (e) {
+            this.results = [];
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    move(dir) {
+        if (!this.results.length) return;
+        this.selected = (this.selected + dir + this.results.length) % this.results.length;
+    },
+
+    select(r) {
+        if (r && r.url) {
+            window.location.href = r.url;
+            return;
+        }
+        if (r) this.query = r.label;
+        this.open = false;
+        this.submitForm();
+    },
+
+    submitForm() {
+        const form = this.$el.closest('form');
+        if (form) form.submit();
+    },
+
+    onEnter() {
+        if (this.selected >= 0 && this.results[this.selected]) {
+            this.select(this.results[this.selected]);
+            return;
+        }
+        this.open = false;
+        this.submitForm();
+    },
+});
+
 window.commandPalette = (options = {}) => ({
     open: false,
     query: '',

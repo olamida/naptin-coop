@@ -45,6 +45,7 @@ Route::get('/guarantee/{token}', [GuaranteeController::class, 'show'])->name('gu
 Route::post('/guarantee/{token}/respond', [GuaranteeController::class, 'respond'])->name('guarantee.respond');
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/shop', [HomeController::class, 'shop'])->name('shop');
+Route::get('/shop/search', [HomeController::class, 'productSearchJson'])->name('shop.search');
 Route::get('/about', [HomeController::class, 'about'])->name('about');
 
 Route::get('/health', fn () => response()->json(['status' => 'ok', 'timestamp' => now()->timestamp]))->name('health');
@@ -102,6 +103,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
 
         Route::prefix('savings')->name('savings.')->group(function () {
             Route::get('/', [SavingsController::class, 'index'])->name('index');
+            Route::get('/search', [SavingsController::class, 'searchJson'])->name('search');
             Route::get('/accounts', [SavingsController::class, 'accounts'])->name('accounts');
             Route::get('/deposit', [SavingsController::class, 'deposit'])->name('deposit');
             Route::post('/deposit', [SavingsController::class, 'storeDeposit'])->name('deposit.store');
@@ -118,6 +120,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::get('/export', [SavingsController::class, 'exportSavings'])->name('export');
         });
 
+        Route::get('loans/search', [LoanController::class, 'searchJson'])->name('loans.search');
         Route::resource('loans', LoanController::class)->except(['edit', 'update']);
         Route::post('loans/{loan}/approve', [LoanController::class, 'approve'])->name('loans.approve');
         Route::post('loans/{loan}/reject', [LoanController::class, 'reject'])->name('loans.reject');
@@ -136,6 +139,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
 
         Route::prefix('shares')->name('shares.')->middleware('module.enabled:shares')->group(function () {
             Route::get('/', [ShareController::class, 'index'])->name('index');
+            Route::get('/search', [ShareController::class, 'searchJson'])->name('search');
             Route::get('/accounts', [ShareController::class, 'accounts'])->name('accounts');
             Route::get('/purchase', [ShareController::class, 'purchase'])->name('purchase');
             Route::post('/purchase', [ShareController::class, 'storePurchase'])->name('purchase.store');
@@ -144,6 +148,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
 
         Route::prefix('purchases')->name('purchases.')->group(function () {
             Route::get('/', [PurchasesController::class, 'index'])->name('index');
+            Route::get('/search', [PurchasesController::class, 'searchJson'])->name('search');
             Route::get('/create', [PurchasesController::class, 'create'])->name('create');
             Route::get('/import', [PurchasesController::class, 'import'])->name('import');
             Route::post('/import', [PurchasesController::class, 'importStore'])->middleware('throttle:uploads')->name('import.store');
@@ -184,6 +189,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
 
         Route::prefix('products')->name('products.')->group(function () {
             Route::get('/', [ProductController::class, 'index'])->name('index');
+            Route::get('/search', [ProductController::class, 'searchJson'])->name('search');
             Route::get('/create', [ProductController::class, 'create'])->name('create');
             Route::get('/import', [ProductController::class, 'import'])->name('import');
             Route::post('/import', [ProductController::class, 'importStore'])->middleware('throttle:uploads')->name('import.store');
@@ -341,6 +347,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('/shares', [MemberPortalController::class, 'shares'])->middleware('module.enabled:shares')->name('shares');
         Route::get('/purchases', [MemberPortalController::class, 'purchases'])->name('purchases');
         Route::get('/products', [MemberPortalController::class, 'orderProducts'])->name('products');
+        Route::get('/products/search', [MemberPortalController::class, 'productSearchJson'])->name('products.search');
         Route::get('/cart', [MemberPortalController::class, 'cart'])->name('cart');
         Route::post('/cart/add', [MemberPortalController::class, 'add_to_cart'])->name('cart.add');
         Route::post('/cart/update', [MemberPortalController::class, 'update_cart'])->name('cart.update');

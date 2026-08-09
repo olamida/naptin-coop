@@ -111,7 +111,7 @@ class Member extends Model
 
     public function getFullNameAttribute(): string
     {
-        return trim($this->first_name.' '.$this->middle_name.' '.$this->last_name);
+        return trim(preg_replace('/\s+/', ' ', trim($this->first_name.' '.$this->middle_name.' '.$this->last_name)));
     }
 
     public function getPhotoUrlAttribute(): string

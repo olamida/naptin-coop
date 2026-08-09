@@ -13,70 +13,68 @@
             <span class="text-sm text-slate-500" x-show="items.length > 0" x-text="'(' + items.length + ' item' + (items.length !== 1 ? 's' : '') + ')'"></span>
         </div>
 
-        @if (count($items) > 0)
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 space-y-3">
-                    @foreach ($items as $item)
-                        <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-4 flex items-center gap-4 cart-item"
-                             data-product-id="{{ $item['product']->id }}">
-                            <div class="w-16 h-16 rounded-[10px] bg-slate-100 overflow-hidden flex-shrink-0">
-                                @if ($item['product']->image_url)
-                                    <img src="{{ $item['product']->image_url }}" alt="" class="w-full h-full object-cover">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center">
-                                        <span class="material-symbols-outlined text-slate-300">inventory_2</span>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="font-medium text-[#0F172A] text-sm">{{ $item['product']->name }}</h3>
-                                <p class="text-xs text-slate-500">&#8358;{{ number_format($item['product']->unit_price, 2) }} each</p>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="number" value="{{ $item['quantity'] }}" min="1"
-                                    class="w-16 px-2 py-1 border border-slate-300 rounded-[10px] text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none"
-                                    @change="updateItem({{ $item['product']->id }}, $event.target.value)">
-                            </div>
-                            <p class="text-sm font-semibold text-[#0F172A] w-28 text-right" data-subtotal>&#8358;{{ number_format($item['subtotal'], 2) }}</p>
-                            <button @click="removeItem({{ $item['product']->id }})" class="text-slate-400 hover:text-red-500 transition">
-                                <span class="material-symbols-outlined text-lg">delete</span>
-                            </button>
+        <div x-show="items.length > 0" x-cloak class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-3">
+                <template x-for="item in items" :key="item.product.id">
+                    <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-4 flex items-center gap-4">
+                        <div class="w-16 h-16 rounded-[10px] bg-slate-100 overflow-hidden flex-shrink-0">
+                            <template x-if="item.product.image_url">
+                                <img :src="item.product.image_url" alt="" class="w-full h-full object-cover">
+                            </template>
+                            <template x-if="!item.product.image_url">
+                                <div class="w-full h-full flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-slate-300">inventory_2</span>
+                                </div>
+                            </template>
                         </div>
-                    @endforeach
-                </div>
-
-                <div>
-                    <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-5 sticky top-6">
-                        <h3 class="font-semibold text-[#0F172A] mb-3">Order Summary</h3>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Items:</span>
-                                <span x-text="items.length">{{ count($items) }}</span>
-                            </div>
-                            <div class="flex justify-between font-bold text-lg pt-2 border-t border-slate-200">
-                                <span>Total:</span>
-                                <span x-text="formatCurrency(total)">&#8358;{{ number_format($total, 2) }}</span>
-                            </div>
+                        <div class="flex-1">
+                            <h3 class="font-medium text-[#0F172A] text-sm" x-text="item.product.name"></h3>
+                            <p class="text-xs text-slate-500" x-text="formatCurrency(item.product.unit_price) + ' each'"></p>
                         </div>
-                        <a href="{{ route('portal.checkout') }}" class="block w-full mt-4 bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2.5 rounded-[10px] text-sm font-medium text-center transition">
-                            Proceed to Checkout
-                        </a>
-                        <button @click="clearCart()" class="w-full mt-2 text-sm text-slate-500 hover:text-red-600 py-2 transition">
-                            Clear Cart
+                        <div class="flex items-center gap-2">
+                            <input type="number" :value="item.quantity" min="1"
+                                class="w-16 px-2 py-1 border border-slate-300 rounded-[10px] text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                                @change="updateItem(item.product.id, $event.target.value)">
+                        </div>
+                        <p class="text-sm font-semibold text-[#0F172A] w-28 text-right" x-text="formatCurrency(item.subtotal)"></p>
+                        <button @click="removeItem(item.product.id)" class="text-slate-400 hover:text-red-500 transition">
+                            <span class="material-symbols-outlined text-lg">delete</span>
                         </button>
                     </div>
+                </template>
+            </div>
+
+            <div>
+                <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-5 sticky top-6">
+                    <h3 class="font-semibold text-[#0F172A] mb-3">Order Summary</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Items:</span>
+                            <span x-text="items.length"></span>
+                        </div>
+                        <div class="flex justify-between font-bold text-lg pt-2 border-t border-slate-200">
+                            <span>Total:</span>
+                            <span x-text="formatCurrency(total)"></span>
+                        </div>
+                    </div>
+                    <a href="{{ route('portal.checkout') }}" class="block w-full mt-4 bg-[#0F172A] hover:bg-slate-800 text-white px-4 py-2.5 rounded-[10px] text-sm font-medium text-center transition">
+                        Proceed to Checkout
+                    </a>
+                    <button @click="clearCart()" class="w-full mt-2 text-sm text-slate-500 hover:text-red-600 py-2 transition">
+                        Clear Cart
+                    </button>
                 </div>
             </div>
-        @else
-            <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-12 text-center">
-                <span class="material-symbols-outlined text-5xl text-slate-300 mb-3 block">shopping_cart</span>
-                <p class="text-slate-500 mb-4">Your cart is empty</p>
-                <a href="{{ route('portal.products') }}" class="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-800 text-white px-5 py-2.5 rounded-[10px] text-sm font-medium transition">
-                    <span class="material-symbols-outlined text-lg">storefront</span>
-                    Browse Products
-                </a>
-            </div>
-        @endif
+        </div>
+
+        <div x-show="items.length === 0" x-cloak class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-12 text-center">
+            <span class="material-symbols-outlined text-5xl text-slate-300 mb-3 block">shopping_cart</span>
+            <p class="text-slate-500 mb-4">Your cart is empty</p>
+            <a href="{{ route('portal.products') }}" class="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-800 text-white px-5 py-2.5 rounded-[10px] text-sm font-medium transition">
+                <span class="material-symbols-outlined text-lg">storefront</span>
+                Browse Products
+            </a>
+        </div>
     </div>
 
     @push('scripts')

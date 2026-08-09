@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.13.0
+> **Version:** 3.14.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.14 | **Search & UX hardening batch:** **search autocomplete everywhere** — reusable `<x-search-autocomplete>` combobox (JS helper `window.searchAutocomplete` in `resources/js/app.js`) replaces plain search inputs on Members, Loans, Savings, Shares, Products/Orders, Purchases, public Shop and portal product catalog, backed by the existing server-side `search` JSON endpoints (10 routes incl. `command.search` + `members.search.form`); **admin sidebar rework** — Reporting, Dividends, Payroll, Finance and Ledger grouped into a single **Reporting & Accounting** dropdown (Accounts now holds only Savings/Loans/Purchases/Shares) with a shared accordion state so only one dropdown stays open at a time and the active section auto-opens on page load; **Share purchase receipt fixed** — `receipts/share-purchase.blade.php` rewritten with self-contained CSS (standalone receipts load no Tailwind) and now reads the real `ShareTransaction::reference` (was calling a non-existent `reference_number`); **Member full-name fix** — `Member::getFullNameAttribute()` collapses whitespace so names render correctly when middle name is null; **DB-cart delete fixed** — cart remove/clear now consistently go through `CartService`. New tests: `SearchAutocompleteTest` (7), `ShareReceiptTest` (2), `ModuleToggleTest` (6). |
 | 3.13 | **Money precision + transaction traceability (audit P2 #16–#18):** new **`App\Support\Money`** bcmath arithmetic helper (`add`/`sub`/`mul`/`div`/`percent`, compare helpers, `abs`/`min`/`max`/`sum`) — operands normalised to two-decimal strings and multiplied/divided at 10-decimal precision so ledgers never accumulate float drift; wired into `LedgerService`, `LoanService`, `SavingsService` and `ProvisioningService` (entry balancing, balances, appropriations, COGS margin, payroll totals, loan limits/splits/schedules, provisioning deltas); **direct traceability** — `savings_transactions` gained `journal_entry_id` (set by `SavingsService` after every posted deposit/withdrawal, linking the txn to its ledger entry), `loan_repayments` gained `fees_portion` (default 0, captured by `RecordRepayment` + `LoanRepaymentImport`), and `loans`/`purchase_orders`/`dividends` gained `import_batch_id` + `external_reference` (purchase imports stamp the batch + external reference on every order); **immutability decision** — documented: the MySQL `prevent_journal_entry_update`/`delete` triggers remain the enforcement mechanism and `updated_at` is retained (dropping the column would be a breaking change with no extra safety). New `tests/Unit/MoneyTest.php` (8) + `tests/Feature/TraceabilityTest.php` (5). |
 | 3.12 | **Maker-checker + money-flow ledger coverage (audit P1 #3, #8, #9; P2 #12–#14):** **maker-checker approval workflows** — new `approval_workflows` + `pending_approvals` tables and a workflow-key-driven `ApprovalService` (`requiresApproval`/`request`/`approve`/`isFullyApproved`/`approverEligible` with a `required_permission` gate and distinct-approver rule); seeded workflows for loan disbursement (treasurer + auditor), dividend declaration (president + auditor), period reopen and high-value savings withdrawals (> ₦100,000), all with in-page Approve actions; **period-close checks** extended (balanced entries, no pending savings, no pending approvals, cash counts reconciled, control accounts reconciled); **period reopen dual approval** — reopening posts a `period_reopen` approval and the period stays closed until fully approved; **inventory/COGS** — products gained `cost_price` (defaults to unit price) and store sales now post Dr Cash/Purchase Receivables / Cr `1301` Inventory at cost / Cr `4005` Sales Margin; **payroll posts to ledger** — compiling posts Dr `1501` Payroll Deductions Expected / Cr `2001` savings (incl. arrears), `1101` loans, `2101` shares, `1201` purchases via `postPayrollCompilation()`; **hire-purchase schedules** — `hire_purchase_schedules` table, `HirePurchaseService` generates a flat-principal schedule on order creation and `applyPayment()` posts per-instalment journals (Dr 1001 / Cr 1201) with a Record Repayment form on the order page. New `LedgerService::postHirePurchaseInstalment()`; new tests: `MakerCheckerTest`, `PeriodCloseChecksTest`, `PeriodReopenApprovalTest`, `PayrollLedgerPostingTest`, `HirePurchaseScheduleTest` (24 tests). |
 | 3.11 | **CBN compliance rules (audit P1 #7):** **period-close appropriations** — closing a period now posts the statutory reserve (25% of net profit → `3003` General Reserve) and education fund (2.5% → `3002`) appropriations against retained earnings (`3001`) once per period (re-closing never double-appropriates; skipped when the period shows no profit); **dividend-declaration gating** — a dividend cannot be declared unless the posted trial balance is balanced and, whenever the loan book has outstanding balances, loan-loss provision coverage is ≥ 100% (gate lives in `DividendController::assertDividendEligible()`); **CBN single-obligor limit** — `LoanService::validateLoanProduct()` blocks any new loan that would push one member's total exposure over 5% of the current outstanding loan portfolio (skipped while the portfolio is empty). New `LedgerService` helpers: `periodNetProfit()`, `postPeriodAppropriations()` and `trialBalanceIsBalanced()`; new `3003 General Reserve` equity account (chart now 36 accounts). New `tests/Feature/CbnComplianceTest.php` (7 tests). |
@@ -272,15 +273,13 @@ naptin-coop/
 │    Loans                │
 │    Purchases            │
 │    Shares               │  (hidden if module disabled)
+├─────────────────────────┤
+│ ▸ Reporting & Accounting│  (collapsible dropdown)
 │    Dividends            │  (hidden if module disabled)
 │    Payroll              │
-├─────────────────────────┤
-│ REPORTING               │  (if can view-reports)
-│ Reports                 │
-├─────────────────────────┤
-│ FINANCE & ACCOUNTING    │  (if can manage-users)
-│ Finance                 │
-│ Ledger                  │
+│    Reports              │  (if can view-reports)
+│    Finance              │  (if can manage-users)
+│    Ledger               │  (if can manage-users)
 ├─────────────────────────┤
 │ ADMINISTRATION          │  (if can manage-users)
 │ Settings                │  → Company Settings hub (branding, users,
@@ -292,9 +291,9 @@ naptin-coop/
 └─────────────────────────┘
 ```
 
-All sidebar items are permission-gated using `@can` directives. The sidebar is dynamic — items appear/disappear based on the logged-in user's role. The sidebar uses the slate dark theme (`bg-[#0F172A]`) with white text icons and `rounded-[10px]` active/hover states. Admin sub-modules are consolidated behind a single **Settings** link that opens the Company Settings / Management hub (`/admin/manage`), whose tiles are permission-gated.
+All sidebar items are permission-gated using `@can` directives. The sidebar is dynamic — items appear/disappear based on the logged-in user's role. The sidebar uses the slate dark theme (`bg-[#0F172A]`) with white text icons and `rounded-[10px]` active/hover states. Both collapsible dropdowns (**Accounts** and **Reporting & Accounting**) share a single accordion state (`openSection` on the layout's root `x-data`), so only one dropdown is open at a time and the section matching the current page auto-opens on load. Admin sub-modules are consolidated behind a single **Settings** link that opens the Company Settings / Management hub (`/admin/manage`), whose tiles are permission-gated.
 
-**Module gating:** Shares and Dividends sidebar entries (admin **Accounts** dropdown + member portal "My Shares") are hidden whenever their module is disabled in Settings → Modules. The `module.enabled` middleware (`app/Http/Middleware/ModuleEnabled.php`) blocks direct access to those routes and redirects to the dashboard with an error flash.
+**Module gating:** Shares and Dividends sidebar entries (admin **Accounts** / **Reporting & Accounting** dropdowns + member portal "My Shares") are hidden whenever their module is disabled in Settings → Modules. The `module.enabled` middleware (`app/Http/Middleware/ModuleEnabled.php`) blocks direct access to those routes and redirects to the dashboard with an error flash.
 
 ---
 

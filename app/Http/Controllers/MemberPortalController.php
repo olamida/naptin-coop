@@ -16,6 +16,7 @@ use App\Notifications\DepositRecordedNotification;
 use App\Notifications\LoanAppliedNotification;
 use App\Services\CartService;
 use App\Services\SavingsService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -394,6 +395,27 @@ class MemberPortalController extends Controller
         ];
 
         return view('portal.order-products', compact('products', 'priceRange'));
+    }
+
+    public function productSearchJson(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        $products = Product::where('enabled', true)->where('stock_quantity', '>', 0)
+            ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            }))
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'name', 'unit_price', 'stock_quantity']);
+
+        return response()->json($products->map(fn ($p) => [
+            'id' => $p->id,
+            'label' => $p->name,
+            'sublabel' => '₦'.number_format($p->unit_price, 2).' · '.($p->stock_quantity > 0 ? $p->stock_quantity.' in stock' : 'Out of stock'),
+            'url' => null,
+        ]));
     }
 
     public function cart(): View

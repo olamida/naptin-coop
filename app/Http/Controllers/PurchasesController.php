@@ -6,6 +6,7 @@ use App\Imports\PurchaseImport;
 use App\Models\ImportLog;
 use App\Models\Member;
 use App\Models\PurchaseOrder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -43,6 +44,31 @@ class PurchasesController extends Controller
         $members = Member::where('status', 'active')->orderBy('first_name')->get();
 
         return view('purchases.index', compact('orders', 'members'));
+    }
+
+    public function searchJson(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        $groups = PurchaseOrder::with('member:id,first_name,last_name,staff_id')
+            ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('order_group', 'like', "%{$search}%")
+                    ->orWhereHas('member', fn ($m) => $m->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('staff_id', 'like', "%{$search}%"));
+            }))
+            ->selectRaw('order_group, member_id, MIN(created_at) as created_at, SUM(total_amount) as total_amount, COUNT(*) as item_count')
+            ->groupBy('order_group', 'member_id')
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        return response()->json($groups->map(fn ($g) => [
+            'id' => $g->order_group,
+            'label' => $g->order_group.' — '.($g->member?->full_name ?? 'Unknown member'),
+            'sublabel' => '₦'.number_format($g->total_amount, 2).' · '.$g->item_count.' item(s)',
+            'url' => route('products.orders.show', $g->order_group),
+        ]));
     }
 
     public function create(Request $request): View

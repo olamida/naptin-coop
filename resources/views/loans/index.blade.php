@@ -140,8 +140,7 @@
         <form method="GET" class="flex flex-wrap gap-3 items-end">
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-xs font-medium text-slate-500 mb-1">Search</label>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Member name, Staff ID, or Loan #..."
-                    class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <x-search-autocomplete :endpoint="route('loans.search')" name="search" placeholder="Member name, Staff ID, or Loan #..." />
             </div>
             <div>
                 <label class="block text-xs font-medium text-slate-500 mb-1">Status</label>

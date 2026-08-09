@@ -5,9 +5,7 @@
             <form method="GET" action="{{ route('portal.products') }}">
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="flex-1 relative">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search products..."
-                               class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <x-search-autocomplete :endpoint="route('portal.products.search')" name="search" placeholder="Search products..." :value="request('search')" />
                     </div>
                     <div class="flex gap-2 items-center">
                         <select name="sort" class="px-3 py-2.5 border border-slate-300 rounded-[10px] text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">

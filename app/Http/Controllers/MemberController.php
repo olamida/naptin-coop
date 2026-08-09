@@ -76,6 +76,8 @@ class MemberController extends Controller
             'photo_url' => $m->photo_url,
             'region' => $m->region?->name,
             'url' => route('members.show', $m),
+            'label' => $m->first_name.' '.$m->last_name,
+            'sublabel' => $m->staff_id_display.($m->region?->name ? ' · '.$m->region->name : ''),
         ]));
     }
 

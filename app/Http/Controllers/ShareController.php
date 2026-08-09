@@ -8,6 +8,7 @@ use App\Models\Member;
 use App\Models\ShareAccount;
 use App\Models\ShareTransaction;
 use App\Notifications\SharePurchasedNotification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -44,6 +45,26 @@ class ShareController extends Controller
         ];
 
         return view('shares.index', ['transactions' => $transactions, 'stats' => $stats]);
+    }
+
+    public function searchJson(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        $accounts = ShareAccount::with('member:id,first_name,last_name,staff_id')
+            ->when($search !== '', fn ($q) => $q->whereHas('member', fn ($m) => $m->where('first_name', 'like', "%{$search}%")
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('staff_id', 'like', "%{$search}%")))
+            ->orderBy('total_shares', 'desc')
+            ->limit(10)
+            ->get(['id', 'member_id', 'total_shares', 'total_value']);
+
+        return response()->json($accounts->map(fn ($a) => [
+            'id' => $a->id,
+            'label' => $a->member?->full_name ?? 'Unknown member',
+            'sublabel' => $a->total_shares.' shares · ₦'.number_format($a->total_value, 2),
+            'url' => $a->member ? route('members.show', $a->member) : null,
+        ]));
     }
 
     public function exportShares()

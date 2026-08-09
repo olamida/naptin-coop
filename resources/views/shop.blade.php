@@ -13,8 +13,7 @@
             <div class="flex flex-wrap gap-3 items-end">
                 <div class="flex-1 min-w-[200px]">
                     <label class="block text-xs text-slate-500 mb-1">Search Products</label>
-                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name or description..."
-                        class="w-full px-3 py-2 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <x-search-autocomplete :endpoint="route('shop.search')" name="search" placeholder="Search by name or description..." />
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="checkbox" name="in_stock" value="1" id="inStock" {{ request('in_stock') ? 'checked' : '' }}

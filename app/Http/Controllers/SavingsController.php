@@ -16,6 +16,7 @@ use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
 use App\Notifications\DepositRecordedNotification;
 use App\Services\ApprovalService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -62,6 +63,27 @@ class SavingsController extends Controller
         ];
 
         return view('savings.index', compact('transactions', 'pendingCount', 'stats'));
+    }
+
+    public function searchJson(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        $accounts = SavingsAccount::with('member:id,first_name,last_name,staff_id')
+            ->when($search !== '', fn ($q) => $q->whereHas('member', fn ($m) => $m->where('first_name', 'like', "%{$search}%")
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('staff_id', 'like', "%{$search}%"))
+                ->orWhere('account_number', 'like', "%{$search}%"))
+            ->orderBy('account_number')
+            ->limit(10)
+            ->get(['id', 'member_id', 'account_number', 'balance']);
+
+        return response()->json($accounts->map(fn ($a) => [
+            'id' => $a->id,
+            'label' => $a->member?->full_name ?? 'Unknown member',
+            'sublabel' => $a->account_number.' · ₦'.number_format($a->balance, 2),
+            'url' => $a->member ? route('members.savings-detail', $a->member) : null,
+        ]));
     }
 
     public function accounts(Request $request): View

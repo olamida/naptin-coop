@@ -18,6 +18,7 @@ use App\Models\LoanGuarantor;
 use App\Models\LoanProduct;
 use App\Models\Member;
 use App\Services\ApprovalService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -56,6 +57,29 @@ class LoanController extends Controller
         ];
 
         return view('loans.index', compact('loans', 'stats'));
+    }
+
+    public function searchJson(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        $loans = Loan::with('member:id,first_name,last_name,staff_id')
+            ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('loan_number', 'like', "%{$search}%")
+                    ->orWhereHas('member', fn ($m) => $m->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('staff_id', 'like', "%{$search}%"));
+            }))
+            ->latest()
+            ->limit(10)
+            ->get(['id', 'loan_number', 'member_id', 'amount', 'status']);
+
+        return response()->json($loans->map(fn ($l) => [
+            'id' => $l->id,
+            'label' => $l->loan_number.' — '.($l->member?->full_name ?? 'Unknown member'),
+            'sublabel' => '₦'.number_format($l->amount, 2).' · '.str_replace('_', ' ', ucfirst($l->status)),
+            'url' => route('loans.show', $l),
+        ]));
     }
 
     public function create(): View
