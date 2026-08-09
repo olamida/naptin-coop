@@ -96,9 +96,9 @@
 
         <div class="flex items-center gap-3">
             @if ($orders->first()->status === 'pending')
-                <form method="POST" action="{{ route('products.orders.approve', $orders->first()) }}">
+                <form method="POST" action="{{ route('products.orders.approve', $orders->first()) }}" data-shortcut="approve">
                     @csrf
-                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium">Approve Order</button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium">Approve Order <span class="text-white/60">(A)</span></button>
                 </form>
             @endif
             @if (in_array($orders->first()->status, ['approved', 'active']))

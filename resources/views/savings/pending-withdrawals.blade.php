@@ -2,7 +2,14 @@
     <div class="space-y-6">
         <x-breadcrumb :items="[['label' => 'Savings', 'url' => route('savings.index')], ['label' => 'Pending Approvals']]" />
         <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-bold text-[#0F172A]">Pending Approvals</h2>
+            <div>
+                <h2 class="text-2xl font-bold text-[#0F172A]">Pending Approvals</h2>
+                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                    <kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-[10px]">A</kbd> approve
+                    <kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-[10px]">R</kbd> reject
+                    the first pending request
+                </p>
+            </div>
         </div>
 
         {{-- Sub-Navigation Tabs --}}
@@ -92,18 +99,18 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
-                            <form method="POST" action="{{ route('savings.deposits.confirm', $txn) }}">
+                            <form method="POST" action="{{ route('savings.deposits.confirm', $txn) }}" data-shortcut="approve">
                                 @csrf
                                 <button type="submit" onclick="return confirm('Confirm this deposit of &#8358;{{ number_format($txn->amount, 2) }}? This will add to the member\'s balance.')"
                                     class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5">
                                     <span class="material-symbols-outlined text-[16px]">check</span>
-                                    Confirm
+                                    Confirm @if ($loop->first)<span class="text-white/60 text-xs">(A)</span>@endif
                                 </button>
                             </form>
                             <button onclick="document.getElementById('rejectDepositModal{{ $txn->id }}').classList.remove('hidden')"
-                                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5">
+                                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5" data-shortcut="reject">
                                 <span class="material-symbols-outlined text-[16px]">close</span>
-                                Reject
+                                Reject @if ($loop->first)<span class="text-white/60 text-xs">(R)</span>@endif
                             </button>
                         </div>
                     </div>
@@ -189,18 +196,18 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
-                            <form method="POST" action="{{ route('savings.withdrawals.approve', $txn) }}">
+                            <form method="POST" action="{{ route('savings.withdrawals.approve', $txn) }}" data-shortcut="approve">
                                 @csrf
                                 <button type="submit" onclick="return confirm('Approve this withdrawal of &#8358;{{ number_format($txn->amount, 2) }}? This will deduct from the member\'s balance.')"
                                     class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5">
                                     <span class="material-symbols-outlined text-[16px]">check</span>
-                                    Approve
+                                    Approve @if ($loop->first && $pendingDeposits->isEmpty())<span class="text-white/60 text-xs">(A)</span>@endif
                                 </button>
                             </form>
                             <button onclick="document.getElementById('rejectModal{{ $txn->id }}').classList.remove('hidden')"
-                                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5">
+                                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition flex items-center gap-1.5" data-shortcut="reject">
                                 <span class="material-symbols-outlined text-[16px]">close</span>
-                                Reject
+                                Reject @if ($loop->first && $pendingDeposits->isEmpty())<span class="text-white/60 text-xs">(R)</span>@endif
                             </button>
                         </div>
                     </div>

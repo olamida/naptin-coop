@@ -56,13 +56,13 @@
             </div>
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center gap-2">
                 @if ($member->status === 'pending')
-                    <form method="POST" action="{{ route('members.approve', $member) }}" class="inline">
+                    <form method="POST" action="{{ route('members.approve', $member) }}" class="inline" data-shortcut="approve">
                         @csrf
-                        <button type="submit" onclick="return confirm('Approve this member?')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-[10px] transition">Approve</button>
+                        <button type="submit" onclick="return confirm('Approve this member?')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-[10px] transition">Approve <span class="text-white/60">(A)</span></button>
                     </form>
-                    <form method="POST" action="{{ route('members.reject', $member) }}" class="inline">
+                    <form method="POST" action="{{ route('members.reject', $member) }}" class="inline" data-shortcut="reject">
                         @csrf
-                        <button type="submit" onclick="return confirm('Reject this member?')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded-[10px] transition">Reject</button>
+                        <button type="submit" onclick="return confirm('Reject this member?')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded-[10px] transition">Reject <span class="text-white/60">(R)</span></button>
                     </form>
                 @endif
                 @can('edit-members')

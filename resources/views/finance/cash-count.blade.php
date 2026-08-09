@@ -5,7 +5,10 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
                 <h2 class="text-2xl font-bold text-[#0F172A]">Daily Cash Reconciliation</h2>
-                <p class="text-xs text-slate-500 mt-1">Report 8 — record the physical cash count each day. Variances are posted to Cash Suspense (1005).</p>
+                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                    Report 8 — record the physical cash count each day. Variances are posted to Cash Suspense (1005).
+                    <kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-[10px]">A</kbd> verify the first unverified count
+                </p>
             </div>
             <a href="{{ route('finance.control-reconciliation') }}" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-[10px] text-sm font-medium transition">
                 <span class="material-symbols-outlined text-lg">balance</span>
@@ -117,11 +120,11 @@
                                 </div>
                             </div>
                             @if (! $count->verified_by)
-                                <form method="POST" action="{{ route('finance.cash-count.verify', $count) }}" class="shrink-0">
+                                <form method="POST" action="{{ route('finance.cash-count.verify', $count) }}" class="shrink-0" data-shortcut="approve">
                                     @csrf
                                     <button type="submit" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-[10px] text-xs font-medium transition">
                                         <span class="material-symbols-outlined text-sm">task_alt</span>
-                                        Verify
+                                        Verify @if ($loop->first)<span class="text-slate-400">(A)</span>@endif
                                     </button>
                                 </form>
                             @endif

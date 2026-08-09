@@ -69,6 +69,9 @@
                     <span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono">↵</kbd> Open</span>
                     <span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono">Esc</kbd> Close</span>
                     <span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono">/</kbd> Search</span>
+                    <span x-show="shortcuts.approve" class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono">A</kbd> Approve</span>
+                    <span x-show="shortcuts.reject" class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono">R</kbd> Reject</span>
+                    <span x-show="newMemberUrl" class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono">N</kbd> New Member</span>
                 </span>
                 <span x-text="flat.length + ' result' + (flat.length === 1 ? '' : 's')"></span>
             </div>

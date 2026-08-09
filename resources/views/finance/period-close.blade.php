@@ -5,7 +5,10 @@
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-2xl font-bold text-[#0F172A]">Period Close</h2>
-                <p class="text-xs text-slate-500 mt-1">Closing a period freezes new postings to that month. Reopening requires a reason.</p>
+                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                    Closing a period freezes new postings to that month. Reopening requires a reason.
+                    <kbd class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-[10px]">A</kbd> approve the first pending reopen
+                </p>
             </div>
         </div>
 
@@ -51,9 +54,9 @@
                                         <div class="flex flex-col items-end gap-1">
                                             <span class="px-2 py-0.5 text-[10px] font-medium rounded-full bg-orange-100 text-orange-700">Reopen requested ({{ $month['reopen_pending'] }}/2)</span>
                                             @if ($month['can_approve_reopen'] && ! $month['reopen_approved'])
-                                                <form method="POST" action="{{ route('finance.period-close.reopen.approve', $month['period']) }}">
+                                                <form method="POST" action="{{ route('finance.period-close.reopen.approve', $month['period']) }}" data-shortcut="approve">
                                                     @csrf
-                                                    <button type="submit" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Approve</button>
+                                                    <button type="submit" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Approve @if ($loop->first)<span class="text-indigo-400">(A)</span>@endif</button>
                                                 </form>
                                             @endif
                                             @if ($month['reopen_approved'])

@@ -217,6 +217,7 @@ window.commandPalette = (options = {}) => ({
     flat: [],
     selected: 0,
     queriedOnce: false,
+    shortcuts: {},
     searchUrl: options.searchUrl || '/command/search',
     newMemberUrl: options.newMemberUrl || '',
 
@@ -249,14 +250,35 @@ window.commandPalette = (options = {}) => ({
     },
 
     hasShortcut(kind) {
-        return document.querySelectorAll('[data-shortcut="' + kind + '"]').length === 1;
+        return this.firstShortcut(kind) !== null;
+    },
+
+    firstShortcut(kind) {
+        const els = document.querySelectorAll('[data-shortcut="' + kind + '"]');
+        for (const el of els) {
+            if (el.offsetParent !== null) return el;
+        }
+        return els.length ? els[0] : null;
+    },
+
+    collectShortcuts() {
+        const out = {};
+        ['approve', 'reject'].forEach((kind) => {
+            out[kind] = this.firstShortcut(kind) !== null;
+        });
+        return out;
     },
 
     triggerShortcut(kind) {
-        const el = document.querySelector('[data-shortcut="' + kind + '"]');
+        const el = this.firstShortcut(kind);
         if (!el) return;
         if (el.tagName === 'FORM') {
-            el.requestSubmit ? el.requestSubmit() : el.submit();
+            const submit = el.querySelector('[type="submit"]');
+            if (submit) {
+                submit.click();
+            } else {
+                el.requestSubmit ? el.requestSubmit() : el.submit();
+            }
         } else {
             el.click();
         }
@@ -268,6 +290,7 @@ window.commandPalette = (options = {}) => ({
         this.groups = [];
         this.flat = [];
         this.selected = 0;
+        this.shortcuts = this.collectShortcuts();
         this.$nextTick(() => this.$refs.input?.focus());
         if (!this.queriedOnce) {
             this.queriedOnce = true;

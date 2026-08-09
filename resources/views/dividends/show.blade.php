@@ -60,10 +60,10 @@
                 <span class="px-3 py-2 text-xs font-medium rounded-[10px] bg-orange-100 text-orange-700">
                     Declaration awaits maker-checker approval ({{ $declarationPending }}/2)
                 </span>
-                <form method="POST" action="{{ route('dividends.approve-declaration', $dividend) }}">
+                <form method="POST" action="{{ route('dividends.approve-declaration', $dividend) }}" data-shortcut="approve">
                     @csrf
                     <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition">
-                        Approve Declaration
+                        Approve Declaration <span class="text-white/60">(A)</span>
                     </button>
                 </form>
             @elseif ($dividend->status === 'draft' && $declarationApproved)
@@ -80,10 +80,10 @@
                 </form>
             @endif
             @if ($dividend->status === 'calculated')
-                <form method="POST" action="{{ route('dividends.approve', $dividend) }}">
+                <form method="POST" action="{{ route('dividends.approve', $dividend) }}" data-shortcut="approve">
                     @csrf
                     <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-[10px] text-sm font-medium transition">
-                        Approve Dividend
+                        Approve Dividend <span class="text-white/60">(A)</span>
                     </button>
                 </form>
             @endif
