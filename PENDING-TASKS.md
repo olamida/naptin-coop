@@ -19,7 +19,7 @@
 | Item | Value |
 |------|-------|
 | APP-GUIDE version | 3.19 |
-| Last released commit | `a69b441` — "Audit backlog reconciliation: FLAW v4.0 audit found in-repo, all items implemented" |
+| Last released commit | `102c7c9` — "Member portal keyboard shortcuts + member-scoped quick search (P-04)" |
 | Uncommitted WIP | **None** (as of this ledger update) |
 | Test suite | 37 Feature + 2 Unit test files, 180 tests / 729 assertions passing |
 | Active branch | `master` (tracking `origin/master`) |
@@ -29,7 +29,7 @@
 ## 3. NEXT UP (do this first)
 
 ### ✓ Done — P-04: Member portal keyboard shortcuts + member-scoped quick search
-**Status:** DONE (2026-08-09) — commit hash recorded in the ledger follow-up.
+**Status:** DONE (2026-08-09) — shipped `102c7c9`.
 
 The reusable `<x-command-palette>` is now mounted on the **portal layout** (`portal-layout.blade.php`), so portal pages get:
 - `/` (or `Ctrl/Cmd + K`) opening a **member-scoped quick search** — new `GET /my/search` (`portal.search`) JSON endpoint on `MemberPortalController::searchJson()` searches **only the signed-in member's own data**: loans by `loan_number`, savings transactions by `SAV/…` reference, share transactions by `SHR/…` reference, purchase orders by `order_number`/`order_group`. An empty query returns portal quick actions (Dashboard, Savings, Loans, Apply, Shares if module enabled, Purchases, Shop, Cart, Guarantors). `N` stays disabled (no `newMemberUrl`).
@@ -102,6 +102,7 @@ Reconciliation of every FLAW item against the codebase — **all implemented**:
 
 | Date | Commit | Feature |
 |------|--------|---------|
+| 2026-08-09 | `102c7c9` | **Member portal keyboard shortcuts + member-scoped quick search (P-04)** — command palette on portal layout, A/R guarantor actions, `/my/search` endpoint (APP-GUIDE 3.19, USER-GUIDE 1.2) |
 | 2026-08-09 | `eedc5f6` | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
 | 2026-08-09 | `d037242` | **USER-GUIDE 1.1 + APP-GUIDE 3.18.1 (P-02)** — registration/onboarding documentation corrections |
 | 2026-08-09 | `a69b441` | **Audit backlog reconciliation (P-03)** — FLAW v4.0 audit found in-repo; all items already implemented |
