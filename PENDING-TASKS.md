@@ -18,9 +18,9 @@
 
 | Item | Value |
 |------|-------|
-| APP-GUIDE version | 3.18.0 |
-| Last released commit | `eedc5f6` — "Documentation refresh: APP-GUIDE 3.18 brought in line with codebase" |
-| Uncommitted WIP | **None** (as of this ledger update) |
+| APP-GUIDE version | 3.18.1 |
+| Last released commit | `03247d7` — "Update session ledger with shipped commit hash" |
+| Uncommitted WIP | **P-02 registration/onboarding user-guide docs (3.18.1) — pending commit** |
 | Test suite | 36 Feature + 2 Unit test files, 176 tests / 710 assertions passing |
 | Active branch | `master` (tracking `origin/master`) |
 
@@ -46,6 +46,22 @@
 
 Verified counts via `php artisan route:list --json` (280 total − 13 framework routes = 267 app routes), file listings and grep of `routes/web.php` (248 `Route::…` declarations).
 
+### ✓ Done — P-02: Registration/onboarding documentation gap
+**Status:** DONE (2026-08-09) — commit pending the DoD ritual.
+
+`USER-GUIDE.md` bumped to **v1.1** with:
+- a new **§4.1.1 Onboarding Wizard** section — where to find it (Administration → Settings → Data Import → Go to Onboarding), the 3-sheet workbook structure (`members` / `opening_savings` / `shares`), required vs optional columns per sheet, one-transaction all-or-nothing batch behaviour, Import Log batch IDs, and a note that onboarding does **not** create portal logins;
+- an accurate **member application** walkthrough — public `/register` creates a *pending* member (no auto-approve exists), Approve activates the member + creates the portal login with a welcome email, Reject sets the member to `inactive` with **no portal login created**;
+- the stale "assign the position" add-member step removed (the create form has no position field).
+
+`APP-GUIDE.md` corrected to match the code (3.18.1):
+- onboarding importer carries **members + opening_savings + shares** sheets only — position assignments are **not** imported (fixes the 3.18 text that claimed a member-position mapping);
+- member reject sets status to `inactive`, not "rejected with a reason";
+- Onboard Members admin-guide row points to Management → Data Import → Go to Onboarding;
+- Central Import Hub table gained the Onboarding Wizard row.
+
+Verified against `RegistrationController`, `ApproveMemberApplication`, `RejectMemberApplication`, `OnboardingImport` (+ sheet exports) and `OnboardingImportTest`.
+
 ---
 
 ## 4. Pending Backlog (not started)
@@ -54,7 +70,6 @@ Verified counts via `php artisan route:list --json` (280 total − 13 framework 
 
 | # | Task | Why / Evidence | Effort |
 |---|------|----------------|--------|
-| P-02 | **Registration/onboarding documentation gap** — the public `register` flow and `admin/onboarding` importer have no user-guide steps beyond "Contact admin". Confirm intended flow (who approves new members? auto-approve settings?) and document in USER-GUIDE. | Newer features, undocumented | Medium |
 | P-03 | **Check remaining audit backlog** — changelog references audit findings P1 #1–#20, P2 #4–#18, P3 #20. Completed items are visible in changelog; **find the original audit list** (ask user) to identify any P1/P2 items not yet addressed. | No audit source file in repo | Unknown |
 | P-04 | **Member portal keyboard access / accessibility pass** — command palette is admin-only; portal has no `A`/`R` shortcuts. Confirm whether shortcuts should extend to the portal or stay admin-only. | `command-palette` only in `app-layout` | Small |
 | P-05 | **Javascript test coverage** — the new `handleGlobalKey`/`firstShortcut` logic has no automated JS tests (no Playwright/Vitest present). Consider a light test harness. | Feature is logic-heavy, untested | Medium |
@@ -66,6 +81,7 @@ Verified counts via `php artisan route:list --json` (280 total − 13 framework 
 | Date | Commit | Feature |
 |------|--------|---------|
 | 2026-08-09 | `eedc5f6` | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
+| 2026-08-09 | *(pending commit)* | **USER-GUIDE 1.1 + APP-GUIDE 3.18.1 (P-02)** — registration/onboarding documentation corrections |
 | 2026-08-09 | `844a0c3` | Command-palette keyboard shortcuts (A/R/N) + documentation set (APP-GUIDE 3.17) |
 | 2026-08-09 | `995f324` | Loan detail lifecycle timeline with avatars (APP-GUIDE 3.16) |
 | 2026-08-09 | `7f385fa` | Server-enforced loan wizard rules (3× savings cap, guarantor cap) + amortization chart (3.15) |

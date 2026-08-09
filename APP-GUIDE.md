@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.18.0
+> **Version:** 3.18.1
 > **Platform:** Laravel 13 (13.22) + PHP 8.3 + Tailwind CSS 4 + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.18.1 | **Registration & onboarding documentation corrections (P-02):** USER-GUIDE bumped to v1.1 with a new **§4.1.1 Onboarding Wizard** section (workbook structure, required/optional columns per sheet, one-transaction batch behaviour, Import Log) and an accurate public **member application** walkthrough — applications are reviewed manually (no auto-approve), approve activates the member + creates the portal login with a welcome email, reject marks the member `inactive` with **no portal login created**; APP-GUIDE corrected to match the code: the onboarding importer carries **members + opening_savings + shares** sheets only (position assignments are **not** imported, contradicting the previous 3.18 text), member reject sets status to `inactive` rather than "rejected with a reason", and the Member create form has no position field (removed from the USER-GUIDE add-member steps). |
 | 3.18 | **APP-GUIDE documentation refresh (P-01):** full guide brought back in line with the codebase — 71 migrations / 45 tables, **267 registered routes (266 named)**, 41 controllers, 28 Actions, 11 Services, 9 Imports, 8 Exports, 13 Notifications, 141 Blade views; architecture tree updated with the `Actions` layer, 8 custom middleware aliases, Console commands, `Support\Money` + `Support\BrandingImage`; new Module reference sections for the public site & self-registration, security & access (TOTP 2FA, single-session, force-password-change), bulk onboarding importer, member broadcasts, loan top-ups, public guarantee tokens and member-application approve/reject; tech-stack table corrected to Tailwind CSS 4 (Vite `@tailwindcss/vite`), Alpine.js 3.15 bundled via Vite (not CDN), PHP 8.3, Livewire 4 installed. |
 | 3.17 | **Command-palette keyboard shortcuts (A/R/N) + documentation set:** global admin shortcuts — `/` opens the search palette (already shipped), `N` jumps to the New Member form, **`A` approves/confirms** and **`R` rejects** the first visible pending item on approval pages (Loans, Dividends declaration/approval, Period-close reopen approval, Daily Cash Count verify, Member approve/reject, Product-order approve, Savings pending deposits/withdrawals). `window.commandPalette` gains `shortcuts`/`collectShortcuts()`/`firstShortcut()` (visibility-aware — never fires on hidden tabs) and `handleGlobalKey`; approval forms/buttons are tagged `data-shortcut="approve"`/`"reject"` with `(A)`/`(R)` button hints and palette footer chips. `A`/`R` trigger the submit button's normal `confirm()` dialogs (no silent approvals on money movements). Also shipped: the documentation set — `USER-GUIDE.md` (end-user manual), `PENDING-TASKS.md` (AI session-continuity ledger), `SYSTEM-DOCUMENTATION.md` (deep technical doc: request flow, layers, ledger internals, 45-table schema, 71 migrations, 248 routes, 41 controllers, 28 Actions, 11 Services) and an updated `AGENTS.md` documentation map + session-continuity protocol. |
 | 3.16 | **Loan detail lifecycle timeline (audit P3 #20):** the loan show page's approval-log tables are replaced by an avatar-based, vertical **Loan Lifecycle** timeline — a dated, chronologically-sorted feed of application submission, guarantor acceptances/declines, approval, disbursement, rejection, repayment-in-progress (with an instalment progress bar + next-due amount), completion and any remaining approval-log events, each with an actor avatar/initials + icon badge. The same timeline is rendered on the **member portal loan detail** page. Powered by new `Loan::lifecycleTimeline()` + `Loan::scheduleProgress()`. New `tests/Feature/LoanLifecycleTimelineTest.php` (4 tests: major events in order, repayment progress + next due, rejected timeline, completed timeline). |
@@ -498,7 +499,7 @@ A dedicated migration (`2026_07_26_000001_add_performance_indexes.php`) adds com
 | `/members/search` | GET | JSON search for the member list page (name/staff ID) |
 | `/members/search/form` | GET | **Dynamic member search for forms** (deposit, withdraw, shares purchase, checkout) |
 | `/members/{id}/approve` | POST | Approve a pending self-registered member application (activates member + user) |
-| `/members/{id}/reject` | POST | Reject a pending member application (with reason) |
+| `/members/{id}/reject` | POST | Reject a pending member application (sets status to `inactive`; no portal login is created) |
 
 **On member creation, the system automatically:**
 1. Creates a Savings Account (balance = ₦0)
@@ -890,7 +891,7 @@ Reopen → reason required → period_reopen approval requested (requester exclu
 | `/guarantee/{token}/respond` | POST | Submit the guarantor response via token |
 | `/health` | GET | Health check endpoint |
 
-**Registration flow:** A visitor self-registers → a **pending** member record is created (with auto-created savings + share accounts). The application appears in the admin **Members** list; an admin approves or rejects it. **On approve** (`/members/{id}/approve`): the member is activated and, if an email was provided, a user account is created with a temporary password + welcome email. **On reject** (`/members/{id}/reject`): the member is marked rejected with a reason.
+**Registration flow:** A visitor self-registers → a **pending** member record is created (with auto-created savings + share accounts). The application appears in the admin **Members** list (status filter *Pending Approval*); an admin approves or rejects it from the member profile page. **On approve** (`/members/{id}/approve`): the member is activated (`active`) and, if an email was provided, a user account is created with a temporary password + welcome email. **On reject** (`/members/{id}/reject`): the member is set to `inactive` (no user account, no portal login is created). There is **no auto-approve** for member applications — every application is reviewed manually.
 
 **Public guarantee token:** Guarantor requests carry a random `accept_token` (with expiry) on `loan_guarantors`. The email's action link points to the public `/guarantee/{token}` page, letting a guarantor accept/decline from any browser — no login required. Token responses record `accepted_ip` / `accepted_user_agent` / `responded_at`.
 
@@ -930,7 +931,7 @@ Reopen → reason required → period_reopen approval requested (requester exclu
 | Route | Method | Action |
 |-------|--------|--------|
 | `/admin/onboarding` | GET | Bulk onboarding page (upload + template + guidance) |
-| `/admin/onboarding` | POST | Run the importer (members + positions + opening balances in one file) |
+| `/admin/onboarding` | POST | Run the importer (members + opening savings + shares in one file) |
 | `/admin/onboarding/template` | GET | Download the onboarding Excel template |
 | `/admin/broadcasts` | GET | List sent broadcasts |
 | `/admin/broadcasts/create` | GET | Compose a broadcast |
@@ -939,7 +940,7 @@ Reopen → reason required → period_reopen approval requested (requester exclu
 | `/admin/notifications/{id}/read` | POST | Mark a notification read |
 | `/admin/notifications/read-all` | POST | Mark all notifications read |
 
-**Onboarding importer:** the `OnboardingImport` reads one Excel file that carries members, their position assignments and **opening savings/share balances** in a single pass — wrapping `MemberImport` + `OpeningSavingsImport` + `OpeningSharesImport` (and a member-position mapping). Results are reported in an `ImportLog`.
+**Onboarding importer:** the `OnboardingImport` reads one Excel workbook that carries **members**, **opening_savings** and **shares** sheets in a single pass — wrapping `MemberImport` + `OpeningSavingsImport` + `OpeningSharesImport`. Each member row auto-creates savings + share accounts (unknown regions are auto-created); opening savings are posted as completed deposits (`SAV/OPN/…` references, one per member); shares are recorded as opening share allotments (`SHR/OPN/…`, `share_price` defaults to the account's price / ₦100). Position assignments are **not** part of the importer. Results are reported in an `ImportLog`.
 
 **Broadcasts:** admins compose a title/body/category/priority message; sending creates a `BroadcastMessage` and dispatches `BroadcastNotification` to every member's portal notification inbox.
 
@@ -988,7 +989,7 @@ SELF-REGISTERED APPLICATION (public /register):
 2. Admin reviews the application in Members → Approve or Reject
    → Approve: member activated; if email provided, user account created
      with temporary password + welcome email
-   → Reject: member marked rejected with reason
+   → Reject: member set to inactive (no user account, no portal login)
 ```
 
 ### 4.2 Security & Access
@@ -1206,9 +1207,9 @@ LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
 | View Dashboard | Click "Dashboard" — stats cards, Chart.js charts, trends, top savers |
 | Register Member | Members → "+ Add Member" → fill form → submit |
 | Approve Member Application | Members → filter Pending → "Approve" (activates member + creates user account) |
-| Reject Member Application | Members → filter Pending → "Reject" + reason |
+| Reject Member Application | Members → filter Pending → "Reject" (sets status to `inactive`; no portal login is created) |
 | Import Members | Members → "Import" → upload Excel/CSV |
-| Onboard Members | Management → Onboarding → download template → fill → upload (members + positions + opening balances) |
+| Onboard Members | Management → Data Import → Go to Onboarding → download template → fill → upload (members + opening savings + shares in one workbook) |
 | Export Members | Members → "Export" → download Excel |
 | Bulk Status Update | Members → select checkboxes → "Bulk Status" |
 | Record Savings Deposit | Savings → Deposit → select member → enter amount |
@@ -1393,6 +1394,7 @@ Provides a unified interface for all import operations:
 
 | Import Type | Template | Required Columns |
 |-------------|----------|-----------------|
+| **Onboarding Wizard** | Excel (.xlsx, 3 sheets) | members: staff_id, first_name, last_name, region; opening_savings: staff_id, amount; shares: staff_id, shares |
 | Members | CSV | staff_id, first_name, last_name, region |
 | Savings | CSV | staff_id, amount |
 | Loan Repayments | CSV | staff_id, amount |

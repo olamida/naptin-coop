@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — User Guide
 
-> **Version:** 1.0 (matches APP-GUIDE 3.16+)
+> **Version:** 1.1 (matches APP-GUIDE 3.18)
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Companion docs:** `APP-GUIDE.md` (features & changelog), `SYSTEM-DOCUMENTATION.md` (technical), `PENDING-TASKS.md` (AI session ledger).
 
@@ -87,17 +87,40 @@ The `A` and `R` shortcuts respect the on-page confirmation dialogs — the same 
 **Add a member**
 1. Sidebar → **Members → + Add Member** (or press `N`).
 2. Fill in personal details, employment data and salary.
-3. Choose the **region** and, if the member holds an EXCO post, assign the **position**.
+3. Choose the **region**.
 4. Enter an **email** if the member should have a portal login — a user account is created for them and a welcome email (with a temporary password) is sent automatically.
 5. Save. The system automatically creates the member's **savings account** and **share account** (both starting at ₦0).
 
-> When new staff join, the fastest path is **Administration → Settings → Data Import**, or the dedicated **Onboarding** importer (Members/positions/salaries + opening balances in one upload). A template CSV is provided on those pages.
+> When new staff join, the fastest path is **Administration → Settings → Data Import → Onboarding Wizard** — one Excel workbook that creates the members **and** posts their opening savings and share allotments in a single step (see *Onboarding Wizard* below).
 
-**Member applications:** Members who register through the public **Register** page arrive with status *pending*. Open their profile to **Approve** or **Reject** them (with a reason). Approval activates their account.
+**Member applications (public registration):** Staff can also register themselves through the public **Register** page. Their application arrives on **Members** with status *Pending Approval* and is reviewed manually — there is **no automatic approval**.
+
+- Open the applicant's profile and click **Approve** (or press `A`). The member becomes *Active*; if they supplied an email, a portal login is created for them and a welcome email with a temporary password is sent automatically.
+- Click **Reject** (or press `R`) to turn an application down. The member is marked *Inactive* — **no portal login is created**, so a rejected applicant cannot sign in. If they should be admitted later, edit the member and set their status to *Active* (and add an email + reset a password if they need portal access).
 
 **Search:** On the Members list, start typing in the search box — results appear instantly (name or staff ID). The same autocomplete search exists on Loans, Savings, Shares, Products and Purchases pages.
 
 **Bulk status update:** Tick the checkboxes of several members on the list, then use **Bulk Status** to set them all to e.g. *inactive* or *retired* at once.
+
+#### 4.1.1 Onboarding Wizard (bulk member intake)
+
+When a group of new staff joins at once — e.g. a new intake — the **Onboarding Wizard** creates all the members and sets up their opening balances from **one Excel workbook** in a single step.
+
+**Where to find it:** **Administration → Settings → Data Import → Go to Onboarding**.
+
+**How it works:**
+1. Click **Download Template (.xlsx)**. The template has three sheets.
+2. Fill the **members** sheet — one row per new member. Required columns: `staff_id`, `first_name`, `last_name`, `region`. Optional: `middle_name`, `email`, `phone`, `gender`, `date_of_birth`, `employment_date`, `address`, `state_of_origin`, `nin`, `grade_level`, `monthly_salary`, `status` (defaults to *active*), `external_reference`.
+   - Each member automatically gets a **savings account (₦0)** and a **share account (0 shares)**.
+   - Unknown **regions are created automatically** — just type the region name.
+   - **Position/EXCO assignments are NOT part of onboarding** — set those up later on the member's profile if needed.
+3. Fill the **opening_savings** sheet — only if members bring existing savings balances. Required: `staff_id`, `amount`. Optional: `transaction_date`, `notes`, `external_reference`. One row per member (an opening balance can only be posted **once** per member).
+4. Fill the **shares** sheet — only if members bring existing share holdings. Required: `staff_id`, `shares`. Optional: `share_price` (defaults to ₦100 per share), `notes`, `external_reference`. One row per member.
+5. Upload the completed workbook and click **Run Onboarding**.
+
+> The whole batch runs as one transaction — if anything in the file causes a hard error, **nothing** is saved and you get the error to fix. A summary tells you how many rows imported and how many failed (e.g. duplicate staff IDs). Every batch is recorded in the **Import Log** with its batch ID.
+
+**Portal logins:** onboarding only sets up accounts and balances — it does **not** create portal logins. Members who need a portal account should be created via **Add Member** (with an email), or approved from a public application, so the system can create their user account and send the welcome email.
 
 ### 4.2 Savings
 
@@ -203,7 +226,7 @@ Everything administrative lives behind **Administration → Settings / Manage**:
 - **Company Settings** — company name/logo, contact info, financial parameters (savings interest, loan interest, max loan multiplier, auto-approve deposit limit), footer note.
 - **Branding** — the favicon, hero banners, logo and round sidebar icon.
 - **Modules** — switch the **Shares** and **Dividends** modules on/off.
-- **Data Import** — the central upload hub (members, savings, loan repayments, products, purchases).
+- **Data Import** — the central upload hub (members, savings, loan repayments, products, purchases), plus the **Onboarding Wizard** for bulk member intake with opening balances (see §4.1.1).
 - **Backup** — download a full SQL dump of the database.
 - **Statistics** — login activity and system statistics.
 - **Broadcasts** — send a notice to all members (appears in their portal notifications).
