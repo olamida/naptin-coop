@@ -18,9 +18,9 @@
 
 | Item | Value |
 |------|-------|
-| APP-GUIDE version | 3.17.0 |
+| APP-GUIDE version | 3.18.0 |
 | Last released commit | `844a0c3` — "Command palette keyboard shortcuts and documentation set" |
-| Uncommitted WIP | **None** (as of this ledger update) |
+| Uncommitted WIP | **APP-GUIDE 3.18 refresh (P-01) — pending commit** |
 | Test suite | 36 Feature + 2 Unit test files, 176 tests / 710 assertions passing |
 | Active branch | `master` (tracking `origin/master`) |
 
@@ -31,12 +31,20 @@
 ### ✓ Done — Command palette keyboard shortcuts (A / R / N)
 **Shipped 2026-08-09.** Global admin shortcuts — `/` opens search, `N` jumps to New Member, `A` approves/confirms, `R` rejects the first visible pending item on approval pages (Loans, Dividends, Period-close reopen, Cash-count verify, Member approve/reject, Product-order approve, Savings pending approvals). `window.commandPalette` gained `shortcuts`/`collectShortcuts()`/`firstShortcut()` (visibility-aware) + `handleGlobalKey`. `triggerShortcut` clicks the form's submit button so the normal `confirm()` dialogs are preserved (no silent approvals on money movements). Verified: `composer test` green. Documented in `APP-GUIDE.md` 3.17 + `USER-GUIDE.md` §3.1.
 
-### ▶ Next in line — P-01: Full APP-GUIDE refresh
-**Status:** queued (not started).
+### ✓ Done — P-01: Full APP-GUIDE refresh
+**Status:** DONE (2026-08-09) — commit pending the DoD ritual.
 
-`APP-GUIDE.md` is significantly stale vs the codebase:
-- says 52 migrations → actual **71**; "100+ routes" → actual **248 declarations / 258 named**; 40 controllers → actual **41**; misses newer features (public registration + member applications, TOTP 2FA, single-session enforcement, force-password-change, onboarding importer, broadcasts, loan top-ups, public guarantee token, `DocumentService`, 9 Imports / 8 Exports / 14 Notifications, Tailwind 4 / Alpine 3.15 / Livewire present).
-- Update the architecture tree, module reference, route summary and tech-stack table to reality (ground truth is in `SYSTEM-DOCUMENTATION.md`).
+`APP-GUIDE.md` bumped to **3.18.0** and brought back in line with the codebase:
+- tech stack corrected (Laravel 13.22, PHP 8.3, Tailwind CSS 4 via Vite, Alpine 3.15 bundled not CDN, Livewire 4 installed);
+- architecture tree rewritten (28 Actions, 8 Enums, 8 Exports, 9 Imports, 13 Notifications, 41 controllers, 11 Services, 8 middleware, 9 Form Requests, 3 console commands, 38 Models, 71 migrations / 45 tables, 141 Blade views);
+- database schema expanded from 28 → 45 tables (carts, hire_purchase_schedules, payroll_arrears, cash_counts, approval_workflows, pending_approvals, branding_assets, broadcast_messages, import_logs, sessions);
+- new Module reference sections K–N (Public Website & Self-Registration, Security & Access, Onboarding & Broadcasts, Admin Management Hub);
+- workflows updated (member registration incl. self-registration approve/reject, security & access 2FA/single-session/forced-password);
+- notifications rewritten to the actual 13 classes;
+- route-summary appendix replaced with verified counts: **267 registered routes / 266 named** (the sole unnamed route is `POST /login`), per-module breakdown table.
+- `SYSTEM-DOCUMENTATION.md` synced: route counts (248 declarations → 267 registered / 266 named) and notification count 14 → **13**.
+
+Verified counts via `php artisan route:list --json` (280 total − 13 framework routes = 267 app routes), file listings and grep of `routes/web.php` (248 `Route::…` declarations).
 
 ---
 
@@ -46,7 +54,6 @@
 
 | # | Task | Why / Evidence | Effort |
 |---|------|----------------|--------|
-| P-01 | **Full APP-GUIDE refresh** — APP-GUIDE is significantly stale: says 52 migrations (actual **71**), 100+ routes (actual **248**), 40 controllers (actual **41**), and does **not** document public registration, member applications (approve/reject), TOTP 2FA, single-session enforcement, force-password-change, onboarding importer, broadcasts, loan top-ups, public guarantee token, `DocumentService`, 9 Imports / 8 Exports / 14 Notifications. Update architecture tree, module reference and route summary to reality. | Observed drift on 2026-08-09 | Large |
 | P-02 | **Registration/onboarding documentation gap** — the public `register` flow and `admin/onboarding` importer have no user-guide steps beyond "Contact admin". Confirm intended flow (who approves new members? auto-approve settings?) and document in USER-GUIDE. | Newer features, undocumented | Medium |
 | P-03 | **Check remaining audit backlog** — changelog references audit findings P1 #1–#20, P2 #4–#18, P3 #20. Completed items are visible in changelog; **find the original audit list** (ask user) to identify any P1/P2 items not yet addressed. | No audit source file in repo | Unknown |
 | P-04 | **Member portal keyboard access / accessibility pass** — command palette is admin-only; portal has no `A`/`R` shortcuts. Confirm whether shortcuts should extend to the portal or stay admin-only. | `command-palette` only in `app-layout` | Small |
@@ -58,6 +65,7 @@
 
 | Date | Commit | Feature |
 |------|--------|---------|
+| 2026-08-09 | (pending) | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
 | 2026-08-09 | `844a0c3` | Command-palette keyboard shortcuts (A/R/N) + documentation set (APP-GUIDE 3.17) |
 | 2026-08-09 | `995f324` | Loan detail lifecycle timeline with avatars (APP-GUIDE 3.16) |
 | 2026-08-09 | `7f385fa` | Server-enforced loan wizard rules (3× savings cap, guarantor cap) + amortization chart (3.15) |

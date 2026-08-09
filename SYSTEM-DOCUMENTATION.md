@@ -14,7 +14,7 @@
 Browser (Tailwind UI + Alpine.js)
         │  HTTPS requests
         ▼
-routes/web.php  ── 248 route declarations, 258 named routes
+routes/web.php  ── 248 declarations → 267 registered routes, 266 named
         │
         ▼
 Middleware pipeline  (bootstrap/app.php aliases)
@@ -77,11 +77,11 @@ app/
 │                                     # OpeningSavings, OpeningShares)
 ├── Mail/                             # WelcomeEmail
 ├── Models/                           # 38 Eloquent models (list in §6)
-├── Notifications/                    # 14 classes (see APP-GUIDE §10 for the 7 core ones; plus
-│                                     # BroadcastNotification, DepositRecordedNotification,
-│                                     # DividendDeclaredNotification, MemberRegisteredNotification,
-│                                     # PayrollCompiledNotification, SharePurchasedNotification,
-│                                     # WithdrawalRequestedNotification)
+├── Notifications/                    # 13 classes (AdminPasswordReset, Broadcast, DepositRecorded,
+│                                     # DividendDeclared, GuarantorRequest, LoanApplied,
+│                                     # LoanStatus, MemberRegistered, PasswordReset,
+│                                     # PayrollCompiled, SharePurchased, WithdrawalRequested,
+│                                     # WithdrawalStatus)
 ├── Policies/                         # 1 (loan policy)
 ├── Providers/                        # AppServiceProvider, ViewServiceProvider
 ├── Services/                         # 11
@@ -121,7 +121,7 @@ resources/
     └── (module dirs)                 # admin, auth, cart, dashboard, dividends, finance,
                                       # invoices, loans, members, payroll, portal, products,
                                       # profile, purchases, receipts, reports, savings, shares, emails
-routes/web.php                        # 248 routes (all web traffic)
+routes/web.php                        # 248 declarations → 267 registered routes (all web traffic)
 tests/                                # 36 Feature + 2 Unit files (PHPUnit)
 ```
 
