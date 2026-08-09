@@ -18,15 +18,20 @@
 
 | Item | Value |
 |------|-------|
-| APP-GUIDE version | 3.19 |
-| Last released commit | `102c7c9` — "Member portal keyboard shortcuts + member-scoped quick search (P-04)" |
+| APP-GUIDE version | 3.20 |
+| Last released commit | `6e8247f` — "JS unit test coverage + command-palette module extraction (P-05)" |
 | Uncommitted WIP | **None** (as of this ledger update) |
-| Test suite | 37 Feature + 2 Unit test files, 180 tests / 729 assertions passing |
+| Test suite | 37 Feature + 2 Unit test files, 180 tests / 729 assertions passing (PHP) + **36 JS tests** via `npm run test:js` |
 | Active branch | `master` (tracking `origin/master`) |
 
 ---
 
 ## 3. NEXT UP (do this first)
+
+### ✓ Done — P-05: JS unit test coverage + command-palette module extraction
+**Status:** DONE (2026-08-09) — see commit hash in the Work Log below.
+
+The `window.commandPalette` factory was extracted from `resources/js/app.js` into a testable ES module `resources/js/command-palette.js` (default export). `app.js` now imports it and re-assigns `window.commandPalette`, so every Blade `x-data="commandPalette({...})"` binding and all `data-shortcut` markup are byte-for-byte unchanged. Added the **Vitest + happy-dom** harness: `npm run test:js` (script in `package.json`, `test` block in `vite.config.js` with `environment: 'happy-dom'`). `resources/js/__tests__/command-palette.test.js` — **36 tests** covering option defaults, `isTypingTarget`, `handleGlobalKey` (`/`, `N` + Shift guard, `A`/`a`, `R`/`r` via visibility-aware `firstShortcut`, open/typing guards), `firstShortcut` visibility ordering + fallbacks, `collectShortcuts`, `triggerShortcut` (submit-click / `requestSubmit` / direct click / no-op), `openPalette` (state reset, single initial search), `search`/`reindex`/`isSelected`/`goto`/`handleKey` (arrows, Enter, Escape). Verified: `npm run test:js` 36/36 green, `composer test` 180/180 green (729 assertions), `npm run build` clean. Documented in `APP-GUIDE.md` **3.20** (changelog + tech-stack row + directory tree).
 
 ### ✓ Done — P-04: Member portal keyboard shortcuts + member-scoped quick search
 **Status:** DONE (2026-08-09) — shipped `102c7c9`.
@@ -94,7 +99,7 @@ Reconciliation of every FLAW item against the codebase — **all implemented**:
 
 | # | Task | Why / Evidence | Effort |
 |---|------|----------------|--------|
-| P-05 | **Javascript test coverage** — the new `handleGlobalKey`/`firstShortcut` logic has no automated JS tests (no Playwright/Vitest present). Consider a light test harness. | Feature is logic-heavy, untested | Medium |
+| P-06 | *(nothing queued — re-confirm priorities with the user before starting new work)* | — | — |
 
 ---
 
@@ -102,6 +107,7 @@ Reconciliation of every FLAW item against the codebase — **all implemented**:
 
 | Date | Commit | Feature |
 |------|--------|---------|
+| 2026-08-09 | `6e8247f` | **JS unit test coverage + command-palette module extraction (P-05)** — `command-palette.js` ES module, Vitest + happy-dom harness, 36 JS tests (APP-GUIDE 3.20) |
 | 2026-08-09 | `102c7c9` | **Member portal keyboard shortcuts + member-scoped quick search (P-04)** — command palette on portal layout, A/R guarantor actions, `/my/search` endpoint (APP-GUIDE 3.19, USER-GUIDE 1.2) |
 | 2026-08-09 | `eedc5f6` | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
 | 2026-08-09 | `d037242` | **USER-GUIDE 1.1 + APP-GUIDE 3.18.1 (P-02)** — registration/onboarding documentation corrections |
@@ -127,6 +133,8 @@ Reconciliation of every FLAW item against the codebase — **all implemented**:
 ```bash
 composer test          # config:clear + full test suite (DoD verify step)
 vendor/bin/pint        # Laravel Pint style fixes
+npm run test:js        # Vitest + happy-dom JS unit tests (DoD verify step for JS changes)
+npm run build          # Vite production build (Tailwind/Alpine/JS)
 npm run dev            # Vite (Tailwind/Alpine dev)
 composer run dev       # serve + queue + pail + vite together
 php artisan migrate:fresh --seed   # rebuild demo DB (destructive — data loss!)
