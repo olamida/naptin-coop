@@ -19,8 +19,8 @@
 | Item | Value |
 |------|-------|
 | APP-GUIDE version | 3.18.1 |
-| Last released commit | `292e002` — "Update session ledger with shipped commit hash" |
-| Uncommitted WIP | **P-03 audit reconciliation ledger (pending commit)** |
+| Last released commit | `a69b441` — "Audit backlog reconciliation: FLAW v4.0 audit found in-repo, all items implemented" |
+| Uncommitted WIP | **None** (as of this ledger update) |
 | Test suite | 36 Feature + 2 Unit test files, 176 tests / 710 assertions passing |
 | Active branch | `master` (tracking `origin/master`) |
 
@@ -96,7 +96,7 @@ Reconciliation of every FLAW item against the codebase — **all implemented**:
 |------|--------|---------|
 | 2026-08-09 | `eedc5f6` | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
 | 2026-08-09 | `d037242` | **USER-GUIDE 1.1 + APP-GUIDE 3.18.1 (P-02)** — registration/onboarding documentation corrections |
-| 2026-08-09 | *(pending commit)* | **Audit backlog reconciliation (P-03)** — FLAW v4.0 audit found in-repo; all items already implemented |
+| 2026-08-09 | `a69b441` | **Audit backlog reconciliation (P-03)** — FLAW v4.0 audit found in-repo; all items already implemented |
 | 2026-08-09 | `844a0c3` | Command-palette keyboard shortcuts (A/R/N) + documentation set (APP-GUIDE 3.17) |
 | 2026-08-09 | `995f324` | Loan detail lifecycle timeline with avatars (APP-GUIDE 3.16) |
 | 2026-08-09 | `7f385fa` | Server-enforced loan wizard rules (3× savings cap, guarantor cap) + amortization chart (3.15) |
