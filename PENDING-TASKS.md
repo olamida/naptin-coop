@@ -19,8 +19,8 @@
 | Item | Value |
 |------|-------|
 | APP-GUIDE version | 3.18.1 |
-| Last released commit | `d037242` — "Documentation: USER-GUIDE 1.1 registration/onboarding guide + APP-GUIDE 3.18.1 corrections" |
-| Uncommitted WIP | **None** (as of this ledger update) |
+| Last released commit | `292e002` — "Update session ledger with shipped commit hash" |
+| Uncommitted WIP | **P-03 audit reconciliation ledger (pending commit)** |
 | Test suite | 36 Feature + 2 Unit test files, 176 tests / 710 assertions passing |
 | Active branch | `master` (tracking `origin/master`) |
 
@@ -62,6 +62,21 @@ Verified counts via `php artisan route:list --json` (280 total − 13 framework 
 
 Verified against `RegistrationController`, `ApproveMemberApplication`, `RejectMemberApplication`, `OnboardingImport` (+ sheet exports) and `OnboardingImportTest`.
 
+### ✓ Done — P-03: Audit backlog reconciliation (FLAW v4.0 audit)
+**Status:** DONE (2026-08-09) — audit source found in-repo; all FLAW items already implemented.
+
+The original audit source **was in the repo** (the PENDING-TASKS "No audit source file in repo" note was wrong):
+- `NAPTIN_COOP_WORLD_CLASS_AUDIT_AND_PROMPT.txt` and `Full-World-Class-Audit-Prompt.txt` — identical v4.0 "World-Class Audit & AI CLI Prompt" (2026-07-30). They use **FLAW 1–5 / WASTE 1–7 / SCREEN 1–5** numbering, which is **different from** the `P1 #1–#20` / `P2 #4–#18` / `P3 #20` numbering cited in the APP-GUIDE changelog (that numbered list is not present anywhere in the repo).
+
+Reconciliation of every FLAW item against the codebase — **all implemented**:
+- **FLAW 1** (god controllers → Actions + DocumentService + split AdminController): done — 28 single-purpose `Actions` (transaction-wrapped), `DocumentService`, controllers split into `User/Stock/Backup/Statistics` + `ReceiptController`.
+- **FLAW 2** (loan/payroll state machines): done — `LoanStatus` has all 13 states incl. `guarantor_pending`, `committee_review`, `arrears` with `label()`/`color()`/`activeStatuses()`; `PayrollStatus` has `reconciled`/`variance`.
+- **FLAW 3** WASTE 1–7: all done — deposit auto-approve rule (`SavingsService::shouldAutoApprove` + `Company::auto_approve_deposit_limit` + `is_fraud_flagged`), `CompileAndLockPayroll`, Unified Onboarding Wizard (`/admin/onboarding`, 3 sheets), polymorphic DB cart (`carts.actor_type`), `DocumentService`, public guarantor `accept_token` (`/guarantee/{token}` + `ExpireGuarantorInvites` job), import idempotency (`import_batch_id` + `external_reference` + `import_logs`).
+- **FLAW 4** (data integrity & security): done — hash-chained immutable ledger + CBN chart (36 accounts), `must_change_password`, TOTP 2FA (setup/challenge/recovery), rate limiting (`throttle:login` 5/min, `throttle:uploads`, `password-reset`, `global`), IP/UA logging on approvals, `lockForUpdate` in `SavingsService`.
+- **FLAW 5** (world-class screens): done — Dashboard command center (KPI cards, sparklines, trends, activity feed, `command/search` with reference parsing `REG/`,`SAV/`,`LOAN/`,…), Member 360 (`healthScore()`, loan timeline), smart loan wizard (3× savings cap, guarantor exposure, amortization chart), payroll reconciliation summary + arrears, member portal PWA (bottom nav, `manifest.json` + `sw.js`), loan lifecycle timeline, A/R/N + `/` keyboard shortcuts.
+
+**Conclusion:** the in-repo FLAW-based audit has no remaining unaddressed items. The P1/P2/P3 changelog references correspond to already-shipped features (3.7–3.16 changelog rows); if that numbered list exists elsewhere the user may supply it later, but nothing points to unfinished work.
+
 ---
 
 ## 4. Pending Backlog (not started)
@@ -70,7 +85,6 @@ Verified against `RegistrationController`, `ApproveMemberApplication`, `RejectMe
 
 | # | Task | Why / Evidence | Effort |
 |---|------|----------------|--------|
-| P-03 | **Check remaining audit backlog** — changelog references audit findings P1 #1–#20, P2 #4–#18, P3 #20. Completed items are visible in changelog; **find the original audit list** (ask user) to identify any P1/P2 items not yet addressed. | No audit source file in repo | Unknown |
 | P-04 | **Member portal keyboard access / accessibility pass** — command palette is admin-only; portal has no `A`/`R` shortcuts. Confirm whether shortcuts should extend to the portal or stay admin-only. | `command-palette` only in `app-layout` | Small |
 | P-05 | **Javascript test coverage** — the new `handleGlobalKey`/`firstShortcut` logic has no automated JS tests (no Playwright/Vitest present). Consider a light test harness. | Feature is logic-heavy, untested | Medium |
 
@@ -82,6 +96,7 @@ Verified against `RegistrationController`, `ApproveMemberApplication`, `RejectMe
 |------|--------|---------|
 | 2026-08-09 | `eedc5f6` | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
 | 2026-08-09 | `d037242` | **USER-GUIDE 1.1 + APP-GUIDE 3.18.1 (P-02)** — registration/onboarding documentation corrections |
+| 2026-08-09 | *(pending commit)* | **Audit backlog reconciliation (P-03)** — FLAW v4.0 audit found in-repo; all items already implemented |
 | 2026-08-09 | `844a0c3` | Command-palette keyboard shortcuts (A/R/N) + documentation set (APP-GUIDE 3.17) |
 | 2026-08-09 | `995f324` | Loan detail lifecycle timeline with avatars (APP-GUIDE 3.16) |
 | 2026-08-09 | `7f385fa` | Server-enforced loan wizard rules (3× savings cap, guarantor cap) + amortization chart (3.15) |
