@@ -237,6 +237,65 @@
                         </div>
                     </div>
                 @endif
+
+                @php $timeline = $loan->lifecycleTimeline(); @endphp
+                @if (! empty($timeline))
+                    <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-blue-500 text-xl">timeline</span>
+                            Loan Lifecycle
+                        </h3>
+                        <div class="relative">
+                            <div class="absolute left-[19px] top-2 bottom-2 w-px bg-slate-200"></div>
+                            <div class="space-y-6">
+                                @foreach ($timeline as $event)
+                                    <div class="relative flex items-start gap-4">
+                                        <div class="relative z-10 shrink-0">
+                                            @if (! empty($event['actor_avatar']))
+                                                <img src="{{ $event['actor_avatar'] }}" alt="{{ $event['actor_name'] }}" class="w-10 h-10 rounded-full object-cover border-2 border-white ring-1 ring-slate-200">
+                                            @else
+                                                <div class="w-10 h-10 {{ $event['color'] }} rounded-full flex items-center justify-center text-white ring-1 ring-white shadow-sm">
+                                                    <span class="material-symbols-outlined text-[18px]">{{ $event['icon'] }}</span>
+                                                </div>
+                                            @endif
+                                            <span class="absolute -bottom-1 -right-1 w-4 h-4 {{ $event['color'] }} rounded-full border-2 border-white flex items-center justify-center">
+                                                <span class="material-symbols-outlined text-white text-[10px]">{{ $event['icon'] }}</span>
+                                            </span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-sm font-semibold text-[#0F172A]">{{ $event['title'] }}</span>
+                                                <span class="text-[11px] text-slate-400">&middot; {{ $event['date']->format('d M Y, g:ia') }}</span>
+                                            </div>
+                                            <p class="text-xs text-slate-500 mt-0.5">
+                                                <span class="font-medium text-slate-600">{{ $event['actor_name'] }}</span>
+                                                @if (! empty($event['description']))
+                                                    &middot; {{ $event['description'] }}
+                                                @endif
+                                            </p>
+                                            @if (! empty($event['progress']))
+                                                <div class="mt-3 bg-slate-50 border border-slate-200 rounded-[10px] p-3">
+                                                    <div class="flex items-center justify-between text-xs mb-1.5">
+                                                        <span class="font-medium text-slate-600">Instalment progress</span>
+                                                        <span class="font-mono font-semibold text-indigo-600">{{ $event['progress']['paid'] }}/{{ $event['progress']['total'] }}</span>
+                                                    </div>
+                                                    <div class="w-full bg-slate-200 rounded-full h-2">
+                                                        <div class="bg-indigo-500 h-2 rounded-full transition-all" style="width: {{ min($event['progress']['percent'], 100) }}%"></div>
+                                                    </div>
+                                                    @if ($event['progress']['next_due'])
+                                                        <p class="text-[11px] text-slate-500 mt-1.5">
+                                                            Next due {{ $event['progress']['next_due']->due_date->format('d M Y') }} — ₦{{ number_format((float) $event['progress']['next_due']->total_amount, 2) }}
+                                                        </p>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
 
             <div class="space-y-6">

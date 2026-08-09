@@ -304,51 +304,57 @@
                     </div>
                 @endif
 
-                {{-- Approval Timeline --}}
-                @if ($loan->approvalLogs->isNotEmpty())
+                {{-- Loan Lifecycle Timeline --}}
+                @php $timeline = $loan->lifecycleTimeline(); @endphp
+                @if (! empty($timeline))
                     <div class="bg-white rounded-[16px] shadow-sm border border-slate-200 p-6">
                         <h3 class="text-lg font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-blue-500 text-xl">history</span>
-                            Activity Log
+                            <span class="material-symbols-outlined text-blue-500 text-xl">timeline</span>
+                            Loan Lifecycle
                         </h3>
                         <div class="relative">
-                            <div class="absolute left-4 top-0 bottom-0 w-px bg-slate-200"></div>
-                            <div class="space-y-4">
-                                @foreach ($loan->approvalLogs as $log)
-                                    @php
-                                        $actionColors = [
-                                            'submitted' => 'bg-blue-500',
-                                            'approved' => 'bg-green-500',
-                                            'rejected' => 'bg-red-500',
-                                            'disbursed' => 'bg-purple-500',
-                                            'note_added' => 'bg-gray-400',
-                                        ];
-                                        $dotColor = $actionColors[$log->action] ?? 'bg-gray-400';
-                                    @endphp
-                                    <div class="flex items-start gap-3 pl-1">
-                                        <div class="relative z-10 w-7 h-7 {{ $dotColor }} rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                                            <span class="material-symbols-outlined text-white text-[14px]">
-                                                @if ($log->action === 'submitted') send
-                                                @elseif ($log->action === 'approved') check_circle
-                                                @elseif ($log->action === 'rejected') cancel
-                                                @elseif ($log->action === 'disbursed') account_balance
-                                                @else edit_note
-                                                @endif
+                            <div class="absolute left-[19px] top-2 bottom-2 w-px bg-slate-200"></div>
+                            <div class="space-y-6">
+                                @foreach ($timeline as $event)
+                                    <div class="relative flex items-start gap-4">
+                                        <div class="relative z-10 shrink-0">
+                                            @if (! empty($event['actor_avatar']))
+                                                <img src="{{ $event['actor_avatar'] }}" alt="{{ $event['actor_name'] }}" class="w-10 h-10 rounded-full object-cover border-2 border-white ring-1 ring-slate-200">
+                                            @else
+                                                <div class="w-10 h-10 {{ $event['color'] }} rounded-full flex items-center justify-center text-white ring-1 ring-white shadow-sm">
+                                                    <span class="material-symbols-outlined text-[18px]">{{ $event['icon'] }}</span>
+                                                </div>
+                                            @endif
+                                            <span class="absolute -bottom-1 -right-1 w-4 h-4 {{ $event['color'] }} rounded-full border-2 border-white flex items-center justify-center">
+                                                <span class="material-symbols-outlined text-white text-[10px]">{{ $event['icon'] }}</span>
                                             </span>
                                         </div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-2 flex-wrap">
-                                                <span class="text-sm font-medium text-[#0F172A]">{{ $log->user->name ?? 'System' }}</span>
-                                                <span class="text-xs text-slate-500">{{ ucfirst(str_replace('_', ' ', $log->action)) }}</span>
-                                                @if ($log->old_status && $log->new_status && $log->old_status !== $log->new_status)
-                                                    <span class="text-[11px] text-slate-400">
-                                                        {{ ucfirst($log->old_status) }} &rarr; {{ ucfirst($log->new_status) }}
-                                                    </span>
-                                                @endif
-                                                <span class="text-[11px] text-slate-400">&middot; {{ $log->created_at->format('d M Y, g:ia') }}</span>
+                                                <span class="text-sm font-semibold text-[#0F172A]">{{ $event['title'] }}</span>
+                                                <span class="text-[11px] text-slate-400">&middot; {{ $event['date']->format('d M Y, g:ia') }}</span>
                                             </div>
-                                            @if ($log->notes)
-                                                <p class="text-sm text-slate-600 mt-0.5">{{ $log->notes }}</p>
+                                            <p class="text-xs text-slate-500 mt-0.5">
+                                                <span class="font-medium text-slate-600">{{ $event['actor_name'] }}</span>
+                                                @if (! empty($event['description']))
+                                                    &middot; {{ $event['description'] }}
+                                                @endif
+                                            </p>
+                                            @if (! empty($event['progress']))
+                                                <div class="mt-3 bg-slate-50 border border-slate-200 rounded-[10px] p-3">
+                                                    <div class="flex items-center justify-between text-xs mb-1.5">
+                                                        <span class="font-medium text-slate-600">Instalment progress</span>
+                                                        <span class="font-mono font-semibold text-indigo-600">{{ $event['progress']['paid'] }}/{{ $event['progress']['total'] }}</span>
+                                                    </div>
+                                                    <div class="w-full bg-slate-200 rounded-full h-2">
+                                                        <div class="bg-indigo-500 h-2 rounded-full transition-all" style="width: {{ min($event['progress']['percent'], 100) }}%"></div>
+                                                    </div>
+                                                    @if ($event['progress']['next_due'])
+                                                        <p class="text-[11px] text-slate-500 mt-1.5">
+                                                            Next due {{ $event['progress']['next_due']->due_date->format('d M Y') }} — ₦{{ number_format((float) $event['progress']['next_due']->total_amount, 2) }}
+                                                        </p>
+                                                    @endif
+                                                </div>
                                             @endif
                                         </div>
                                     </div>

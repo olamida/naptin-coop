@@ -166,7 +166,7 @@ class MemberPortalController extends Controller
             abort(403, 'You can only view your own loans.');
         }
 
-        $loan->load(['repayments', 'schedules', 'loanProduct', 'approvedBy', 'guarantors.member', 'parentLoan', 'topupLoans']);
+        $loan->load(['repayments', 'schedules', 'loanProduct', 'approvedBy', 'guarantors.member', 'approvalLogs.user', 'parentLoan', 'topupLoans']);
 
         return view('portal.loan-detail', compact('member', 'loan'));
     }

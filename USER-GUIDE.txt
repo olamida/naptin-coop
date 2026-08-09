@@ -719,7 +719,8 @@ The system uses 7 predefined roles with 35 granular permissions.
     - Repayment schedule (installments with due dates)
     - Repayment history (all payments made)
     - Guarantor details (names, status, response date)
-    - Approval log (full audit trail with timestamps)
+    - Loan Lifecycle timeline (avatar/vertical, dated feed of submitted → guarantors →
+      approved/disbursed/rejected → repayment progress → completed)
 
   AUDIT TRAIL ENTRIES:
     - submitted:  when application was created

@@ -18,12 +18,11 @@ Priority 4 = Security hardening
 Priority 5 = Automation (scheduled jobs)
 Priority 6 = Housekeeping / dead code
 
-PROGRESS SUMMARY (as of version 3.12.0)
+PROGRESS SUMMARY (as of version 3.16.0)
 --------------------------------------
-DONE: 1-18                          (18 items)
-OPEN: 19-35                         (17 items)
-Next recommended: P3 workflow/report polish (19 loan wizard server rules,
-20 loan detail timeline), then P4 security and P5 scheduled jobs.
+DONE: 1-20                          (20 items)
+OPEN: 21-35                         (15 items)
+Next recommended: P4 security (21 keyboard shortcuts), then P5 scheduled jobs.
 
 --------------------------------------------------------------------------------
 P1 - FINANCE & COMPLIANCE (audit-critical)
@@ -215,16 +214,29 @@ P2 — MONEY-FLOW / LEDGER COVERAGE
 --------------------------------------------------------------------------------
 P3 — OPERATIONAL WORKFLOW & REPORTS
 --------------------------------------------------------------------------------
-19. [PARTIAL] SMART LOAN WIZARD — SERVER-SIDE RULES
+19. [DONE] SMART LOAN WIZARD — SERVER-SIDE RULES  (landed in version 3.15.0)
     - Spec: max eligible live = 3x savings, enforced server-side; guarantor exposure cap
       (prevent > 500k); amortization Chart.js line chart.
     - Current: Alpine-only client math; no server enforcement of 3x or guarantor exposure.
     - TODO: enforce in LoanService::validateLoanProduct() + wizard chart step.
+    -> DONE: LoanService::validateLoanProduct() now enforces the 3× savings eligibility cap
+       (min(savings × 3, ₦5,000,000) via SAVINGS_MULTIPLIER/ABSOLUTE_CEILING constants) and the
+       guarantor exposure cap (GUARANTOR_CAP = ₦500,000) against every selected guarantor,
+       wired through CreateLoan from both admin and portal applications; the admin loan wizard
+       Review step gains a Chart.js "Balance over time" amortization line chart.
+       tests/Feature/LoanWizardRulesTest.php (4 tests).
 
-20. [PARTIAL] LOAN DETAIL TIMELINE
+20. [DONE] LOAN DETAIL TIMELINE  (landed in version 3.16.0)
     - Spec: loan lifecycle timeline over tables.
     - Current: approval-log tables on loan show page.
     - TODO: avatar/vertical timeline UI on loans/show.blade.php.
+    -> DONE: Loan::lifecycleTimeline() + scheduleProgress() build a dated, avatar-based lifecycle
+       timeline (Application submitted, guarantor accepted/declined, approved, disbursed,
+       rejected, repayment-in-progress with instalment progress + next due, completed, plus
+       remaining approval-log events) sorted chronologically; the admin loan show page's
+       "Activity Log" tables are replaced by the avatar/vertical "Loan Lifecycle" timeline, and
+       the same timeline is rendered on the member portal loan detail page.
+       tests/Feature/LoanLifecycleTimelineTest.php (4 tests).
 
 21. [PARTIAL] KEYBOARD SHORTCUTS
     - Spec: A approve, R reject, N new member, / search.

@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.15.0
+> **Version:** 3.16.0
 > **Platform:** Laravel 13 + Tailwind CSS + MySQL 8
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.16 | **Loan detail lifecycle timeline (audit P3 #20):** the loan show page's approval-log tables are replaced by an avatar-based, vertical **Loan Lifecycle** timeline — a dated, chronologically-sorted feed of application submission, guarantor acceptances/declines, approval, disbursement, rejection, repayment-in-progress (with an instalment progress bar + next-due amount), completion and any remaining approval-log events, each with an actor avatar/initials + icon badge. The same timeline is rendered on the **member portal loan detail** page. Powered by new `Loan::lifecycleTimeline()` + `Loan::scheduleProgress()`. New `tests/Feature/LoanLifecycleTimelineTest.php` (4 tests: major events in order, repayment progress + next due, rejected timeline, completed timeline). |
 | 3.15 | **Server-enforced loan wizard rules + amortization chart (audit P1 #19):** `LoanService::validateLoanProduct()` now enforces the **3× savings eligibility cap** server-side (a member's maximum eligible loan = `min(savings balance × 3, ₦5,000,000)`, mirroring the client wizard, with a clear error message naming the savings-driven ceiling) and a **guarantor exposure cap** (a member's aggregate accepted guarantees on active loans may not exceed ₦500,000 — enforced against every selected guarantor via the new `GUARANTOR_CAP`/`SAVINGS_MULTIPLIER`/`ABSOLUTE_CEILING` constants, wired through `CreateLoan` from both admin and portal applications); the admin **loan wizard Review step gains a Chart.js "Balance over time" line chart** of the amortization schedule. `LoanController` now reads the guarantor limit from the `LoanService` constant instead of a hard-coded literal. New `tests/Feature/LoanWizardRulesTest.php` (4 tests: 3× savings cap, no-savings member blocked, guarantor cap block, guarantee within cap allowed). |
 | 3.14 | **Search & UX hardening batch:** **search autocomplete everywhere** — reusable `<x-search-autocomplete>` combobox (JS helper `window.searchAutocomplete` in `resources/js/app.js`) replaces plain search inputs on Members, Loans, Savings, Shares, Products/Orders, Purchases, public Shop and portal product catalog, backed by the existing server-side `search` JSON endpoints (10 routes incl. `command.search` + `members.search.form`); **admin sidebar rework** — Reporting, Dividends, Payroll, Finance and Ledger grouped into a single **Reporting & Accounting** dropdown (Accounts now holds only Savings/Loans/Purchases/Shares) with a shared accordion state so only one dropdown stays open at a time and the active section auto-opens on page load; **Share purchase receipt fixed** — `receipts/share-purchase.blade.php` rewritten with self-contained CSS (standalone receipts load no Tailwind) and now reads the real `ShareTransaction::reference` (was calling a non-existent `reference_number`); **Member full-name fix** — `Member::getFullNameAttribute()` collapses whitespace so names render correctly when middle name is null; **DB-cart delete fixed** — cart remove/clear now consistently go through `CartService`. New tests: `SearchAutocompleteTest` (7), `ShareReceiptTest` (2), `ModuleToggleTest` (6). |
 | 3.13 | **Money precision + transaction traceability (audit P2 #16–#18):** new **`App\Support\Money`** bcmath arithmetic helper (`add`/`sub`/`mul`/`div`/`percent`, compare helpers, `abs`/`min`/`max`/`sum`) — operands normalised to two-decimal strings and multiplied/divided at 10-decimal precision so ledgers never accumulate float drift; wired into `LedgerService`, `LoanService`, `SavingsService` and `ProvisioningService` (entry balancing, balances, appropriations, COGS margin, payroll totals, loan limits/splits/schedules, provisioning deltas); **direct traceability** — `savings_transactions` gained `journal_entry_id` (set by `SavingsService` after every posted deposit/withdrawal, linking the txn to its ledger entry), `loan_repayments` gained `fees_portion` (default 0, captured by `RecordRepayment` + `LoanRepaymentImport`), and `loans`/`purchase_orders`/`dividends` gained `import_batch_id` + `external_reference` (purchase imports stamp the batch + external reference on every order); **immutability decision** — documented: the MySQL `prevent_journal_entry_update`/`delete` triggers remain the enforcement mechanism and `updated_at` is retained (dropping the column would be a breaking change with no extra safety). New `tests/Unit/MoneyTest.php` (8) + `tests/Feature/TraceabilityTest.php` (5). |
@@ -465,7 +466,7 @@ A dedicated migration (`2026_07_26_000001_add_performance_indexes.php`) adds com
 | `/loans` | GET | List all loans (searchable, filterable by status) — **6 stat cards + sub-nav tabs** |
 | `/loans/create` | GET | Application form (select member, loan product, amount, tenure) |
 | `/loans` | POST | Submit application (auto-calculates monthly repayment, creates guarantors) |
-| `/loans/{id}` | GET | Loan detail (repayment schedule, repayment history, approval log, guarantors) |
+| `/loans/{id}` | GET | Loan detail (repayment schedule, repayment history, **Loan Lifecycle timeline**, guarantors) |
 | `/loans/{id}/approve` | POST | Approve pending loan (checks all guarantors accepted) |
 | `/loans/{id}/reject` | POST | Reject pending loan (with rejection reason) |
 | `/loans/{id}/note` | POST | Add admin notes |
@@ -1116,7 +1117,7 @@ The portal provides members with a self-service interface accessible at `/my`.
 | `/my/savings` | Savings transaction history + deposit request (with payment evidence) + withdrawal request |
 | `/my/loans` | Loan list with status badges |
 | `/my/loans/apply` | Loan application form (product select, guarantors, auto-calc with interest) |
-| `/my/loans/{id}` | Loan detail (repayment schedule, guarantors, approval log) |
+| `/my/loans/{id}` | Loan detail (repayment schedule, guarantors, **Loan Lifecycle timeline**) |
 | `/my/shares` | Share account + transaction history |
 | `/my/purchases` | Purchase order history |
 | `/my/products` | Browse product catalog (grid view, search, sort, "New" badge for recent products) |

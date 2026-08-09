@@ -160,4 +160,180 @@ class Loan extends Model
     {
         return $this->parent_loan_id !== null;
     }
+
+    /**
+     * Number of paid vs total instalments for the repayment schedule progress.
+     *
+     * @return array{paid: int, total: int, percent: float, next_due: ?LoanRepaymentSchedule}
+     */
+    public function scheduleProgress(): array
+    {
+        $paid = $this->schedules->where('status', 'paid')->count();
+        $total = $this->schedules->count();
+        $percent = $total > 0 ? round(($paid / $total) * 100, 1) : 0;
+        $nextDue = $total > 0 && $paid < $total
+            ? $this->schedules->where('status', '!=', 'paid')->sortBy('installment_number')->first()
+            : null;
+
+        return [
+            'paid' => $paid,
+            'total' => $total,
+            'percent' => $percent,
+            'next_due' => $nextDue,
+        ];
+    }
+
+    /**
+     * Loan lifecycle events for the avatar timeline (oldest first).
+     *
+     * Each event carries: title, date, actor_name, actor_avatar, actor_initials,
+     * icon, color and an optional description/notes.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function lifecycleTimeline(): array
+    {
+        $events = [];
+
+        // 1. Application
+        $events[] = [
+            'title' => 'Application submitted',
+            'date' => $this->application_date?->copy() ?? $this->created_at,
+            'actor_name' => $this->member?->full_name ?? 'System',
+            'actor_avatar' => $this->member?->photo_url ?? '',
+            'actor_initials' => $this->member?->initials ?? 'SY',
+            'icon' => 'description',
+            'color' => 'bg-blue-500',
+            'description' => 'Applied for a '.ucfirst($this->type).' loan of ₦'.number_format((float) $this->amount, 2),
+        ];
+
+        // 2. Guarantor responses
+        foreach ($this->guarantors->sortBy('responded_at') as $guarantor) {
+            if (! $guarantor->responded_at) {
+                continue;
+            }
+            $accepted = $guarantor->status->value === 'accepted';
+            $events[] = [
+                'title' => $accepted ? 'Guarantor accepted' : 'Guarantor declined',
+                'date' => $guarantor->responded_at,
+                'actor_name' => $guarantor->member?->full_name ?? 'Guarantor',
+                'actor_avatar' => $guarantor->member?->photo_url ?? '',
+                'actor_initials' => $guarantor->member?->initials ?? 'G',
+                'icon' => $accepted ? 'thumb_up' : 'thumb_down',
+                'color' => $accepted ? 'bg-emerald-500' : 'bg-red-500',
+                'description' => $accepted
+                    ? 'Guaranteed this loan for ₦'.number_format((float) $this->amount, 2)
+                    : 'Declined to guarantee this loan',
+            ];
+        }
+
+        // 3. Approval
+        $approvalLog = $this->approvalLogs->firstWhere('action', 'approved');
+        $approver = $this->approvedBy ?? $approvalLog?->user;
+        if ($this->approval_date || $approvalLog) {
+            $events[] = [
+                'title' => 'Loan approved',
+                'date' => $this->approval_date?->copy() ?? $approvalLog->created_at,
+                'actor_name' => $approver?->name ?? 'System',
+                'actor_avatar' => $approver?->avatar_url ?? '',
+                'actor_initials' => $approver?->initials ?? 'AP',
+                'icon' => 'check_circle',
+                'color' => 'bg-green-600',
+                'description' => $approvalLog?->notes,
+            ];
+        }
+
+        // 4. Disbursement
+        $disbursedLog = $this->approvalLogs->firstWhere('action', 'disbursed');
+        if ($this->disbursement_date || $disbursedLog) {
+            $events[] = [
+                'title' => 'Loan disbursed',
+                'date' => $this->disbursement_date?->copy() ?? $disbursedLog->created_at,
+                'actor_name' => $disbursedLog?->user?->name ?? 'System',
+                'actor_avatar' => $disbursedLog?->user?->avatar_url ?? '',
+                'actor_initials' => $disbursedLog?->user?->initials ?? 'DI',
+                'icon' => 'account_balance',
+                'color' => 'bg-purple-600',
+                'description' => $disbursedLog?->notes,
+            ];
+        }
+
+        // 5. Rejection
+        $rejectedLog = $this->approvalLogs->firstWhere('action', 'rejected');
+        if ($this->status === 'rejected' && $rejectedLog) {
+            $events[] = [
+                'title' => 'Loan rejected',
+                'date' => $rejectedLog->created_at,
+                'actor_name' => $rejectedLog->user?->name ?? 'System',
+                'actor_avatar' => $rejectedLog->user?->avatar_url ?? '',
+                'actor_initials' => $rejectedLog->user?->initials ?? 'RJ',
+                'icon' => 'cancel',
+                'color' => 'bg-red-600',
+                'description' => $rejectedLog->notes ?? $this->rejection_reason,
+            ];
+        }
+
+        // 6. Repaying progress (only once disbursed)
+        if (in_array($this->status, ['disbursed', 'repaying'])) {
+            $progress = $this->scheduleProgress();
+            $events[] = [
+                'title' => 'Repayment in progress',
+                'date' => $this->disbursement_date?->copy() ?? $this->created_at,
+                'actor_name' => $this->member?->full_name ?? 'Member',
+                'actor_avatar' => $this->member?->photo_url ?? '',
+                'actor_initials' => $this->member?->initials ?? 'MB',
+                'icon' => 'payments',
+                'color' => 'bg-indigo-500',
+                'description' => $progress['total'] > 0
+                    ? $progress['paid'].' of '.$progress['total'].' instalments paid'.(
+                        $progress['next_due']
+                            ? ' · Next due '.$progress['next_due']->due_date->format('d M Y').' (₦'.number_format((float) $progress['next_due']->total_amount, 2).')'
+                            : ''
+                    )
+                    : 'Repayments recorded against this loan',
+                'progress' => $progress,
+            ];
+        }
+
+        // 7. Completion
+        $completedLog = $this->approvalLogs->firstWhere('new_status', 'completed');
+        if ($this->status === 'completed') {
+            $events[] = [
+                'title' => 'Loan completed',
+                'date' => $completedLog?->created_at ?? $this->updated_at,
+                'actor_name' => $completedLog?->user?->name ?? 'System',
+                'actor_avatar' => $completedLog?->user?->avatar_url ?? '',
+                'actor_initials' => $completedLog?->user?->initials ?? 'CO',
+                'icon' => 'task_alt',
+                'color' => 'bg-emerald-600',
+                'description' => 'Fully repaid — ₦'.number_format((float) $this->total_repaid, 2).' collected',
+            ];
+        }
+
+        // 8. Other approval-log events (notes, status touches) not already shown
+        foreach ($this->approvalLogs as $log) {
+            if (in_array($log->action, ['approved', 'disbursed', 'rejected'])) {
+                continue;
+            }
+            if ($log->action === 'submitted') {
+                continue;
+            }
+            $events[] = [
+                'title' => ucfirst(str_replace('_', ' ', $log->action)),
+                'date' => $log->created_at,
+                'actor_name' => $log->user?->name ?? 'System',
+                'actor_avatar' => $log->user?->avatar_url ?? '',
+                'actor_initials' => $log->user?->initials ?? 'SY',
+                'icon' => 'edit_note',
+                'color' => 'bg-gray-400',
+                'description' => $log->notes ?? (($log->old_status && $log->new_status && $log->old_status !== $log->new_status)
+                    ? ucfirst($log->old_status).' → '.ucfirst($log->new_status)
+                    : null),
+            ];
+        }
+
+        usort($events, fn ($a, $b) => $a['date'] <=> $b['date']);
+
+        return $events;
+    }
 }
