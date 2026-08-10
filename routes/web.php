@@ -129,7 +129,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::post('loans/{loan}/disburse/approve', [LoanController::class, 'disburseApprove'])->name('loans.disburse.approve');
         Route::post('loans/{loan}/guarantors/{guarantor}', [LoanController::class, 'updateGuarantor'])->name('loans.guarantor.update');
         Route::get('loans/{loan}/repayment', [LoanController::class, 'repayment'])->name('loans.repayment');
-        Route::post('loans/{loan}/repayment', [LoanController::class, 'storeRepayment'])->name('loans.repayment.store');
+        Route::post('loans/{loan}/repayment', [LoanController::class, 'storeRepayment'])->middleware('no-back-dating')->name('loans.repayment.store');
         Route::get('loans/import/repayments', [LoanController::class, 'import'])->name('loans.import');
         Route::post('loans/import/repayments', [LoanController::class, 'importStore'])->middleware('throttle:uploads')->name('loans.import.store');
         Route::get('loans/download-template', [LoanController::class, 'downloadTemplate'])->name('loans.download-template');
@@ -283,7 +283,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         });
     });
 
-    Route::prefix('ledger')->name('ledger.')->middleware('can:manage-users')->group(function () {
+    Route::prefix('ledger')->name('ledger.')->middleware(['can:manage-users', 'no-back-dating', 'throttle:finance'])->group(function () {
         Route::get('/accounts', [LedgerController::class, 'accounts'])->name('accounts');
         Route::post('/accounts', [LedgerController::class, 'storeAccount'])->name('accounts.store');
         Route::put('/accounts/{chartOfAccount}', [LedgerController::class, 'updateAccount'])->name('accounts.update');
@@ -298,7 +298,7 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
         Route::get('/general-ledger', [LedgerController::class, 'generalLedger'])->name('general-ledger');
     });
 
-    Route::prefix('finance')->name('finance.')->middleware('can:manage-users')->group(function () {
+    Route::prefix('finance')->name('finance.')->middleware(['can:manage-users', 'no-back-dating', 'throttle:finance'])->group(function () {
         Route::get('/', [FinanceController::class, 'index'])->name('index');
         Route::get('/period-close', [FinanceController::class, 'periodCloseIndex'])->name('period-close');
         Route::post('/period-close', [FinanceController::class, 'periodCloseStore'])->name('period-close.store');

@@ -4,6 +4,7 @@ use App\Http\Middleware\EnforceSingleSession;
 use App\Http\Middleware\MemberGuard;
 use App\Http\Middleware\ModuleEnabled;
 use App\Http\Middleware\MustChangePassword;
+use App\Http\Middleware\NoBackDating;
 use App\Http\Middleware\PortalMember;
 use App\Http\Middleware\PreventCache;
 use App\Http\Middleware\RequireTwoFactor;
@@ -34,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'two-factor' => RequireTwoFactor::class,
             'module.enabled' => ModuleEnabled::class,
             'prevent-cache' => PreventCache::class,
+            'no-back-dating' => NoBackDating::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

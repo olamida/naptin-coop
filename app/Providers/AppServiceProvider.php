@@ -44,5 +44,13 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(10)->by($key);
         });
+
+        // Stricter budget for the ledger & finance surfaces — heavy double-entry
+        // work and sensitive reporting should not be hammered by a single session.
+        RateLimiter::for('finance', function (Request $request) {
+            $key = ($request->user()?->id ?? $request->ip());
+
+            return Limit::perMinute(30)->by($key);
+        });
     }
 }

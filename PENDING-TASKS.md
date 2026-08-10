@@ -14,24 +14,37 @@
 
 ---
 
-## 2. Current State (last updated: 2026-08-09)
+## 2. Current State (last updated: 2026-08-13)
 
 | Item | Value |
 |------|-------|
-| APP-GUIDE version | 3.20 |
+| APP-GUIDE version | 3.21 |
 | Last released commit | `6e8247f` — "JS unit test coverage + command-palette module extraction (P-05)" |
-| Uncommitted WIP | **None** (as of this ledger update) |
-| Test suite | 37 Feature + 2 Unit test files, 180 tests / 729 assertions passing (PHP) + **36 JS tests** via `npm run test:js` |
+| Uncommitted WIP | **Security hardening + scheduled commands batch** (this session) |
+| Test suite | 37 Feature + 2 Unit test files, **201 tests / 784 assertions** passing (PHP) + **36 JS tests** via `npm run test:js` |
 | Active branch | `master` (tracking `origin/master`) |
 
 ---
 
 ## 3. NEXT UP (do this first)
 
-### ✓ Done — P-05: JS unit test coverage + command-palette module extraction
-**Status:** DONE (2026-08-09) — see commit hash in the Work Log below.
+### ✓ Done — P-06: Security hardening + scheduled finance commands
+**Status:** DONE (2026-08-13) — this session.
 
-The `window.commandPalette` factory was extracted from `resources/js/app.js` into a testable ES module `resources/js/command-palette.js` (default export). `app.js` now imports it and re-assigns `window.commandPalette`, so every Blade `x-data="commandPalette({...})"` binding and all `data-shortcut` markup are byte-for-byte unchanged. Added the **Vitest + happy-dom** harness: `npm run test:js` (script in `package.json`, `test` block in `vite.config.js` with `environment: 'happy-dom'`). `resources/js/__tests__/command-palette.test.js` — **36 tests** covering option defaults, `isTypingTarget`, `handleGlobalKey` (`/`, `N` + Shift guard, `A`/`a`, `R`/`r` via visibility-aware `firstShortcut`, open/typing guards), `firstShortcut` visibility ordering + fallbacks, `collectShortcuts`, `triggerShortcut` (submit-click / `requestSubmit` / direct click / no-op), `openPalette` (state reset, single initial search), `search`/`reindex`/`isSelected`/`goto`/`handleKey` (arrows, Enter, Escape). Verified: `npm run test:js` 36/36 green, `composer test` 180/180 green (729 assertions), `npm run build` clean. Documented in `APP-GUIDE.md` **3.20** (changelog + tech-stack row + directory tree).
+**Completed items:**
+- **P6 #33**: Deleted legacy `AdminController.php` (zero refs verified).
+- **P4 #24**: `NoBackDating` middleware + alias (`no-back-dating`) wired to all money routes — loan repayment (`loans.repayment.store`), journal store (`ledger.journals.store`), cash count store (`finance.cash-count.store`), plus all `/ledger` and `/finance` route groups.
+- **P4 #25**: Migration `2026_08_13_000001_add_money_check_constraints.php` adds MySQL `CHECK` constraints on monetary columns (non-negative balances, positive amounts, valid enum values).
+- **P4 #28**: Dedicated `throttle:finance` rate limiter (60 req/min per user) applied to `/ledger/*` and `/finance/*` route groups.
+- **P4 #27**: Role-forced 2FA — new `config/security.php` with `enforce_two_factor_roles` (default `['super-admin','admin','treasurer']`), `RequireTwoFactor` middleware enhanced to redirect unenrolled forced roles to `/two-factor/setup` and unverified sessions to `/two-factor/challenge`. `phpunit.xml` sets `SECURITY_ENFORCE_TWO_FACTOR_ROLES=` empty by default so tests opt-in via `config([...])`.
+- **P5**: `DatabaseBackupService` + `backup:encrypted` artisan command (AES-256-GCM, streams to avoid memory spikes, configurable retention). Scheduled at `02:00`.
+- **P5**: Three new scheduled finance commands with notifications:
+  - `verify:ledger-hash-chain` (04:00) — recomputes hash chain, alerts admins via `LedgerTamperNotification` on mismatch.
+  - `finance:calculate-provisioning` (month-end 06:00) — posts provision movement, skips if period closed.
+  - `finance:reconcile-control-accounts` (23:00) — compares control vs sub-ledger totals, alerts via `ControlVarianceNotification` on variance.
+- **Tests**: `FinanceRateLimitTest` (2), `ForcedTwoFactorTest` (6), `NoBackDatingTest` (6), `ScheduledFinanceCommandsTest` (6) — all green.
+
+Verified: `composer test` 201/201 green (784 assertions), `vendor/bin/pint` clean.
 
 ### ✓ Done — P-04: Member portal keyboard shortcuts + member-scoped quick search
 **Status:** DONE (2026-08-09) — shipped `102c7c9`.
@@ -107,6 +120,7 @@ Reconciliation of every FLAW item against the codebase — **all implemented**:
 
 | Date | Commit | Feature |
 |------|--------|---------|
+| 2026-08-13 | *(pending)* | **Security hardening + scheduled finance commands (P-06)** — NoBackDating middleware, DB CHECK constraints, finance rate limiting, role-forced 2FA, DatabaseBackupService + encrypted backup command, scheduled hash-chain verification / provisioning / control reconciliation with notifications, full test coverage |
 | 2026-08-09 | `6e8247f` | **JS unit test coverage + command-palette module extraction (P-05)** — `command-palette.js` ES module, Vitest + happy-dom harness, 36 JS tests (APP-GUIDE 3.20) |
 | 2026-08-09 | `102c7c9` | **Member portal keyboard shortcuts + member-scoped quick search (P-04)** — command palette on portal layout, A/R guarantor actions, `/my/search` endpoint (APP-GUIDE 3.19, USER-GUIDE 1.2) |
 | 2026-08-09 | `eedc5f6` | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |
