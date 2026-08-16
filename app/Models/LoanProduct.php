@@ -25,6 +25,16 @@ class LoanProduct extends Model
         'requires_guarantors',
         'requires_collateral',
         'enabled',
+        // Flexible loan policy fields
+        'default_multiplier',
+        'max_multiplier',
+        'interest_rate_monthly',
+        'min_tenure_months',
+        'requires_guarantor',
+        'min_guarantors',
+        'max_guarantors',
+        'allow_multiplier_override',
+        'allow_deduction_cap_override',
     ];
 
     protected $casts = [
@@ -36,10 +46,25 @@ class LoanProduct extends Model
         'requires_guarantors' => 'boolean',
         'requires_collateral' => 'boolean',
         'enabled' => 'boolean',
+        // Flexible loan policy fields
+        'default_multiplier' => 'float',
+        'max_multiplier' => 'float',
+        'interest_rate_monthly' => 'float',
+        'min_tenure_months' => 'integer',
+        'requires_guarantor' => 'boolean',
+        'min_guarantors' => 'integer',
+        'max_guarantors' => 'integer',
+        'allow_multiplier_override' => 'boolean',
+        'allow_deduction_cap_override' => 'boolean',
     ];
 
     public function loans(): HasMany
     {
         return $this->hasMany(Loan::class);
+    }
+
+    public function eligibilityOverrides(): HasMany
+    {
+        return $this->hasMany(MemberLoanEligibilityOverride::class);
     }
 }

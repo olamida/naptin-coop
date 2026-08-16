@@ -37,6 +37,15 @@ class Loan extends Model
         'approved_by',
         'import_batch_id',
         'external_reference',
+        // Flexible loan policy fields
+        'applied_multiplier',
+        'approved_multiplier',
+        'is_multiplier_override',
+        'multiplier_override_id',
+        'total_deduction_percent_at_approval',
+        'is_deduction_cap_override',
+        'deduction_override_reason',
+        'deduction_override_approved_by',
     ];
 
     protected $casts = [
@@ -50,6 +59,12 @@ class Loan extends Model
         'approval_date' => 'date',
         'disbursement_date' => 'date',
         'maturity_date' => 'date',
+        // Flexible loan policy fields
+        'applied_multiplier' => 'decimal:2',
+        'approved_multiplier' => 'decimal:2',
+        'is_multiplier_override' => 'boolean',
+        'total_deduction_percent_at_approval' => 'decimal:2',
+        'is_deduction_cap_override' => 'boolean',
     ];
 
     public function member(): BelongsTo
@@ -75,6 +90,16 @@ class Loan extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function multiplierOverride(): BelongsTo
+    {
+        return $this->belongsTo(MemberLoanEligibilityOverride::class, 'multiplier_override_id');
+    }
+
+    public function deductionOverrideApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deduction_override_approved_by');
     }
 
     public function repayments(): HasMany

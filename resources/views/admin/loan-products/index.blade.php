@@ -38,7 +38,28 @@
                             <p class="font-semibold">{{ $product->processing_fee_pct }}%</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 mb-3">
+
+                    <!-- Flexible Loan Policy Fields -->
+                    <div class="grid grid-cols-2 gap-2 text-xs mb-4 p-3 bg-emerald-50 rounded-[10px] border border-emerald-100">
+                        <div>
+                            <p class="text-emerald-700 font-medium">Default Multiplier</p>
+                            <p class="font-semibold text-emerald-900">{{ $product->default_multiplier }}x</p>
+                        </div>
+                        <div>
+                            <p class="text-emerald-700 font-medium">Max Multiplier</p>
+                            <p class="font-semibold text-emerald-900">{{ $product->max_multiplier }}x</p>
+                        </div>
+                        <div>
+                            <p class="text-emerald-700 font-medium">Monthly Interest</p>
+                            <p class="font-semibold text-emerald-900">{{ $product->interest_rate_monthly }}%</p>
+                        </div>
+                        <div>
+                            <p class="text-emerald-700 font-medium">Min Tenure</p>
+                            <p class="font-semibold text-emerald-900">{{ $product->min_tenure_months }} months</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 text-[10px] text-slate-500 mb-3 flex-wrap">
                         @if ($product->requires_guarantors)
                             <span class="px-1.5 py-0.5 bg-yellow-50 text-yellow-700 rounded">Guarantors Required</span>
                         @endif
@@ -50,6 +71,21 @@
                         @endif
                         @if ($product->max_total_amount_per_member)
                             <span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded">Max ₦{{ number_format($product->max_total_amount_per_member, 0) }}/member</span>
+                        @endif
+                        @if ($product->requires_guarantor)
+                            <span class="px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded">Guarantor Required</span>
+                        @endif
+                        @if ($product->min_guarantors)
+                            <span class="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded">Min {{ $product->min_guarantors }} Guarantor(s)</span>
+                        @endif
+                        @if ($product->max_guarantors)
+                            <span class="px-1.5 py-0.5 bg-cyan-50 text-cyan-700 rounded">Max {{ $product->max_guarantors }} Guarantors</span>
+                        @endif
+                        @if ($product->allow_multiplier_override)
+                            <span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded">Allow Multiplier Override</span>
+                        @endif
+                        @if ($product->allow_deduction_cap_override)
+                            <span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded">Allow Deduction Cap Override</span>
                         @endif
                     </div>
                     <div class="flex items-center gap-2 pt-3 border-t border-slate-100">

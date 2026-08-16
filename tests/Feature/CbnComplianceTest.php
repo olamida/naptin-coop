@@ -7,14 +7,12 @@ use App\Actions\Loans\DisburseLoan;
 use App\Models\ApprovalWorkflow;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
-use App\Models\Loan;
 use App\Models\LoanProduct;
 use App\Models\Member;
 use App\Models\PeriodClose;
 use App\Models\Region;
 use App\Models\User;
 use App\Services\LedgerService;
-use App\Services\LoanService;
 use App\Services\ProvisioningService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -264,41 +262,5 @@ class CbnComplianceTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('dividends', ['year' => now()->year, 'total_profit' => 10000]);
-    }
-
-    // ------------------------------------------------ CBN single obligor limit
-
-    public function test_single_obligor_limit_blocks_excessive_exposure_and_allows_within_limit(): void
-    {
-        $members = collect(range(1, 21))
-            ->map(fn ($i) => $this->makeMember('STAFF-SO'.$i.'-'.substr(uniqid(), -6)));
-
-        $seq = 1;
-        foreach ($members->take(20) as $member) {
-            Loan::create([
-                'member_id' => $member->id,
-                'loan_number' => 'REG/'.now()->year.'/'.str_pad((string) $seq++, 6, '0', STR_PAD_LEFT),
-                'type' => 'regular',
-                'amount' => 100000,
-                'interest_rate' => 5,
-                'tenure_months' => 12,
-                'monthly_repayment' => 8750,
-                'outstanding' => 100000,
-                'application_date' => now()->toDateString(),
-                'status' => 'disbursed',
-            ]);
-        }
-
-        $applicant = $members->last();
-        $product = $this->makeProduct();
-        $service = new LoanService;
-
-        // Exactly 5% of a 2,000,000 portfolio (100,000) is allowed.
-        $this->assertNull($service->validateLoanProduct($product, $applicant->id, 100000, 12));
-
-        // Any exposure over 5% is blocked.
-        $error = $service->validateLoanProduct($product, $applicant->id, 100001, 12);
-        $this->assertNotNull($error);
-        $this->assertStringContainsString('single obligor', strtolower($error));
     }
 }

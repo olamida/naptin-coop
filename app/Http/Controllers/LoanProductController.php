@@ -32,12 +32,22 @@ class LoanProductController extends Controller
             'interest_rate' => 'required|numeric|min:0|max:100',
             'repayment_method' => 'required|in:flat,reducing_balance',
             'max_term_months' => 'required|integer|min:1|max:120',
+            'min_tenure_months' => 'nullable|integer|min:1',
             'max_loans_per_member' => 'nullable|integer|min:1',
             'max_total_amount_per_member' => 'nullable|numeric|min:0',
             'processing_fee_pct' => 'nullable|numeric|min:0|max:100',
             'requires_guarantors' => 'boolean',
             'requires_collateral' => 'boolean',
             'enabled' => 'boolean',
+            // Flexible loan policy fields
+            'default_multiplier' => 'required|numeric|min:0.1|max:10',
+            'max_multiplier' => 'required|numeric|min:0.1|max:10|gte:default_multiplier',
+            'interest_rate_monthly' => 'required|numeric|min:0|max:100',
+            'requires_guarantor' => 'boolean',
+            'min_guarantors' => 'nullable|integer|min:1',
+            'max_guarantors' => 'nullable|integer|min:1|gte:min_guarantors',
+            'allow_multiplier_override' => 'boolean',
+            'allow_deduction_cap_override' => 'boolean',
         ]);
 
         LoanProduct::create($validated);
@@ -61,12 +71,22 @@ class LoanProductController extends Controller
             'interest_rate' => 'required|numeric|min:0|max:100',
             'repayment_method' => 'required|in:flat,reducing_balance',
             'max_term_months' => 'required|integer|min:1|max:120',
+            'min_tenure_months' => 'nullable|integer|min:1',
             'max_loans_per_member' => 'nullable|integer|min:1',
             'max_total_amount_per_member' => 'nullable|numeric|min:0',
             'processing_fee_pct' => 'nullable|numeric|min:0|max:100',
             'requires_guarantors' => 'boolean',
             'requires_collateral' => 'boolean',
             'enabled' => 'boolean',
+            // Flexible loan policy fields
+            'default_multiplier' => 'required|numeric|min:0.1|max:10',
+            'max_multiplier' => 'required|numeric|min:0.1|max:10|gte:default_multiplier',
+            'interest_rate_monthly' => 'required|numeric|min:0|max:100',
+            'requires_guarantor' => 'boolean',
+            'min_guarantors' => 'nullable|integer|min:1',
+            'max_guarantors' => 'nullable|integer|min:1|gte:min_guarantors',
+            'allow_multiplier_override' => 'boolean',
+            'allow_deduction_cap_override' => 'boolean',
         ]);
 
         $loanProduct->update($validated);

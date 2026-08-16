@@ -32,10 +32,13 @@ class Member extends Model
         'nin',
         'grade_level',
         'monthly_salary',
+        'monthly_net_salary',
         'monthly_savings',
         'status',
         'is_exco',
         'is_fraud_flagged',
+        'is_defaulter',
+        'defaulter_outstanding_arrears',
         'photo_path',
         'import_batch_id',
         'external_reference',
@@ -45,10 +48,14 @@ class Member extends Model
         'date_of_birth' => 'date',
         'employment_date' => 'date',
         'retirement_date' => 'date',
+        'expected_retirement_date' => 'date',
         'monthly_salary' => 'float',
+        'monthly_net_salary' => 'float',
         'monthly_savings' => 'float',
         'is_exco' => 'boolean',
         'is_fraud_flagged' => 'boolean',
+        'is_defaulter' => 'boolean',
+        'defaulter_outstanding_arrears' => 'float',
     ];
 
     public function region(): BelongsTo
@@ -107,6 +114,11 @@ class Member extends Model
         return $this->belongsToMany(Loan::class, 'loan_guarantors')
             ->withPivot('status', 'notes', 'responded_at')
             ->withTimestamps();
+    }
+
+    public function eligibilityOverrides(): HasMany
+    {
+        return $this->hasMany(MemberLoanEligibilityOverride::class);
     }
 
     public function getFullNameAttribute(): string

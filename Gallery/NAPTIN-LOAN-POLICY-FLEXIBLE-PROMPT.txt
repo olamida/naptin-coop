@@ -1,0 +1,442 @@
+# NAPTIN COOP - FLEXIBLE LOAN POLICY & SALARY DEDUCTION CAP SYSTEM
+# Version: 4.3 - Cooperative Societies Act Compliant (NOT CBN MFB)
+# Regulatory Clarification: Single Obligor Limit REMOVED - Internal Fund Cycling
+# Purpose: Implement adjustable loan multipliers + adjustable 1/3 salary deduction rule + executive overrides
+# Stack: Laravel 13 + Livewire 3
+
+================================================================================
+AI CLI PROMPT - COPY FROM HERE - FLEXIBLE LOAN POLICY IMPLEMENTATION
+================================================================================
+
+You are the Lead Engineer for NAPTIN Staff Thrift Cooperative Society. The client has clarified regulatory framework and operational reality. You must REVIEW and CORRECT previous prompts that included CBN Single Obligor Limit (SOL) - it DOES NOT APPLY. Implement flexible, human-centric loan policy.
+
+READ FIRST: APP-GUIDE.md, USER-GUIDE.txt, NAPTIN_CBN_COMPLIANT_ACCOUNTING_PROMPT.txt, NAPTIN_COOP_WORLD_CLASS_AUDIT_AND_PROMPT.txt
+
+REGULATORY REVIEW - WHY SOL MUST BE REMOVED:
+
+Previous prompt incorrectly added: "Loan to single borrower limit: Check member outstanding loans <= 5% of total portfolio per CBN single obligor limit"
+
+CLIENT CORRECTION - VALIDATED AS CORRECT:
+
+1. NAPTIN is NOT a Commercial Bank or licensed Microfinance Bank taking public deposits. It is an autonomous cooperative/thrift society registered under Cooperative Societies Act (Federal/State), managing CLOSED-LOOP internal member funds - members' own savings contributed by themselves.
+
+2. CBN Single Obligor Limit (CBN Prudential Guidelines for MFBs: 1% for unsecured individual, 5% for secured) applies ONLY to licensed deposit-taking financial institutions that lend to public. It does NOT apply to internal cycling of member thrift savings among members of same cooperative.
+
+3. Cooperative loan limits are governed by:
+   - Cooperative Bye-Laws (approved by congress)
+   - Loan Policy approved by EXCO / Annual General Meeting
+   - Savings multiplier principle (2x, 3x etc) - internal risk rule, not CBN rule
+   - Salary deduction capacity (1/3 rule) - employer agreement, not CBN rule
+
+ACTION - REMOVE FROM CODEBASE:
+
+- Search and remove any check like: if member outstanding > 5% of total portfolio -> deny
+- Remove any service method checkSingleObligorLimit()
+- Remove any validation referencing CBN SOL in LoanService
+- Keep other CBN-inspired good practices that ARE relevant: IFRS 9 provisioning (good accounting), Maker-Checker (good control), Trial Balance (good accounting) - those are universal best practices, not regulatory imposition
+- Add comment in LoanService: "// SOL not applicable - Cooperative internal funds per Cooperative Societies Act, not CBN MFB Framework. Limits governed by Bye-Laws + EXCO."
+
+ENHANCED REQUIREMENTS - FLEXIBLE LOAN POLICY - IMPLEMENT THIS NOW:
+
+The client has revealed operational reality that rigid 2x/3x multiplier and rigid 1/3 deduction cap fails for real life:
+
+- Member with large loan balance retiring in 3 months: Cooperative needs to deduct MORE than 2x/3x or more than 33% to recover before retirement - otherwise money lost when salary stops
+- Defaulter who stopped payroll deduction: Need to deduct higher amount to catch up arrears
+- Long-serving member with excellent history: EXCO may want to give 4x multiplier as goodwill
+- Emergency medical loan: May need to exceed normal multiplier
+
+Therefore implement FLEXIBLE, ADJUSTABLE system with DEFAULT + OVERRIDE + AUDIT.
+
+--------------------------------------------------------------------------------
+PHASE 1: DATA MODEL - FLEXIBLE LOAN MULTIPLIERS
+--------------------------------------------------------------------------------
+
+STEP 1.1: Create Migrations
+
+1. loan_products table - enhance existing loan_products:
+
+If loan_products already exists, add columns via alter migration:
+
+Schema::table('loan_products', function (Blueprint $table) {
+  $table->decimal('default_multiplier', 5,2)->default(2.00)->comment('Default savings multiplier, e.g. 2 = 2x savings');
+  $table->decimal('max_multiplier', 5,2)->default(3.00)->comment('Absolute max multiplier allowed even with override');
+  $table->decimal('interest_rate_monthly', 5,2)->default(1.5)->comment('e.g. 1.5% per month');
+  $table->integer('max_tenure_months')->default(24);
+  $table->integer('min_tenure_months')->default(1);
+  $table->decimal('max_amount', 15,2)->nullable()->comment('Absolute max amount for this product, e.g. 2M');
+  $table->boolean('requires_guarantor')->default(true);
+  $table->integer('min_guarantors')->default(1);
+  $table->integer('max_guarantors')->default(3);
+  $table->boolean('allow_multiplier_override')->default(true)->comment('Can EXCO override multiplier for special cases');
+  $table->boolean('allow_deduction_cap_override')->default(true)->comment('Can EXCO override 33% cap');
+  $table->text('description')->nullable();
+});
+
+Seed loan_products:
+
+- Regular Loan: code REG, default_multiplier 2, max_multiplier 4, interest 1.5% monthly, max_tenure 24, max_amount 2,000,000, requires guarantor 2
+- Emergency Loan: code EMG, default_multiplier 1, max_multiplier 2, interest 2% monthly, max_tenure 6, max_amount 500,000, requires guarantor 1
+- Educational Loan: code EDU, default_multiplier 2, max_multiplier 3, interest 1% monthly, max_tenure 12
+- Special Loan: code SPC, default_multiplier 3, max_multiplier 5, interest 1.5%, max_tenure 24, for long-serving members
+
+2. Create member_loan_eligibility_overrides table:
+
+Schema::create('member_loan_eligibility_overrides', function (Blueprint $table) {
+  $table->id();
+  $table->foreignId('member_id')->constrained('members');
+  $table->foreignId('loan_product_id')->constrained('loan_products');
+  $table->decimal('custom_multiplier', 5,2)->nullable()->comment('Override multiplier for this member+product, e.g. 4.5');
+  $table->decimal('custom_max_deduction_percent', 5,2)->nullable()->comment('Override max deduction from salary, e.g. 60% for retiring member');
+  $table->decimal('custom_max_amount', 15,2)->nullable()->comment('Override absolute max amount');
+  $table->enum('reason_category', ['retirement_recovery','defaulter_catchup','long_service_goodwill','emergency_medical','exco_discretion','agm_approval','other']);
+  $table->text('reason_details')->comment('Detailed justification');
+  $table->foreignId('approved_by')->constrained('users')->comment('EXCO who approved override');
+  $table->foreignId('second_approved_by')->nullable()->constrained('users')->comment('Second approval for >50% deduction');
+  $table->date('valid_from');
+  $table->date('valid_until')->nullable()->comment('Temporary override e.g. for 6 months to recover loan before retirement');
+  $table->boolean('is_active')->default(true);
+  $table->timestamps();
+});
+
+3. Create payroll_deduction_caps table:
+
+Schema::create('payroll_deduction_caps', function (Blueprint $table) {
+  $table->id();
+  $table->string('name')->default('Default Cooperative Deduction Cap');
+  $table->decimal('default_max_percent', 5,2)->default(33.33)->comment('Default max total deductions from net salary, e.g. 33.33% = 1/3');
+  $table->decimal('hard_max_percent', 5,2)->default(66.67)->comment('Absolute hard max even with override, e.g. 66.67% = 2/3 - cannot exceed');
+  $table->text('description')->nullable()->comment('Based on employer agreement, typically 1/3 of basic salary');
+  $table->boolean('is_active')->default(true);
+  $table->timestamps();
+});
+
+Seed: default_max 33.33, hard_max 66.67, name "NAPTIN IPPIS/Employer Agreement 1/3 Rule"
+
+4. Add columns to loans table:
+
+Schema::table('loans', function (Blueprint $table) {
+  $table->decimal('applied_multiplier', 5,2)->nullable()->comment('Multiplier used at application time, e.g. 2.5x');
+  $table->decimal('approved_multiplier', 5,2)->nullable()->comment('Final multiplier after EXCO review');
+  $table->boolean('is_multiplier_override')->default(false);
+  $table->foreignId('multiplier_override_id')->nullable()->constrained('member_loan_eligibility_overrides');
+  $table->decimal('total_deduction_percent_at_approval', 5,2)->nullable()->comment('Total deductions as % of salary at time of approval including this loan');
+  $table->boolean('is_deduction_cap_override')->default(false);
+  $table->text('deduction_override_reason')->nullable();
+  $table->foreignId('deduction_override_approved_by')->nullable()->constrained('users');
+});
+
+STEP 1.2: Create Services
+
+Create app/Services/LoanEligibilityService.php:
+
+Methods:
+
+public function calculateMaxEligibleAmount(Member $member, LoanProduct $product): array
+- Gets member savings balance (sum savings_accounts balance)
+- Gets default multiplier from loan_product.default_multiplier
+- Checks if active override exists in member_loan_eligibility_overrides where member_id, loan_product_id, is_active, valid_from <= today, valid_until >= today or null
+- If override exists, use custom_multiplier, else default
+- Cap by product max_multiplier and max_amount
+- Returns: [
+    'savings_balance' => 200000,
+    'default_multiplier' => 2,
+    'applied_multiplier' => 2.5 (if override) else 2,
+    'max_eligible' => 500000,
+    'is_override' => true/false,
+    'override_details' => override model or null,
+    'formula' => '₦200k x 2.5 = ₦500k'
+  ]
+
+public function calculateTotalDeductionsPercent(Member $member, ?float $newLoanMonthlyRepayment = null): array
+- Gets member monthly net salary from members table (add column monthly_net_salary if not exists) or from latest payroll record
+- Calculates current total monthly deductions:
+  - Savings monthly contribution (from savings setting)
+  - Existing active loan repayments monthly (sum of repayment schedules where due_date >= today and loan status repaying)
+  - Share contributions
+  - Product purchase hire-purchase installments
+- If $newLoanMonthlyRepayment provided, add it to total
+- Calculates percent = (total_deductions / net_salary) * 100
+- Gets default cap from payroll_deduction_caps where is_active = 33.33%
+- Checks if member has custom_max_deduction_percent override active
+- Returns: [
+    'net_salary' => 150000,
+    'current_deductions' => 30000,
+    'current_percent' => 20,
+    'new_loan_repayment' => 25000,
+    'projected_total' => 55000,
+    'projected_percent' => 36.67,
+    'default_cap' => 33.33,
+    'applied_cap' => 60 (if override) else 33.33,
+    'hard_cap' => 66.67,
+    'is_within_default' => false,
+    'is_within_override' => true,
+    'is_exceeds_hard' => false,
+    'requires_override' => true
+  ]
+
+public function validateLoanApplication(Member $member, LoanProduct $product, float $amount, int $tenure): array
+- Calls calculateMaxEligibleAmount, checks amount <= max_eligible, if not, return error "Amount exceeds eligible ₦X (Y x savings)"
+- Calculates monthly repayment using amortization: (principal * monthly_interest * (1+interest)^tenure) / ((1+interest)^tenure -1) - use standard formula
+- Calls calculateTotalDeductionsPercent with new repayment
+- Checks if projected_percent > hard_cap (66.67) -> always deny, return "Exceeds hard cap 66.67% even with override - Salary would be insufficient"
+- If projected_percent > applied_cap (default 33.33 or override) -> requires deduction_cap_override, return warning + requires EXCO approval with reason
+- If amount requires multiplier override (applied_multiplier > default_multiplier) -> requires multiplier_override approval
+- Returns validation result with flags: is_eligible, requires_multiplier_override, requires_deduction_override, monthly_repayment, total_percent, etc.
+
+Create app/Services/PayrollDeductionService.php - enhanced payroll compile:
+
+Method compileMemberDeductions(Member $member, string $payrollMonth): array
+- Gets member's expected deductions for month: savings contribution + loan repayments due that month + shares + purchases
+- Gets member net salary
+- Calculates total percent
+- If total percent > applied_cap (from override or default), then:
+  - Prioritize deductions in order: 1. Savings (mandatory), 2. Loan repayments (oldest first), 3. Shares, 4. Purchases
+  - Deduct in order until cap reached, remaining goes to arrears
+  - Create payroll_deduction_arrears table entry for shortfall
+  - Log: "Deduction capped at 33.33% (or override) - ₦X shortfall carried to arrears"
+- If member is retiring soon (check members.retirement_date <= 3 months), allow auto override to hard_cap with warning "Member retiring on DATE - deducting up to HARD CAP to recover"
+
+STEP 1.3: Add columns to members table:
+
+Schema::table('members', function (Blueprint $table) {
+  $table->decimal('monthly_net_salary', 15,2)->nullable()->comment('Net take-home after tax, from IPPIS');
+  $table->date('expected_retirement_date')->nullable()->comment('For retirement recovery logic');
+  $table->boolean('is_defaulter')->default(false)->comment('Flag for defaulters needing catch-up');
+  $table->decimal('defaulter_outstanding_arrears', 15,2)->default(0);
+});
+
+--------------------------------------------------------------------------------
+PHASE 2: UI - MAKE IT EXECUTABLE BY EXCO - LIVEWIRE
+--------------------------------------------------------------------------------
+
+PAGE 1: Loan Products Settings /admin/loan-products - Enhance existing
+
+- Table shows: Product name, Code, Default Multiplier, Max Multiplier, Max Amount, Interest, Max Tenure, Allow Override toggle
+- Edit modal: Allow admin to change default_multiplier (e.g. change Regular from 2x to 2.5x), max_multiplier, max_amount
+- Show info: "Default multiplier applies to all members unless overridden for special cases"
+- Add column "Members with Override" count linking to overrides list
+
+PAGE 2: Member Eligibility Overrides /admin/members/{id}/eligibility-overrides - NEW
+
+Create Livewire component MemberEligibilityOverrides.php
+
+- Header: Member name, Savings balance, Current multiplier, Net salary, Current deduction %
+- Button: "Add Override"
+- Modal Form:
+  - Select Loan Product dropdown
+  - Custom Multiplier input: number 0.5 to 10 step 0.1, hint "Default for REG is 2x, you are setting 4x for this member"
+  - Custom Max Deduction % input: 0-66.67, hint "Default 33.33% (1/3), setting 60% for retirement recovery"
+  - Custom Max Amount input: optional
+  - Reason Category dropdown: retirement_recovery, defaulter_catchup, long_service_goodwill, emergency_medical, exco_discretion, agm_approval, other
+  - Reason Details textarea: required, min 20 chars, e.g. "Member retiring Dec 2026, outstanding ₦800k, needs to recover before retirement. Approved by EXCO meeting 2026-07-15"
+  - Approved By: auto current user, Second Approved By: required if deduction >50% (Maker-Checker)
+  - Valid From date, Valid Until date (optional, for temporary retirement recovery)
+  - Checkbox: Active
+
+- Table of overrides: Product, Custom Multiplier (2x -> 4x), Custom Deduction Cap (33% -> 60%), Reason Category badge, Valid period, Approved by, Status Active/Expired, Actions Edit/Deactivate
+
+- Logic: When override created, send notification to member and auditor, log to activity_logs with reason
+
+PAGE 3: Loan Application Wizard - Enhance /loans/apply - Smart Loan Wizard
+
+Step 1: Product Selection:
+- Show cards: Regular (2x), Emergency (1x), etc with default multiplier info
+
+Step 2: Amount & Tenure - LIVE CALCULATION:
+- Slider Amount: max = LoanEligibilityService::calculateMaxEligibleAmount(member, product)['max_eligible']
+- Show formula live: "Your savings ₦200,000 x 2 = ₦400,000 max eligible"
+- If member has override, show badge "Special approval: 4x multiplier (EXCO approved till Dec 2026) - Reason: Retirement recovery"
+- Tenure slider: updates monthly repayment live
+- Show monthly repayment: "₦18,500/month for 12 months"
+
+Step 3: Salary Deduction Check - CRITICAL NEW STEP:
+- Call calculateTotalDeductionsPercent with new repayment
+- Show visual:
+  Net Salary: ₦150,000
+  Current Deductions: ₦30,000 (20%)
+    - Savings: ₦10k
+    - Existing Loan REG/001: ₦20k
+  This Loan: ₦25,000
+  Projected Total: ₦55,000 (36.67%)
+  
+- Show cap gauge:
+  [Green 0-33%] [Amber 33-50% needs override] [Red 50-66% needs double approval] [Dark Red >66% blocked]
+  Needle at 36.67% in Amber zone
+
+- If projected >33.33% and no override: Show warning "Exceeds default 1/3 salary rule (33.33%). Requires EXCO approval for deduction cap override. Reason required."
+- Provide textarea for member to explain why they need override (e.g. "I am willing to have higher deduction for 3 months")
+- If member is retiring soon (retirement_date within 6 months), auto show info: "You are retiring on [date]. Cooperative may deduct up to 66.67% to recover loan before retirement per Bye-Law [X]."
+
+Step 4: Guarantors - existing
+
+Step 5: Review + Submit - Show summary with multiplier used, deduction %, override flags
+
+Backend on submit:
+- Validate via LoanEligibilityService::validateLoanApplication
+- If requires_multiplier_override or requires_deduction_override, set loan status = pending_override_approval (new status), create pending record in loan_approval_logs with type multiplier_override or deduction_override
+- Notify President + Financial Secretary for override approval
+- If no override needed, proceed as normal to guarantor_pending
+
+PAGE 4: EXCO Override Approvals /admin/approvals/overrides - NEW
+
+- Table of loans pending override: Member, Product, Amount, Applied Multiplier (2x -> 4x), Projected Deduction % (36.67%), Reason Category, Requested by, Days waiting
+- Action: View details shows full eligibility calc, salary, current deductions, retirement date, defaulter history
+- Approve/Reject with reason:
+  - Approve Multiplier Override: Approves custom multiplier, creates member_loan_eligibility_overrides record if not exists, or uses existing
+  - Approve Deduction Cap Override: Approves higher deduction %, sets loan.is_deduction_cap_override true
+  - Require second approval if deduction >50%
+- Log IP, user_agent, reason
+
+PAGE 5: Payroll Compilation - Enhance /payroll/{id}/compile
+
+- Show each member row with: Net Salary, Total Expected Deductions, Deduction %, Status
+- Highlight rows:
+  - Green: Within 33.33%
+  - Amber: 33.33-50% with override
+  - Red: 50-66.67% with double approval
+  - Dark Red: >66.67% - blocked, show "Exceeds hard cap - manual review required"
+- For retiring members: Show badge "Retiring Dec 2026 - Deducting up to 60% to recover"
+- For defaulters: Show badge "Defaulter - Catch-up deduction ₦X"
+- On compile, use PayrollDeductionService::compileMemberDeductions which prioritizes and caps
+- Show summary: Total Expected, Total Capped, Total Arrears Carried Forward
+
+PAGE 6: Reports - Enhance /finance/reports
+
+- Loan Multiplier Utilization Report: Show distribution of multipliers used (how many loans at 2x, 3x, 4x override), reasons for overrides, retiring members recovery stats
+- Salary Deduction Compliance Report: Members exceeding 33.33%, average deduction %, members at hard cap
+- Retirement Recovery Report: Members retiring in next 12 months, outstanding loans, recovery plan, deduction % applied
+
+--------------------------------------------------------------------------------
+PHASE 3: DEFAULTS & CONFIGURATION
+--------------------------------------------------------------------------------
+
+Create config/cooperative.php:
+
+return [
+  'default_loan_multiplier' => [
+    'regular' => 2.0,
+    'emergency' => 1.0,
+    'educational' => 2.0,
+    'special' => 3.0,
+  ],
+  'max_loan_multiplier' => [
+    'regular' => 4.0,
+    'emergency' => 2.0,
+    'educational' => 3.0,
+    'special' => 5.0,
+  ],
+  'payroll_deduction' => [
+    'default_max_percent' => 33.33, // 1/3 rule - based on employer IPPIS agreement, not CBN
+    'hard_max_percent' => 66.67, // Absolute max even with override - cannot take entire salary
+    'retirement_override_max_percent' => 60.00, // For retiring members
+    'defaulter_override_max_percent' => 50.00, // For defaulters catch-up
+  ],
+  'allowances' => [
+    'allow_multiplier_override' => true,
+    'allow_deduction_override' => true,
+    'require_second_approval_above_percent' => 50.00,
+  ]
+];
+
+Create settings UI /admin/settings/loan-policy to edit these defaults without code deploy.
+
+Add validation in AppServiceProvider: Ensure hard_max never exceeds 66.67% (protect member from 100% deduction)
+
+--------------------------------------------------------------------------------
+PHASE 4: BUSINESS RULES & EDGE CASES - IMPLEMENT THESE LOGICS
+--------------------------------------------------------------------------------
+
+RULE 1: Retirement Recovery Logic
+
+If member expected_retirement_date is within 6 months from today:
+- Auto suggest override: Allow deduction up to retirement_override_max_percent (60%) without second approval if loan outstanding >0
+- When compiling payroll for retiring member, prioritize loan repayment over savings
+- Show warning on dashboard: "5 members retiring in next 6 months with outstanding loans ₦X - Review recovery plan"
+
+RULE 2: Defaulter Catch-up Logic
+
+If member is_defaulter = true:
+- Allow deduction up to defaulter_override_max_percent (50%) to catch up arrears
+- Require reason category defaulter_catchup
+- On payroll, deduct arrears first before current dues
+
+RULE 3: Hard Cap Protection
+
+NEVER allow total deductions > hard_max_percent (66.67%) even with override, even for retiring members. This protects member from zero salary. If loan cannot be recovered within hard cap before retirement, EXCO must:
+- Restructure loan to longer tenure (if possible)
+- Require external guarantor to pay
+- Write off as per AGM approval and provision
+
+Implement in validateLoanApplication: if projected_percent > hard_max, return error "Cannot approve - Even with maximum override 66.67%, salary insufficient. Reduce amount or increase tenure or add upfront payment."
+
+RULE 4: Multiplier Override Expiry
+
+Overrides with valid_until in past automatically become inactive via daily job CheckExpiredOverrides. When expired, member reverts to default multiplier. Notify member.
+
+RULE 5: Audit Trail for All Overrides
+
+Every override creation, approval, deactivation must log to activity_logs with old vs new multiplier, reason, approved_by, IP. This is critical for AGM and external auditor.
+
+--------------------------------------------------------------------------------
+TEST CASES - WRITE THESE TESTS
+--------------------------------------------------------------------------------
+
+Test 1: Default multiplier 2x - member with 100k savings can get max 200k regular loan
+Test 2: With override 4x - member with 100k savings can get 400k if override active
+Test 3: Salary 150k, current deductions 30k (20%), new loan repayment 25k => projected 36.67% - requires deduction override since >33.33, but within hard cap 66.67
+Test 4: Salary 150k, projected 70% => blocked even with override (exceeds hard cap)
+Test 5: Retiring member - allows 60% deduction with single approval
+Test 6: Defaulter - allows 50% deduction
+Test 7: Override expired - reverts to default multiplier
+Test 8: Remove SOL check - ensure loan >5% of total portfolio can still be approved (if within multiplier and deduction caps)
+
+--------------------------------------------------------------------------------
+REMOVE SOL - SEARCH AND DELETE
+
+Search codebase for:
+- singleObligor, single_obligor, SOL, obligorLimit, 5% of portfolio
+- If found in LoanService, LoanController, LoanPolicy, delete that check
+- Add comment explaining why removed
+
+--------------------------------------------------------------------------------
+CONFIRM YOU UNDERSTAND COOPERATIVE vs CBN MFB DISTINCTION, THEN IMPLEMENT PHASE 1 DATA MODEL + LoanEligibilityService + PayrollDeductionService. SHOW FILE LIST AND CODE.
+
+================================================================================
+PROMPT END
+================================================================================
+
+--------------------------------------------------------------------------------
+APPENDIX: REGULATORY NOTE FOR CODE COMMENTS
+--------------------------------------------------------------------------------
+
+/*
+NAPTIN Cooperative Regulatory Framework:
+
+- This is NOT a CBN-licensed Microfinance Bank (MFB) or Commercial Bank.
+- It is a Staff Cooperative/Thrift Society registered under Cooperative Societies Act Cap C21 LFN 2004 and respective State Cooperative Law.
+- Funds managed are closed-loop internal member savings, not public deposits.
+- Therefore CBN Prudential Guidelines for MFBs including Single Obligor Limit (Section 3.2 of CBN MFB Framework) does NOT apply to internal loan approvals.
+- Lending limits are governed by:
+  1. Cooperative Bye-Laws approved by Director of Cooperatives
+  2. Loan Policy approved by Annual General Meeting (AGM)
+  3. EXCO discretion for special cases with audit trail
+  4. Employer deduction agreement (typically 1/3 of salary) with IPPIS/Employer
+  5. Member affordability and savings multiplier principle (internal risk rule)
+
+- We retain CBN-inspired GOOD PRACTICES that are universally good accounting:
+  - Double-entry ledger, Trial Balance, P&L, Balance Sheet (IFRS for SMEs)
+  - Loan Loss Provisioning (IFRS 9) for true financial health
+  - Maker-Checker and Segregation of Duties (COSO)
+  - Audit trail (ISA 230)
+
+- We REMOVE CBN MFB-specific prudential limits that don't apply to cooperative internal operations:
+  - Single Obligor Limit (5% of shareholders fund) - REMOVED
+  - Capital Adequacy Ratio - Not applicable (we track General Reserve per Cooperative Act 25% of profit)
+  - Liquidity Ratio - Not applicable in same way (we track cash flow)
+
+This note should be in code comments in LoanEligibilityService and config/cooperative.php
+*/
+
+--------------------------------------------------------------------------------
+END
+--------------------------------------------------------------------------------

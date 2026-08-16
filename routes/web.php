@@ -38,6 +38,8 @@ use App\Http\Controllers\SavingsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ShareController;
 use App\Http\Controllers\TwoFactorController;
+use App\Livewire\ExcoOverrideApprovals;
+use App\Livewire\MemberEligibilityOverrides;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => response()->noContent())->name('health');
@@ -267,6 +269,9 @@ Route::middleware(['auth', 'enforce-single-session', 'throttle:global'])->group(
             Route::resource('roles', RoleController::class)->except(['show']);
 
             Route::resource('regions', RegionController::class)->except(['show']);
+
+            Route::get('/members/{member}/eligibility-overrides', MemberEligibilityOverrides::class)->name('members.eligibility-overrides');
+            Route::get('/approvals/overrides', ExcoOverrideApprovals::class)->name('approvals.overrides');
 
             Route::get('/stock', [StockController::class, 'index'])->name('stock');
             Route::post('/stock/{product}', [StockController::class, 'update'])->name('stock.update');

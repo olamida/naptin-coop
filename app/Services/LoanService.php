@@ -63,6 +63,17 @@ class LoanService
     /**
      * Validate loan product constraints for a member.
      * Returns null on success, error message string on failure.
+     *
+     * NOTE: CBN Single Obligor Limit (SOL) has been REMOVED.
+     * NAPTIN is a Cooperative/Thrift Society registered under Cooperative Societies Act,
+     * managing CLOSED-LOOP internal member funds - NOT a CBN-licensed MFB taking public deposits.
+     * CBN Prudential Guidelines including Single Obligor Limit do NOT apply to internal
+     * cycling of member thrift savings among members of the same cooperative.
+     * Lending limits are governed by:
+     *   - Cooperative Bye-Laws (approved by congress)
+     *   - Loan Policy approved by EXCO / AGM
+     *   - Savings multiplier principle (internal risk rule)
+     *   - Salary deduction capacity (employer agreement)
      */
     public function validateLoanProduct(LoanProduct $product, int $memberId, float $amount, int $tenureMonths, array $guarantorIds = []): ?string
     {
@@ -136,29 +147,6 @@ class LoanService
 
         if ($tenureMonths > $product->max_term_months) {
             return "Tenure exceeds the maximum of {$product->max_term_months} months for {$product->name}.";
-        }
-
-        // CBN single obligor limit: a member's total loan exposure may not exceed 5% of
-        // the current loan portfolio. Skipped while the portfolio is empty so the very
-        // first loans in a greenfield cooperative are not blocked.
-        $portfolio = Loan::whereIn('status', ['disbursed', 'repaying', 'defaulted'])
-            ->where('outstanding', '>', 0)
-            ->sum('outstanding');
-
-        if ($portfolio > 0) {
-            $limit = Money::percent($portfolio, 5);
-            $memberExposure = Money::add(
-                Loan::where('member_id', $memberId)
-                    ->whereIn('status', ['pending', 'approved', 'disbursed', 'repaying'])
-                    ->sum('outstanding'),
-                $amount
-            );
-
-            if (Money::gt($memberExposure, $limit)) {
-                return 'CBN single obligor limit exceeded: this member\'s exposure of ₦'
-                    .number_format($memberExposure, 2).' would exceed 5% of the loan portfolio (₦'
-                    .number_format($limit, 2).').';
-            }
         }
 
         return null;
