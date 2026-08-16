@@ -14,7 +14,7 @@
 Browser (Tailwind UI + Alpine.js)
         │  HTTPS requests
         ▼
-routes/web.php  ── 248 declarations → 267 registered routes, 266 named
+routes/web.php  ── 268 declarations → 268 registered routes, 267 named
         │
         ▼
 Middleware pipeline  (bootstrap/app.php aliases)
@@ -45,6 +45,9 @@ app/Services (11 business engine)         │
 ```
 app/
 ├── Actions/                          # 28 single-purpose use-cases
+├── Livewire/                         # 2 components
+│   ├── MemberEligibilityOverrides.php  # /admin/members/{id}/eligibility-overrides
+│   └── ExcoOverrideApprovals.php       # /admin/approvals/overrides
 │   ├── Dividends/    ApproveDividend, CalculateDividend, DeclareDividend, DistributeDividend
 │   ├── Loans/        AddLoanNote, ApproveLoan, CreateLoan, DisburseLoan, RecordRepayment,
 │   │                 RejectLoan, UpdateGuarantor
@@ -84,7 +87,7 @@ app/
 │                                     # WithdrawalStatus)
 ├── Policies/                         # 1 (loan policy)
 ├── Providers/                        # AppServiceProvider, ViewServiceProvider
-├── Services/                         # 11
+├── Services/                         # 13
 │   ├── ApprovalService.php           # maker-checker workflow engine
 │   ├── BrandingService.php           # assets, GD variants, cache, favicon/PWA sync
 │   ├── CartService.php               # DB-backed carts (polymorphic actor)
@@ -92,7 +95,9 @@ app/
 │   ├── HirePurchaseService.php       # flat-principal HP schedules + instalment payments
 │   ├── LedgerService.php             # double-entry engine (24 public methods)
 │   ├── LedgerSyncService.php         # opening-balance conversion
+│   ├── LoanEligibilityService.php    # max eligible calc, deduction analysis, application validation
 │   ├── LoanService.php               # repayment calc, number gen, product validation
+│   ├── PayrollDeductionService.php   # priority-based deduction capping, retirement/defaulter logic
 │   ├── ProvisioningService.php       # IFRS 9 / CBN provisioning buckets
 │   ├── ReportExportService.php       # canonical SHA-256 + GD QR for exports
 │   └── SavingsService.php            # atomic deposit/withdrawal with row locking

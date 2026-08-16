@@ -1,6 +1,6 @@
 # NAPTIN Staff Thrift Cooperative Society — User Guide
 
-> **Version:** 1.2 (matches APP-GUIDE 3.19)
+> **Version:** 1.3 (matches APP-GUIDE 3.22)
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Companion docs:** `APP-GUIDE.md` (features & changelog), `SYSTEM-DOCUMENTATION.md` (technical), `PENDING-TASKS.md` (AI session ledger).
 
@@ -158,9 +158,9 @@ When a group of new staff joins at once — e.g. a new intake — the **Onboardi
 - When the outstanding reaches ₦0 the loan is marked **Completed**.
 
 **Rules enforced automatically** (to protect members and the society):
-- A member's total eligible loan is capped at **3× their savings balance** (max ₦5,000,000).
+- A member's total eligible loan is capped at **their savings balance × the product's multiplier** (default 2×–3×, max ₦5,000,000). EXCO can approve a higher multiplier for special cases (retirement recovery, long service, etc.).
 - A person cannot guarantee more than **₦500,000** in total on active loans.
-- A member's total exposure cannot exceed **5% of the whole outstanding loan book** (CBN single-obligor rule).
+- **Salary deduction cap:** total deductions (savings + loans + shares + purchases + arrears) cannot exceed **33.33% (1/3) of net salary** by default. EXCO can approve up to **66.67% (2/3)** in exceptional cases (retirement recovery up to 60%, defaulter catch-up up to 50%). Maker-checker (second approval) required for overrides above 50%.
 
 **Loan top-up:** From a disbursed loan's page you can request a **top-up**, which creates a follow-on loan.
 
@@ -221,7 +221,7 @@ Everything administrative lives behind **Administration → Settings / Manage**:
 - **Users** — create/edit user accounts, assign roles, reset passwords.
 - **Roles** — manage roles and their 35 permissions.
 - **Regions** — the cooperative's regional centres.
-- **Loan Products** — interest rates, limits, guarantor requirements, processing fees.
+- **Loan Products** — interest rates, limits, guarantor requirements, processing fees, **default/max savings multipliers, monthly interest rate, minimum tenure, override permissions**.
 - **Stock** — adjust product stock.
 - **Company Settings** — company name/logo, contact info, financial parameters (savings interest, loan interest, max loan multiplier, auto-approve deposit limit), footer note.
 - **Branding** — the favicon, hero banners, logo and round sidebar icon.
@@ -230,6 +230,8 @@ Everything administrative lives behind **Administration → Settings / Manage**:
 - **Backup** — download a full SQL dump of the database.
 - **Statistics** — login activity and system statistics.
 - **Broadcasts** — send a notice to all members (appears in their portal notifications).
+- **Member Eligibility Overrides** — **Members → [member] → Eligibility Overrides**: set EXCO-approved per-member multiplier or deduction-cap overrides with reason (retirement recovery, defaulter catch-up, long service, medical, etc.).
+- **EXCO Override Approvals** — **Reporting & Accounting → Approvals → Overrides**: review and approve pending override requests from loan applications that exceed default multipliers or deduction caps.
 
 ---
 

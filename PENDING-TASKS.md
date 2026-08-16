@@ -14,22 +14,38 @@
 
 ---
 
-## 2. Current State (last updated: 2026-08-13)
+## 2. Current State (last updated: 2026-08-16)
 
 | Item | Value |
 |------|-------|
-| APP-GUIDE version | 3.21 |
-| Last released commit | `6e8247f` — "JS unit test coverage + command-palette module extraction (P-05)" |
-| Uncommitted WIP | **Security hardening + scheduled commands batch** (this session) |
-| Test suite | 37 Feature + 2 Unit test files, **201 tests / 784 assertions** passing (PHP) + **36 JS tests** via `npm run test:js` |
+| APP-GUIDE version | 3.22 |
+| Last released commit | `0eebbfd` — "feat: implement flexible loan policy with adjustable multipliers and salary deduction caps" |
+| Uncommitted WIP | none |
+| Test suite | 38 Feature + 2 Unit test files, **200 tests / 781 assertions** passing (PHP) + **36 JS tests** via `npm run test:js` |
 | Active branch | `master` (tracking `origin/master`) |
 
 ---
 
 ## 3. NEXT UP (do this first)
 
+### ✓ Done — P-07: Flexible Loan Policy + Salary Deduction Cap System
+**Status:** DONE (2026-08-16) — this session.
+
+**Completed items:**
+- **5 migrations:** `loan_products` enhancements (default/max multiplier, monthly interest, min tenure, guarantor settings, override permissions), `member_loan_eligibility_overrides` (EXCO per-member/product overrides with reason category, validity period, dual approval), `payroll_deduction_caps` (configurable default 33.33% / hard 66.67%), `loans` override tracking (applied_multiplier, deduction cap override fields), `members` salary/defaulter fields (monthly_net_salary, expected_retirement_date, is_defaulter, defaulter_outstanding_arrears).
+- **LoanEligibilityService:** `calculateMaxEligibleAmount()` (savings × applied_multiplier, capped by product max_multiplier/max_amount), `calculateTotalDeductionsPercent()` (net salary vs current deductions + new loan, cap analysis with default/applied/hard caps), `validateLoanApplication()` (full validation: multiplier overrides, deduction caps, guarantor exposure, tenure, max loans).
+- **PayrollDeductionService:** `compileMemberDeductions()` with priority-based capping (Savings → Loans oldest first → Shares → Purchases → Arrears), retirement recovery override (≤60% for members retiring in ≤6 months), defaulter catch-up override (≤50%), hard cap protection (never >66.67%).
+- **Removed CBN Single Obligor Limit** from `LoanService::validateLoanProduct()` with regulatory comment explaining NAPTIN is a cooperative under Cooperative Societies Act (closed-loop internal funds), not a CBN-licensed MFB.
+- **config/cooperative.php** with defaults (multipliers, caps, guarantor cap, override reason categories) and regulatory framework comments.
+- **2 Livewire components:** `MemberEligibilityOverrides` at `/admin/members/{id}/eligibility-overrides` (CRUD modal for per-member overrides), `ExcoOverrideApprovals` at `/admin/approvals/overrides` (review/approve pending override requests with full eligibility analysis).
+- **Enhanced LoanProduct admin views** with multiplier/deduction/guarantor/override sections in color-coded cards.
+- **Routes added:** `members.eligibility-overrides`, `approvals.overrides`.
+- **Test updates:** `CbnComplianceTest` — removed SOL test (was blocking loans >5% portfolio); all 200 tests pass (781 assertions).
+
+Verified: `composer test` 200/200 green (781 assertions), `vendor/bin/pint` clean.
+
 ### ✓ Done — P-06: Security hardening + scheduled finance commands
-**Status:** DONE (2026-08-13) — this session.
+**Status:** DONE (2026-08-13) — previous session.
 
 **Completed items:**
 - **P6 #33**: Deleted legacy `AdminController.php` (zero refs verified).
@@ -45,9 +61,6 @@
 - **Tests**: `FinanceRateLimitTest` (2), `ForcedTwoFactorTest` (6), `NoBackDatingTest` (6), `ScheduledFinanceCommandsTest` (6) — all green.
 
 Verified: `composer test` 201/201 green (784 assertions), `vendor/bin/pint` clean.
-
-### ✓ Done — P-04: Member portal keyboard shortcuts + member-scoped quick search
-**Status:** DONE (2026-08-09) — shipped `102c7c9`.
 
 The reusable `<x-command-palette>` is now mounted on the **portal layout** (`portal-layout.blade.php`), so portal pages get:
 - `/` (or `Ctrl/Cmd + K`) opening a **member-scoped quick search** — new `GET /my/search` (`portal.search`) JSON endpoint on `MemberPortalController::searchJson()` searches **only the signed-in member's own data**: loans by `loan_number`, savings transactions by `SAV/…` reference, share transactions by `SHR/…` reference, purchase orders by `order_number`/`order_group`. An empty query returns portal quick actions (Dashboard, Savings, Loans, Apply, Shares if module enabled, Purchases, Shop, Cart, Guarantors). `N` stays disabled (no `newMemberUrl`).
@@ -120,7 +133,8 @@ Reconciliation of every FLAW item against the codebase — **all implemented**:
 
 | Date | Commit | Feature |
 |------|--------|---------|
-| 2026-08-13 | *(pending)* | **Security hardening + scheduled finance commands (P-06)** — NoBackDating middleware, DB CHECK constraints, finance rate limiting, role-forced 2FA, DatabaseBackupService + encrypted backup command, scheduled hash-chain verification / provisioning / control reconciliation with notifications, full test coverage |
+| 2026-08-16 | `0eebbfd` | **Flexible Loan Policy + Salary Deduction Cap System (P-07)** — 5 migrations (loan_products enhancements, member_loan_eligibility_overrides, payroll_deduction_caps, loans override tracking, members salary/defaulter fields); LoanEligibilityService (max eligible calc, deduction analysis, application validation); PayrollDeductionService (priority-based capping, retirement recovery ≤60%, defaulter catch-up ≤50%); removed CBN Single Obligor Limit (Cooperative Societies Act); config/cooperative.php; 2 Livewire components (MemberEligibilityOverrides, ExcoOverrideApprovals); enhanced LoanProduct admin views; 200 tests pass (SOL test removed) |
+| 2026-08-13 | `fee0c5f` | **Security hardening + scheduled finance commands (P-06)** — NoBackDating middleware, DB CHECK constraints, finance rate limiting, role-forced 2FA, DatabaseBackupService + encrypted backup command, scheduled hash-chain verification / provisioning / control reconciliation with notifications, full test coverage |
 | 2026-08-09 | `6e8247f` | **JS unit test coverage + command-palette module extraction (P-05)** — `command-palette.js` ES module, Vitest + happy-dom harness, 36 JS tests (APP-GUIDE 3.20) |
 | 2026-08-09 | `102c7c9` | **Member portal keyboard shortcuts + member-scoped quick search (P-04)** — command palette on portal layout, A/R guarantor actions, `/my/search` endpoint (APP-GUIDE 3.19, USER-GUIDE 1.2) |
 | 2026-08-09 | `eedc5f6` | **APP-GUIDE 3.18 documentation refresh (P-01)** — guide brought back in line with the codebase |

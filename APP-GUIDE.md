@@ -1,7 +1,7 @@
 # NAPTIN Staff Thrift Cooperative Society — Application Guide
 
-> **Version:** 3.21
-> **Platform:** Laravel 13 (13.22) + PHP 8.3 + Tailwind CSS 4 + MySQL 8
+> **Version:** 3.22
+> **Platform:** Laravel 13 (13.22) + PHP 8.3 + Tailwind CSS 4 + MySQL 8 + Livewire 4
 > **URL:** `http://localhost/dev-angle/Starter-folder/naptin-coop/public`
 > **Login:** `admin@naptin.coop` / `password`
 > **Member Login:** `member@naptin.coop` / `password`
@@ -12,6 +12,7 @@
 
 | Version | Change |
 |---------|--------|
+| 3.22 | **Flexible Loan Policy + Salary Deduction Cap System (P-07):** implemented adjustable loan multipliers (per product defaults + EXCO overrides) and configurable salary deduction caps (33.33% default / 66.67% hard max) per Cooperative Societies Act — removed CBN Single Obligor Limit (not applicable to closed-loop member funds). New: 5 migrations (`loan_products` enhancements, `member_loan_eligibility_overrides`, `payroll_deduction_caps`, `loans` override tracking, `members` salary/defaulter fields); `LoanEligibilityService` (max eligible calc, deduction analysis, application validation); `PayrollDeductionService` (priority-based capping, retirement recovery ≤60%, defaulter catch-up ≤50%); `config/cooperative.php` with regulatory comments; 2 Livewire components (`MemberEligibilityOverrides` at `/admin/members/{id}/eligibility-overrides`, `ExcoOverrideApprovals` at `/admin/approvals/overrides`); enhanced LoanProduct admin views with multiplier/deduction/guarantor/override sections. Test suite: 200 PHP tests (781 assertions) — CBN SOL test removed. |
 | 3.21 | **Security hardening + scheduled finance commands (P-06):** deleted legacy `AdminController.php`; new `NoBackDating` middleware (`no-back-dating` alias) guards all money routes (loan repayment, journal store, cash count, `/ledger/*`, `/finance/*`) against future-dated and back-dated transactions; migration `2026_08_13_000001_add_money_check_constraints.php` adds MySQL `CHECK` constraints on monetary columns (non-negative balances, positive amounts, valid enums); dedicated `throttle:finance` (60 req/min/user) on `/ledger` + `/finance` groups; role-forced 2FA via `config/security.php` (`enforce_two_factor_roles` defaults to `super-admin,admin,treasurer`) with `RequireTwoFactor` middleware redirecting unenrolled users to setup and unverified sessions to challenge; `DatabaseBackupService` + `backup:encrypted` command (AES-256-GCM, streaming, retention) scheduled at 02:00; three new scheduled finance commands with admin notifications — `verify:ledger-hash-chain` (04:00, `LedgerTamperNotification`), `finance:calculate-provisioning` (month-end 06:00), `finance:reconcile-control-accounts` (23:00, `ControlVarianceNotification`); test coverage: `FinanceRateLimitTest` (2), `ForcedTwoFactorTest` (6), `NoBackDatingTest` (6), `ScheduledFinanceCommandsTest` (6). Test suite: 201 PHP tests (784 assertions) + 36 JS tests. |
 | 3.20 | **JS unit test coverage + command-palette module extraction (P-05):** the `window.commandPalette` factory moved out of `resources/js/app.js` into a testable ES module `resources/js/command-palette.js` (`app.js` now imports it and re-assigns `window.commandPalette`, so every Blade `x-data="commandPalette({...})"` binding is unchanged). New **Vitest + happy-dom** JS test harness (`npm run test:js`; `vite.config.js` gained a `test` block with the happy-dom environment; `package.json` gained the `test:js` script). `resources/js/__tests__/command-palette.test.js` covers **36 cases**: option defaults; `isTypingTarget` (modifier keys, input/textarea/select/contenteditable vs plain page targets); `handleGlobalKey` (`/` opens, `N` new-member navigation incl. the Shift guard and empty-URL no-op, `A`/`a` approve + `R`/`r` reject via the visibility-aware `firstShortcut`, and the open/typing early-returns); `firstShortcut` (visible-first ordering with all-hidden fallback and no-match null); `collectShortcuts`; `triggerShortcut` (form submit-button click, form-without-submit via `requestSubmit`/`submit`, direct element click, no-op when absent); `openPalette` (state reset + single initial search); `search` (endpoint + encode, reindex, failure clears state); `reindex`/`isSelected`/`goto`/`handleKey` (arrow clamping, Enter navigation, Escape close). No behaviour change. |
 | 3.19 | **Member portal keyboard shortcuts + member-scoped quick search (P-04):** the reusable `<x-command-palette>` is now mounted on the **portal layout** too — `/` (and `Ctrl/Cmd + K`) open a **member-scoped quick search** that searches only the signed-in member's own data (their loans by loan number, savings transactions by `SAV/…` reference, share transactions by `SHR/…` reference, purchase orders by order number/group) and, on an empty query, shows portal quick actions (Dashboard, Savings, Loans, Apply, Shares if the module is enabled, Purchases, Shop, Cart, Guarantors). `N` stays disabled on the portal. **`A` accepts / `R` declines** the first visible pending guarantor request on **My Guarantor Requests** (buttons carry `data-shortcut` + `(A)`/`(R)` hints; the decline confirmation dialog is preserved). Backed by the new `GET /my/search` (`portal.search`) JSON endpoint on `MemberPortalController::searchJson()`. New `tests/Feature/PortalSearchTest.php` (4 tests: guest redirect, quick actions, loan scoping, savings scoping). Route count is now **268 registered / 267 named**. |
@@ -314,7 +315,7 @@ naptin-coop/
 │   ├── savings/                              # index, accounts, deposit, withdraw, pending-withdrawals, import
 │   └── shares/                               # index, accounts, purchase
 │
-└── routes/web.php                      # 267 registered routes (266 named)
+└── routes/web.php                      # 268 registered routes (267 named)
 ```
 
 ### Tech Stack
@@ -386,7 +387,7 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 |-------|---------|-------------|
 | `regions` | 8 regional centers | name, code, state, zone, headquarters, enabled |
 | `positions` | 11 positions (9 EXCO + 2 staff) | name, slug, is_executive |
-| `members` | 23+ columns per member | staff_id (unique), region_id, first_name, last_name, monthly_salary, status, photo_path, user_id |
+| `members` | 27+ columns per member | staff_id (unique), region_id, first_name, last_name, monthly_salary, **monthly_net_salary, expected_retirement_date, is_defaulter, defaulter_outstanding_arrears**, status, photo_path, user_id |
 | `member_positions` | Position assignments | member_id, position_id, start_date, is_current |
 | `next_of_kins` | Emergency contacts | member_id, name, relationship, phone, is_primary |
 
@@ -399,12 +400,14 @@ All sidebar items are permission-gated using `@can` directives. The sidebar is d
 #### Loans Domain
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `loan_products` | Configurable loan types | name, slug, min/max_amount, interest_rate, max_term_months, requires_guarantors, max_loans_per_member, max_total_amount_per_member |
-| `loans` | Individual loan records | member_id, loan_product_id, loan_number, type, amount, interest_rate, monthly_repayment, outstanding, status, admin_notes, **import_batch_id, external_reference** |
+| `loan_products` | Configurable loan types | name, slug, min/max_amount, interest_rate, max_term_months, requires_guarantors, max_loans_per_member, max_total_amount_per_member, **default_multiplier, max_multiplier, interest_rate_monthly, min_tenure_months, requires_guarantor, min_guarantors, max_guarantors, allow_multiplier_override, allow_deduction_cap_override** |
+| `loans` | Individual loan records | member_id, loan_product_id, loan_number, type, amount, interest_rate, monthly_repayment, outstanding, status, admin_notes, **import_batch_id, external_reference**, **applied_multiplier, approved_multiplier, is_multiplier_override, multiplier_override_id, total_deduction_percent_at_approval, is_deduction_cap_override, deduction_override_reason, deduction_override_approved_by** |
 | `loan_repayments` | Repayment transactions | loan_id, member_id, amount, principal_portion, interest_portion, **fees_portion**, payment_method |
 | `loan_repayment_schedules` | Amortization schedules | loan_id, installment_number, due_date, principal_amount, interest_amount, status |
 | `loan_guarantors` | Guarantor assignments | loan_id, member_id, status (pending/accepted/declined), responded_at |
 | `loan_approval_logs` | Full audit trail | loan_id, user_id, action, old_status, new_status, notes |
+| `member_loan_eligibility_overrides` | EXCO per-member product overrides | member_id, loan_product_id, custom_multiplier, custom_max_deduction_percent, custom_max_amount, reason_category, reason_details, approved_by, second_approved_by, valid_from, valid_until, is_active |
+| `payroll_deduction_caps` | Salary deduction cap configuration | name, default_max_percent (33.33%), hard_max_percent (66.67%), description, is_active |
 
 #### Shares Domain
 | Table | Purpose | Key Columns |
@@ -509,6 +512,8 @@ A dedicated migration (`2026_07_26_000001_add_performance_indexes.php`) adds com
 | `/members/search/form` | GET | **Dynamic member search for forms** (deposit, withdraw, shares purchase, checkout) |
 | `/members/{id}/approve` | POST | Approve a pending self-registered member application (activates member + user) |
 | `/members/{id}/reject` | POST | Reject a pending member application (sets status to `inactive`; no portal login is created) |
+| `/members/{id}/eligibility-overrides` | GET | **Member Eligibility Overrides** page — manage EXCO-approved per-member multiplier/deduction cap overrides |
+| `/admin/approvals/overrides` | GET | **EXCO Override Approvals** page — review and approve pending loan multiplier/deduction cap override requests |
 
 **On member creation, the system automatically:**
 1. Creates a Savings Account (balance = ₦0)
@@ -587,10 +592,11 @@ pending → approved → disbursed → repaying → completed
 - Checks `max_loans_per_member` limit
 - Checks `max_total_amount_per_member` limit
 - Validates amount within min/max range
-- Validates tenure within max term
-- **3× savings eligibility (server-enforced):** a member's maximum eligible loan is `min(savings balance × 3, ₦5,000,000)` — a loan request above that ceiling is blocked with an error naming the savings-driven limit
+- Validates tenure within max term (and min tenure)
+- **Flexible savings multiplier (server-enforced):** a member's maximum eligible loan is `min(savings balance × applied_multiplier, ₦5,000,000)` where `applied_multiplier` = product default or EXCO override (capped at product `max_multiplier`) — a loan request above that ceiling is blocked with an error naming the savings-driven limit
 - **Guarantor exposure cap (server-enforced):** a member's aggregate accepted guarantees on active loans may not exceed ₦500,000; every selected guarantor is checked, and the application is blocked if adding this loan would push any guarantor over the cap
-- **CBN single-obligor limit:** a member's total exposure (existing outstanding + new amount) may not exceed 5% of the current outstanding loan portfolio (skipped while the portfolio is empty)
+- **Salary deduction cap:** projected total deductions (including new loan) must not exceed the member's applicable cap (default 33.33%, override up to 66.67% hard max) — requires EXCO approval if exceeding default cap; blocked if exceeding hard cap
+- **CBN single-obligor limit:** REMOVED — NAPTIN is a cooperative managing closed-loop member funds under Cooperative Societies Act, not a CBN-licensed MFB; lending limits governed by Bye-Laws, Loan Policy, EXCO discretion, and employer deduction agreement
 
 **Monthly Repayment Calculation:**
 ```
@@ -743,6 +749,14 @@ draft → calculated → approved → completed
 ```
 compiled → deducted → completed
 ```
+
+**Salary Deduction Caps (Flexible Loan Policy):**
+- **Default cap:** 33.33% (1/3 of net salary) — based on employer IPPIS agreement
+- **Hard cap:** 66.67% (2/3 of net salary) — absolute maximum even with override
+- **Retirement recovery override:** up to 60% for members retiring within 6 months (auto-applied)
+- **Defaulter catch-up override:** up to 50% for flagged defaulters
+- **Priority order when capping:** 1. Savings (mandatory) → 2. Loan repayments (oldest first) → 3. Shares → 4. Purchases → 5. Arrears
+- **Maker-checker required** for deduction overrides > 50% (second approval by distinct approver)
 
 ---
 
@@ -1168,6 +1182,34 @@ LOAN LOSS PROVISIONING (Finance → Loan Aging → Calculate Provision):
 4. Per-loan snapshot rows are saved for the period (unique loan_id + period)
 5. Re-running converges to the same total without double-counting
 ```
+
+---
+
+### 4.9 Flexible Loan Policy & Salary Deduction Cap System
+
+This system implements adjustable loan multipliers and configurable salary deduction caps per the Cooperative Societies Act (not CBN MFB Framework).
+
+**Loan Multiplier System:**
+- **Per-product defaults:** Each loan product has a `default_multiplier` (e.g., Regular 2x, Emergency 1x, Special 3x)
+- **Maximum caps:** Each product has a `max_multiplier` (absolute ceiling even with override)
+- **EXCO overrides:** Per-member, per-product overrides stored in `member_loan_eligibility_overrides` with reason category, validity period, and dual approval trail
+- **Validation:** `LoanEligibilityService::calculateMaxEligibleAmount()` computes max eligible = savings × applied_multiplier (capped by product max_multiplier and max_amount)
+
+**Salary Deduction Cap System:**
+- **Default cap:** 33.33% (1/3 of net salary) — based on employer IPPIS agreement
+- **Hard cap:** 66.67% (2/3 of net salary) — absolute maximum even with override
+- **Retirement recovery override:** up to 60% for members retiring within 6 months (auto-applied)
+- **Defaulter catch-up override:** up to 50% for flagged defaulters
+- **Priority order when capping:** 1. Savings (mandatory) → 2. Loan repayments (oldest first) → 3. Shares → 4. Purchases → 5. Arrears
+- **Maker-checker required** for deduction overrides > 50% (second approval by distinct approver)
+- **Payroll integration:** `PayrollDeductionService::compileMemberDeductions()` enforces caps during payroll compilation
+
+**Regulatory Note:** CBN Single Obligor Limit (5% of portfolio) was REMOVED — NAPTIN is a cooperative managing closed-loop member funds under Cooperative Societies Act, not a CBN-licensed MFB taking public deposits. Lending limits governed by Bye-Laws, Loan Policy, EXCO discretion, and employer deduction agreement.
+
+**Admin UI:**
+- **Member Eligibility Overrides** (`/admin/members/{id}/eligibility-overrides`): Manage per-member overrides with reason categories (retirement_recovery, defaulter_catchup, long_service_goodwill, emergency_medical, exco_discretion, agm_approval, other)
+- **EXCO Override Approvals** (`/admin/approvals/overrides`): Review pending override requests with full eligibility analysis
+- **Loan Product admin**: Enhanced with multiplier, deduction cap, guarantor, and override permission fields
 
 ---
 
